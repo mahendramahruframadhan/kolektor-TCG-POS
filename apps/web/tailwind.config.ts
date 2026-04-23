@@ -5,16 +5,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "hsl(234,94%,14%)",
-        "primary-fg": "hsl(40,30%,96%)",
-        accent: "hsl(161,63%,46%)",
-        "accent-fg": "hsl(220,60%,10%)",
-        surface: "hsl(220,20%,97%)",
-        card: "#ffffff",
-        fg: "hsl(220,30%,10%)",
-        muted: "hsl(220,15%,94%)",
-        "muted-fg": "hsl(220,10%,46%)",
-        border: "hsl(220,15%,90%)",
+        primary: "hsl(256,62%,12%)",       /* dark navy-purple header */
+        "primary-fg": "hsl(0,0%,100%)",    /* white on dark */
+        accent: "hsl(265,100%,60%)",       /* vivid purple — buttons, checkboxes */
+        "accent-fg": "hsl(0,0%,100%)",     /* white on purple */
+        surface: "hsl(252,35%,97%)",       /* light lavender page bg */
+        card: "#ffffff",                   /* white cards */
+        fg: "hsl(256,55%,11%)",            /* near-black primary text */
+        muted: "hsl(252,20%,93%)",         /* subtle lavender bg */
+        "muted-fg": "hsl(252,8%,47%)",     /* medium-gray secondary text */
+        border: "hsl(252,18%,88%)",        /* lavender-tinted border */
         destructive: "hsl(0,72%,51%)",
         success: "hsl(152,60%,40%)",
         warning: "hsl(38,92%,50%)",
