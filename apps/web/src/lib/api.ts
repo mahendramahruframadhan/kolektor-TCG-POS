@@ -86,6 +86,15 @@ export const api = {
   backup: {
     download: () => fetch("/api/backup", { credentials: "include" }),
   },
+  sync: {
+    pull: (cursor: number, deviceId: string) =>
+      request<unknown>(`/sync/pull?cursor=${cursor}&deviceId=${encodeURIComponent(deviceId)}`),
+    push: (ops: unknown[], deviceId: string) =>
+      request<unknown>("/sync/push", {
+        method: "POST",
+        body: JSON.stringify({ ops, deviceId }),
+      }),
+  },
   carts: {
     create: (body: unknown) =>
       request<unknown>("/carts", {

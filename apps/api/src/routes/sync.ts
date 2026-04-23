@@ -137,7 +137,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               break;
             }
             const id = crypto.randomUUID();
-            db.insert(cards).values({ id, clientId: op.clientId, ...(op.payload as never) }).run();
+            db.insert(cards).values({ id, clientId: op.clientId, ...(op.payload as Record<string, unknown>) } as unknown as typeof cards.$inferInsert).run();
             results.push({ clientId: op.clientId, status: "accepted", serverEntityId: id });
             break;
           }
@@ -153,7 +153,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               break;
             }
             const id = crypto.randomUUID();
-            db.insert(transactions).values({ id, clientId: op.clientId, ...(op.payload as never) }).run();
+            db.insert(transactions).values({ id, clientId: op.clientId, ...(op.payload as Record<string, unknown>) } as unknown as typeof transactions.$inferInsert).run();
             results.push({ clientId: op.clientId, status: "accepted", serverEntityId: id });
             break;
           }

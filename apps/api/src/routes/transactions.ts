@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { eq, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
@@ -81,8 +81,8 @@ export async function transactionRoutes(
 async function handleVoidRefund(
   _app: FastifyInstance,
   db: Db,
-  request: Parameters<Parameters<FastifyInstance["post"]>[2]>[0],
-  reply: Parameters<Parameters<FastifyInstance["post"]>[2]>[1],
+  request: FastifyRequest,
+  reply: FastifyReply,
   kind: "void" | "refund"
 ) {
   const { id: parentId } = request.params as { id: string };

@@ -10,6 +10,7 @@ import { IntakePage } from "./pages/IntakePage.js";
 import { InventoryPage } from "./pages/InventoryPage.js";
 import { ReportsPage } from "./pages/ReportsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
+import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -75,6 +76,14 @@ export function App() {
             element={
               <RequireAdmin>
                 <AdminPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/oversold"
+            element={
+              <RequireAdmin>
+                <OversoldQueuePage />
               </RequireAdmin>
             }
           />
