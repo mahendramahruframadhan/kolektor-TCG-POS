@@ -52,9 +52,9 @@ export async function settlementRoutes(
       const ownerItemCount: Record<string, number> = {};
       for (const item of allItems) {
         const kind = txKindMap[item.transactionId];
-        const sign = kind === "sale" ? 1 : -1;
         const ownerId = item.ownerUserIdSnapshot;
-        ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + item.soldPriceIdr * sign;
+        // item.soldPriceIdr is already signed: negative for void/refund items (§7.3).
+        ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + item.soldPriceIdr;
         if (kind === "sale") {
           ownerItemCount[ownerId] = (ownerItemCount[ownerId] ?? 0) + 1;
         }
