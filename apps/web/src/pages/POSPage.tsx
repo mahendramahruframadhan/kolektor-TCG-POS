@@ -4,7 +4,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, Printer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
@@ -316,9 +316,52 @@ interface ReceiptModalProps {
 }
 
 function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptModalProps) {
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (!printWindow) return;
+    const now = new Date().toLocaleString("id-ID");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Struk KolektaPOS</title>
+          <style>
+            body { font-family: monospace; padding: 24px; max-width: 320px; margin: 0 auto; color: #000; }
+            .center { text-align: center; }
+            .header { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+            .sub { font-size: 12px; color: #555; margin-bottom: 16px; }
+            .line { display: flex; justify-content: space-between; font-size: 14px; margin: 8px 0; }
+            .divider { border-top: 1px dashed #999; margin: 12px 0; }
+            .total { font-size: 16px; font-weight: bold; }
+            .footer { font-size: 11px; color: #777; margin-top: 24px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            <div class="header">KolektaPOS</div>
+            <div class="sub">Booth Pokemon TCG</div>
+          </div>
+          <div class="divider"></div>
+          <div class="line"><span>ID Transaksi</span><span>#${transactionId.slice(0, 8).toUpperCase()}</span></div>
+          <div class="line"><span>Tanggal</span><span>${now}</span></div>
+          <div class="line"><span>Jumlah Kartu</span><span>${itemCount}</span></div>
+          <div class="divider"></div>
+          <div class="line total"><span>Total</span><span>Rp ${totalIdr.toLocaleString("id-ID")}</span></div>
+          <div class="divider"></div>
+          <div class="footer">Terima kasih!</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
+      <div id="receipt-modal-content" className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
         <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
           <Check className="w-8 h-8 text-success" />
         </div>
@@ -338,12 +381,21 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
             <span className="font-extrabold text-primary">Rp {totalIdr.toLocaleString("id-ID")}</span>
           </div>
         </div>
-        <button
-          onClick={onDone}
-          className="w-full h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
-        >
-          Transaksi Baru
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handlePrint}
+            className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted transition flex items-center justify-center gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            Cetak Struk
+          </button>
+          <button
+            onClick={onDone}
+            className="w-full h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
+          >
+            Transaksi Baru
+          </button>
+        </div>
       </div>
     </div>
   );
