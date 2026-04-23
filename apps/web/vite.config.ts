@@ -7,19 +7,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "hero.webp"],
       manifest: {
         name: "KolektaPOS",
         short_name: "KolektaPOS",
-        description: "POS untuk booth Pokémon TCG",
+        description: "POS untuk booth TCG Sales",
         theme_color: "#1d4ed8",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/favicon.png", sizes: "512x512", type: "image/png" },
         ],
       },
       workbox: {

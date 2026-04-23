@@ -30,6 +30,11 @@ export const api = {
         { method: "POST", body: JSON.stringify({ email, password }) }
       ),
     logout: () => request("/auth/logout", { method: "POST" }),
+    changePassword: (body: { currentPassword: string; newPassword: string }) =>
+      request<{ ok: boolean }>("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     me: () =>
       request<{ id: string; email: string; displayName: string; role: string }>(
         "/me"

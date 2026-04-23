@@ -1,16 +1,16 @@
 # PRD — KolektaPOS
 
-**Product:** KolektaPOS — Private Point-of-Sale for Pokémon TCG Convention Booths
+**Product:** KolektaPOS — Private Point-of-Sale for TCG Sales Convention Booths
 **Version:** 1.0 (Consolidated)
-**Owner:** Benny
+**Owner:** Revota
 **Status:** Ready for implementation planning. All open questions resolved.
-**Target users:** Benny + 10 co-owners operating a shared booth at Pokémon TCG conventions in Indonesia
+**Target users:** Revota + 10 co-owners operating a shared booth at TCG Sales conventions in Indonesia
 
 ---
 
 ## 1. Context
 
-Benny and 10 friends pool their Pokémon TCG inventory to sell at conventions under a single shared booth. Off-the-shelf POS apps fail on three dimensions: TCG-specific pricing (condition, rarity, grading, negotiation), multi-owner consignment, and convention-grade network reliability.
+Revota and 10 friends pool their TCG Sales inventory to sell at conventions under a single shared booth. Off-the-shelf POS apps fail on three dimensions: TCG-specific pricing (condition, rarity, grading, negotiation), multi-owner consignment, and convention-grade network reliability.
 
 KolektaPOS is a private, self-hosted, single-booth POS built for this group. Not a product. Not multi-tenant. Eleven users, one booth, one purpose: run convention weekends smoothly and split profits fairly.
 
@@ -75,7 +75,7 @@ Cart locking (F34) prevents the majority of oversell situations by marking a car
 
 | Role    | Count      | Capabilities |
 |---------|------------|--------------|
-| Admin   | 1 (Benny)  | Everything. User management, event creation, override any guardrail (below-bottom, discount-over-max), void/refund transactions, close event, resolve oversold conflicts, edit settings, download backups. |
+| Admin   | 1 (Revota)  | Everything. User management, event creation, override any guardrail (below-bottom, discount-over-max), void/refund transactions, close event, resolve oversold conflicts, edit settings, download backups. |
 | Cashier | 10         | Intake any card (for any owner), sell any card, accept payments, discount within configured max, view own payout. Hard-blocked by UI and server from selling below bottom or discounting over max — admin-only override. |
 
 All users are known and trusted. Email + password, long-lived sessions. No 2FA, no SSO.
@@ -95,7 +95,7 @@ All users are known and trusted. Email + password, long-lived sessions. No 2FA, 
 | F5  | QR / barcode printing per card         | Client-rendered PDF + browser print dialog. Target sticker size: 50×25mm (thermal label-friendly). |
 | F6  | Short unique card ID                   | Format `O-XXXXX`, see §8. |
 | F7  | Payment channel tagging                | Pre-configured: Cash IDR, BCA, Mandiri, BNI, GoPay, OVO, Dana, ShopeePay, QRIS, Other. Editable list. Optional account reference note. |
-| F8  | Self-hosted cloud + local PWA          | React PWA served from Benny's domain (e.g. `pos.kolekta.id`). Client works fully offline. Fastify sync server on same domain. |
+| F8  | Self-hosted cloud + local PWA          | React PWA served from Revota's domain (e.g. `pos.kolekta.id`). Client works fully offline. Fastify sync server on same domain. |
 | F9  | Turbo + pnpm monorepo                  | Structure in §12. |
 | F10 | Masked numbers with eye-icon reveal    | Dashboard totals, per-card prices, owner payouts, bottom prices on checkout — all default hidden. |
 | F11 | Daily report                           | §7. |
@@ -127,7 +127,7 @@ All users are known and trusted. Email + password, long-lived sessions. No 2FA, 
 | —   | Store credit / customer tab                   | Small crowd; not needed for v1. |
 | —   | Low-stock alerts                              | Inventory turnover at conventions is low; not critical. |
 | —   | Booth fee model                               | Skipped. Settlement assumes 100% of proceeds to card owner. |
-| —   | Event expense tracking                        | Benny absorbs expenses for now. |
+| —   | Event expense tracking                        | Revota absorbs expenses for now. |
 | —   | Indonesian tax export (SPT)                   | Relevant only if scale grows significantly. |
 
 ### 5.3 Dropped — explicit

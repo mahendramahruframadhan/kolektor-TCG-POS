@@ -275,7 +275,7 @@ export function BulkImportPage() {
       "isGraded", "gradingCompany", "grade", "certNumber",
     ];
     const example = [
-      "Benny", "Charizard VSTAR", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "",
+      "Revota", "Charizard VSTAR", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "",
       "fixed", "500000", "", "",
       "false", "", "", "",
     ];

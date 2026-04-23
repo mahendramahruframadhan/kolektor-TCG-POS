@@ -15,6 +15,11 @@ import { EventsAdminPage } from "./pages/EventsAdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
+import { DocsPage } from "./pages/DocsPage.js";
+import { QRLabelPage } from "./pages/QRLabelPage.js";
+import { MyPayoutPage } from "./pages/MyPayoutPage.js";
+import { LandingPage } from "./pages/LandingPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -34,6 +39,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/dashboard"
@@ -123,7 +129,32 @@ export function App() {
               </RequireAuth>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/change-password"
+            element={
+              <RequireAuth>
+                <ChangePasswordPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/labels"
+            element={
+              <RequireAuth>
+                <QRLabelPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/docs" element={<DocsPage />} />
+          <Route
+            path="/my-payout"
+            element={
+              <RequireAuth>
+                <MyPayoutPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

@@ -238,7 +238,7 @@ Turbo + pnpm workspace, root configs, empty package manifests, `CLAUDE.md`, `REA
 **Acceptance**
 - Dry-run surfaces zero data-loss bugs and zero hard-blocker UX bugs on the happy path.
 - Runbook lives at `docs/03-runbook.md`.
-- First event runs without Benny having to open the DB directly.
+- First event runs without Revota having to open the DB directly.
 
 **Dependencies:** M7 at minimum; M8 preferred.
 
@@ -267,4 +267,4 @@ Per PRD §5.2 and §5.3: bundle sale (F22), parallel events (F33), buylist, stor
 3. Every PRD §16.3 conflict scenario has a test.
 4. Backup zip verified by restoring on a fresh server.
 5. Dry-run (M9) completed without data-loss bugs.
-6. Runbook exists and Benny has walked through it once.
+6. Runbook exists and Revota has walked through it once.
