@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
-import type { IdbCard, IdbUser } from "../lib/db.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
+import type { IdbCard } from "../lib/db.js";
 
 // ── Status badge ───────────────────────────────────────────────────────────
 
@@ -11,25 +12,25 @@ function StatusBadge({ status }: { status: IdbCard["status"] }) {
   switch (status) {
     case "available":
       return (
-        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+        <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
           Tersedia
         </span>
       );
     case "held":
       return (
-        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+        <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-warning bg-opacity-15 text-warning">
           Ditahan
         </span>
       );
     case "sold":
       return (
-        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+        <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-muted text-muted-fg">
           Terjual
         </span>
       );
     case "returned":
       return (
-        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+        <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary bg-opacity-15 text-primary">
           Dikembalikan
         </span>
       );
@@ -49,35 +50,26 @@ function CardDetail({
   ownerName: string;
   onClose: () => void;
 }) {
-  const displayPrice =
-    card.pricingMode === "fixed"
-      ? card.priceIdr
-      : card.listedPriceIdr;
-
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50">
+      <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Handle */}
+        <div className="flex justify-center -mb-1">
+          <div className="w-9 h-1 rounded-full bg-border" />
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-800 text-lg leading-tight">
-              {card.title}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5 font-mono">{card.shortId}</p>
+            <p className="font-bold text-fg text-lg leading-tight">{card.title}</p>
+            <p className="text-xs text-muted-fg font-mono mt-0.5">{card.shortId}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition shrink-0"
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
             aria-label="Tutup"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -87,62 +79,49 @@ function CardDetail({
         <StatusBadge status={card.status} />
 
         {/* Details grid */}
-        <div className="space-y-2 text-sm">
+        <div className="space-y-2">
           <DetailRow label="Pemilik" value={ownerName} />
           {card.setName && <DetailRow label="Set" value={card.setName} />}
-          {card.setNumber && (
-            <DetailRow label="Nomor Set" value={`#${card.setNumber}`} />
-          )}
+          {card.setNumber && <DetailRow label="Nomor Set" value={`#${card.setNumber}`} />}
           {card.rarity && <DetailRow label="Kelangkaan" value={card.rarity} />}
           <DetailRow label="Bahasa" value={card.language || "—"} />
           <DetailRow label="Kondisi" value={card.condition} />
           {card.edition && <DetailRow label="Edisi" value={card.edition} />}
           <DetailRow
             label="Mode Harga"
-            value={
-              card.pricingMode === "fixed" ? "Harga Tetap" : "Harga Negosiasi"
-            }
+            value={card.pricingMode === "fixed" ? "Harga Tetap" : "Harga Negosiasi"}
           />
         </div>
 
         {/* Pricing */}
-        <div className="border-t pt-3 space-y-2">
+        <div className="border-t border-border pt-3 space-y-2">
           {card.pricingMode === "fixed" ? (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Harga</span>
-              <MaskedAmount
-                amount={card.priceIdr}
-                className="text-base font-bold text-gray-800"
-              />
+              <span className="text-sm text-muted-fg">Harga</span>
+              <MaskedAmount amount={card.priceIdr} className="text-base font-extrabold text-fg" />
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Harga Tayang</span>
-                <MaskedAmount
-                  amount={card.listedPriceIdr}
-                  className="text-base font-bold text-gray-800"
-                />
+                <span className="text-sm text-muted-fg">Harga Tayang</span>
+                <MaskedAmount amount={card.listedPriceIdr} className="text-base font-extrabold text-fg" />
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Harga Minimum</span>
-                <MaskedAmount
-                  amount={card.bottomPriceIdr}
-                  className="text-base font-semibold text-orange-700"
-                />
+                <span className="text-sm text-muted-fg">Harga Minimum</span>
+                <MaskedAmount amount={card.bottomPriceIdr} className="text-base font-bold text-warning" />
               </div>
             </>
           )}
           {card.oversold && (
-            <p className="text-xs bg-red-50 text-red-700 rounded-lg px-3 py-2 font-semibold">
+            <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-xs font-bold">
               Kartu ini ditandai OVERSOLD — perlu tindakan admin.
-            </p>
+            </div>
           )}
         </div>
 
         <button
           onClick={onClose}
-          className="w-full border border-gray-300 text-gray-700 font-medium py-2 rounded-xl hover:bg-gray-50 text-sm transition"
+          className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
         >
           Tutup
         </button>
@@ -153,9 +132,9 @@ function CardDetail({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center gap-2">
-      <span className="text-gray-500 shrink-0">{label}</span>
-      <span className="text-gray-800 text-right">{value}</span>
+    <div className="flex justify-between items-center gap-2 py-1 border-b border-border last:border-0">
+      <span className="text-sm text-muted-fg shrink-0">{label}</span>
+      <span className="text-sm font-semibold text-fg text-right">{value}</span>
     </div>
   );
 }
@@ -180,33 +159,24 @@ export function InventoryPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cards, users] = await Promise.all([
-        idb.cards.toArray(),
-        idb.users.toArray(),
-      ]);
+      const [cards, users] = await Promise.all([idb.cards.toArray(), idb.users.toArray()]);
       setAllCards(cards);
       const map: Record<string, string> = {};
-      for (const u of users) {
-        map[u.id] = u.displayName;
-      }
+      for (const u of users) map[u.id] = u.displayName;
       setUserMap(map);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Filtered list
   const filteredCards = allCards.filter((card) => {
     const matchesSearch =
       !searchText ||
       card.title.toLowerCase().includes(searchText.toLowerCase()) ||
       card.shortId.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || card.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || card.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -218,38 +188,37 @@ export function InventoryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Top bar */}
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-sm font-medium opacity-80 hover:opacity-100"
-        >
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Inventaris</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar title="Inventaris" back onBack={() => navigate("/dashboard")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
         {/* Search + Filter */}
-        <div className="bg-white rounded-xl shadow-sm p-3 space-y-2">
-          <input
-            type="search"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Cari kartu (judul atau ID)…"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="bg-card rounded-2xl border border-border p-3 space-y-2.5">
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-fg"
+              width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="search"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Cari kartu (judul atau ID)…"
+              className="w-full h-10 border border-border rounded-xl pl-9 pr-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setStatusFilter(f.value)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
                   statusFilter === f.value
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
+                    ? "bg-primary border-primary text-primary-fg"
+                    : "bg-card border-border text-muted-fg hover:bg-muted"
                 }`}
               >
                 {f.label}
@@ -259,40 +228,36 @@ export function InventoryPage() {
         </div>
 
         {/* Count */}
-        <p className="text-xs text-gray-400 px-1">
+        <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg px-1">
           {filteredCards.length} kartu ditemukan
         </p>
 
         {/* Card list */}
         {loading ? (
-          <p className="text-sm text-gray-400 text-center py-8">Memuat…</p>
+          <p className="text-sm text-muted-fg text-center py-8">Memuat…</p>
         ) : filteredCards.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8 italic">
+          <p className="text-sm text-muted-fg text-center py-8 italic">
             Tidak ada kartu yang cocok.
           </p>
         ) : (
           <ul className="space-y-2">
             {filteredCards.map((card) => {
               const displayPrice =
-                card.pricingMode === "fixed"
-                  ? card.priceIdr
-                  : card.listedPriceIdr;
+                card.pricingMode === "fixed" ? card.priceIdr : card.listedPriceIdr;
               return (
                 <li key={card.id}>
                   <button
                     onClick={() => setSelectedCard(card)}
-                    className="w-full bg-white rounded-xl shadow-sm px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition text-left"
+                    className="w-full bg-card rounded-2xl border border-border px-4 py-3 flex items-center gap-3 hover:bg-muted transition text-left active:scale-[0.98]"
                   >
                     {/* Short ID badge */}
-                    <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg shrink-0">
+                    <span className="font-mono text-xs font-extrabold bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-lg shrink-0">
                       {card.shortId}
                     </span>
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {card.title}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-sm font-bold text-fg truncate">{card.title}</p>
+                      <p className="text-xs text-muted-fg truncate">
                         {card.condition}
                         {card.setName ? ` · ${card.setName}` : ""}
                         {card.language ? ` · ${card.language}` : ""}
@@ -301,10 +266,7 @@ export function InventoryPage() {
                     {/* Status + price */}
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <StatusBadge status={card.status} />
-                      <MaskedAmount
-                        amount={displayPrice}
-                        className="text-xs font-semibold text-gray-700"
-                      />
+                      <MaskedAmount amount={displayPrice} className="text-xs font-bold text-muted-fg" />
                     </div>
                   </button>
                 </li>
@@ -314,7 +276,6 @@ export function InventoryPage() {
         )}
       </div>
 
-      {/* Detail panel */}
       {selectedCard && (
         <CardDetail
           card={selectedCard}
