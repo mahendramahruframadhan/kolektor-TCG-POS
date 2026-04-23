@@ -121,6 +121,9 @@ export const api = {
   auditLog: {
     list: () => request<unknown[]>("/audit-log"),
   },
+  overrides: {
+    list: () => request<unknown[]>("/overrides"),
+  },
   backup: {
     download: () => fetch("/api/backup", { credentials: "include" }),
   },

@@ -1,30 +1,44 @@
 import type { FastifyInstance } from "fastify";
-import { createReadStream, statSync } from "fs";
+import { createReadStream, statSync, existsSync } from "fs";
+import { createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import archiver from "archiver";
 import { requireAdmin } from "../plugins/auth-guard.js";
 
 export async function backupRoute(
   app: FastifyInstance,
-  opts: { dbPath: string }
+  opts: { dbPath: string; photoStoragePath?: string }
 ) {
-  const { dbPath } = opts;
+  const { dbPath, photoStoragePath = "storage/photos" } = opts;
 
-  // GET /backup — stream the SQLite database file as a download (admin only)
+  // GET /backup — stream a zip containing SQLite + photos (admin only)
   app.get("/backup", { preHandler: requireAdmin }, async (_request, reply) => {
-    let stat;
+    let dbStat;
     try {
-      stat = statSync(dbPath);
+      dbStat = statSync(dbPath);
     } catch {
       return reply.status(503).send({ error: "Database file not accessible" });
     }
 
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const filename = `kolektapos-${today}.db`;
+    const filename = `kolektapos-backup-${today}.zip`;
 
     reply.header("Content-Disposition", `attachment; filename="${filename}"`);
-    reply.header("Content-Type", "application/octet-stream");
-    reply.header("Content-Length", stat.size.toString());
+    reply.header("Content-Type", "application/zip");
 
-    const stream = createReadStream(dbPath);
-    return reply.send(stream);
+    const archive = archiver("zip", { zlib: { level: 6 } });
+
+    // Append DB file
+    archive.append(createReadStream(dbPath), { name: "kolektapos.db" });
+
+    // Append photos directory if it exists
+    if (existsSync(photoStoragePath)) {
+      archive.directory(photoStoragePath, "photos");
+    }
+
+    archive.finalize();
+    return reply.send(archive);
   });
 }

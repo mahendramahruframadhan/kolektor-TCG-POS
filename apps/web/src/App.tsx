@@ -14,6 +14,7 @@ import { UsersAdminPage } from "./pages/UsersAdminPage.js";
 import { EventsAdminPage } from "./pages/EventsAdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { AuditLogPage } from "./pages/AuditLogPage.js";
+import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
@@ -120,6 +121,14 @@ export function App() {
             element={
               <RequireAdmin>
                 <AuditLogPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/overrides"
+            element={
+              <RequireAdmin>
+                <OverrideHistoryPage />
               </RequireAdmin>
             }
           />

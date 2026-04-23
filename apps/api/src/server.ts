@@ -22,6 +22,7 @@ import { backupRoute } from "./routes/backup.js";
 import { syncRoutes } from "./routes/sync.js";
 import { settlementRoutes } from "./routes/settlement.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
+import { overrideRoutes } from "./routes/overrides.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -49,10 +50,11 @@ async function build() {
   await cartRoutes(app, { db });
   await holdRoutes(app, { db });
   await transactionRoutes(app, { db });
-  await backupRoute(app, { dbPath: DB_PATH });
+  await backupRoute(app, { dbPath: DB_PATH, photoStoragePath: process.env.PHOTO_STORAGE_PATH });
   await syncRoutes(app, { db });
   await settlementRoutes(app, { db });
   await auditLogRoutes(app, { db });
+  await overrideRoutes(app, { db });
 
   // Start background jobs
   startCartSweeper(db);
