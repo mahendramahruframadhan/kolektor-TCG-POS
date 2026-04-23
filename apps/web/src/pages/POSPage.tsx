@@ -13,6 +13,7 @@ import { useAuthStore } from "../store/auth.js";
 import { usePosStore } from "../store/pos.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { CameraScanner } from "../components/CameraScanner.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -617,18 +618,19 @@ export function POSPage() {
           <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
             Scan / Ketik ID Kartu
           </p>
+          <CameraScanner onScan={(text) => handleScan(text)} />
           <input
             ref={scanRef}
             type="text"
             value={scanInput}
             onChange={(e) => setScanInput(e.target.value.toUpperCase())}
             onKeyDown={handleScanKeyDown}
-            placeholder="O-XXXXX"
+            placeholder="O-XXXXX  atau  scan USB"
             autoFocus
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full h-16 border-2 border-accent rounded-2xl px-4 text-3xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border"
+            className="w-full h-14 border-2 border-accent rounded-2xl px-4 text-2xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border placeholder:text-sm"
           />
           {scanning && (
             <p className="text-sm text-muted-fg text-center">Mencari…</p>
