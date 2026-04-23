@@ -12,6 +12,7 @@ import { ReportsPage } from "./pages/ReportsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
+import { BulkImportPage } from "./pages/BulkImportPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -94,6 +95,14 @@ export function App() {
               <RequireAdmin>
                 <CashReconciliationPage />
               </RequireAdmin>
+            }
+          />
+          <Route
+            path="/intake/bulk"
+            element={
+              <RequireAuth>
+                <BulkImportPage />
+              </RequireAuth>
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

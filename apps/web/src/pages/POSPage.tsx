@@ -67,14 +67,16 @@ function StatusBadge({
 
 interface PaymentModalProps {
   cartItems: IdbCartItem[];
-  totalIdr: number;
-  onConfirm: (channelId: string, note?: string) => Promise<void>;
+  subtotalIdr: number;
+  maxTxDiscountPct: number;
+  onConfirm: (channelId: string, discountIdr: number, discountReason: string, notes: string) => Promise<void>;
   onCancel: () => void;
 }
 
 function PaymentModal({
   cartItems,
-  totalIdr,
+  subtotalIdr,
+  maxTxDiscountPct,
   onConfirm,
   onCancel,
 }: PaymentModalProps) {
@@ -82,6 +84,9 @@ function PaymentModal({
   const [selectedChannel, setSelectedChannel] = useState<string>("");
   const [cashTender, setCashTender] = useState<number | null>(null);
   const [customInput, setCustomInput] = useState("");
+  const [txDiscountInput, setTxDiscountInput] = useState("");
+  const [txDiscountReason, setTxDiscountReason] = useState("");
+  const [notes, setNotes] = useState("");
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +102,11 @@ function PaymentModal({
 
   const selectedChannelObj = channels.find((c) => c.id === selectedChannel);
   const isCash = selectedChannelObj?.type === "cash";
+
+  const txDiscountIdr = parseInt(txDiscountInput, 10) || 0;
+  const maxDiscountIdr = Math.floor(subtotalIdr * maxTxDiscountPct / 100);
+  const discountExceedsCap = txDiscountIdr > maxDiscountIdr;
+  const totalIdr = Math.max(0, subtotalIdr - txDiscountIdr);
 
   const effectiveTender =
     customInput !== ""
@@ -116,10 +126,18 @@ function PaymentModal({
       setError("Jumlah uang tidak cukup.");
       return;
     }
+    if (txDiscountIdr > 0 && discountExceedsCap) {
+      setError(`Diskon transaksi melebihi batas (${maxTxDiscountPct}% = Rp ${maxDiscountIdr.toLocaleString("id-ID")}).`);
+      return;
+    }
+    if (txDiscountIdr > 0 && !txDiscountReason.trim()) {
+      setError("Alasan diskon transaksi wajib diisi.");
+      return;
+    }
     setError(null);
     setPaying(true);
     try {
-      await onConfirm(selectedChannel);
+      await onConfirm(selectedChannel, txDiscountIdr, txDiscountReason, notes);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Pembayaran gagal.");
     } finally {
@@ -129,17 +147,41 @@ function PaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4">
+      <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold text-gray-800">Pembayaran</h2>
 
-        {/* Total */}
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-sm text-gray-600">Total</span>
-          <MaskedAmount
-            amount={totalIdr}
-            className="text-xl font-bold text-gray-900"
-          />
+        {/* Subtotal + discount */}
+        <div className="space-y-1 border-b pb-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Subtotal</span>
+            <MaskedAmount amount={subtotalIdr} className="font-semibold text-gray-800" />
+          </div>
+          {txDiscountIdr > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Diskon Transaksi</span>
+              <span className="text-sm font-semibold text-red-600">- Rp {txDiscountIdr.toLocaleString("id-ID")}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700">Total</span>
+            <MaskedAmount amount={totalIdr} className="text-xl font-bold text-gray-900" />
+          </div>
         </div>
+
+        {/* Transaction discount (F23) */}
+        {maxTxDiscountPct > 0 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Diskon Transaksi (maks {maxTxDiscountPct}%)</label>
+            <input type="number" min={0} step={1000} value={txDiscountInput}
+              onChange={(e) => setTxDiscountInput(e.target.value)} placeholder="0"
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${discountExceedsCap ? "border-red-400" : "border-gray-300"}`} />
+            {txDiscountIdr > 0 && (
+              <input type="text" value={txDiscountReason} onChange={(e) => setTxDiscountReason(e.target.value)}
+                placeholder="Alasan diskon…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            )}
+          </div>
+        )}
 
         {/* Payment channel selector */}
         <div className="space-y-1">
@@ -214,6 +256,14 @@ function PaymentModal({
             )}
           </div>
         )}
+
+        {/* Transaction notes (F30) */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Catatan Transaksi</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+            rows={2} placeholder="Catatan opsional…"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+        </div>
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
@@ -317,8 +367,13 @@ export function POSPage() {
     setTimeout(() => scanRef.current?.focus(), 50);
   }, []);
 
+  const [maxTxDiscountPct, setMaxTxDiscountPct] = useState(0);
+
   useEffect(() => {
     scanRef.current?.focus();
+    idb.settings.get("max_transaction_discount_pct").then((s) => {
+      if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
+    });
   }, []);
 
   // Load cart items from IDB whenever activeCartId changes
@@ -540,12 +595,15 @@ export function POSPage() {
     refocusScan();
   }
 
-  async function handlePay(channelId: string) {
+  async function handlePay(channelId: string, discountIdr: number, discountReason: string, notes: string) {
     if (!activeCartId) throw new Error("Tidak ada keranjang aktif.");
 
     const response = (await api.carts.pay(activeCartId, {
       paymentChannelId: channelId,
       transactionClientId: uuidv4(),
+      discountIdr: discountIdr || undefined,
+      discountReason: discountReason || undefined,
+      notes: notes || undefined,
     })) as { transaction: { id: string }; receipt: unknown[] };
 
     const txId = response.transaction.id;
@@ -904,7 +962,8 @@ export function POSPage() {
       {showPayModal && (
         <PaymentModal
           cartItems={cartItems}
-          totalIdr={totalIdr}
+          subtotalIdr={totalIdr}
+          maxTxDiscountPct={maxTxDiscountPct}
           onConfirm={handlePay}
           onCancel={() => {
             setShowPayModal(false);
