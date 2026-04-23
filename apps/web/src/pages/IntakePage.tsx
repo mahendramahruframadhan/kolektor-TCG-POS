@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbUser } from "../lib/db.js";
 
 // ── Short ID generator ─────────────────────────────────────────────────────
@@ -96,6 +97,23 @@ const CONDITION_OPTIONS = [
 ];
 const GRADING_COMPANIES = ["PSA", "BGS", "CGC", "ACE", "Other"];
 
+// ── Shared field label ──────────────────────────────────────────────────────
+
+function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+  return (
+    <label className="block text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1">
+      {children}
+      {required && <span className="text-destructive ml-1">*</span>}
+    </label>
+  );
+}
+
+function inputCls(error?: string) {
+  return `w-full h-11 border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition ${
+    error ? "border-destructive" : "border-border"
+  }`;
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function IntakePage() {
@@ -110,7 +128,6 @@ export function IntakePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Photo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -160,12 +177,8 @@ export function IntakePage() {
     } else {
       const listed = parseInt(form.listedPriceIdr, 10);
       const bottom = parseInt(form.bottomPriceIdr, 10);
-      if (!form.listedPriceIdr || isNaN(listed) || listed <= 0) {
-        newErrors.listedPriceIdr = "Harga tayang wajib diisi.";
-      }
-      if (!form.bottomPriceIdr || isNaN(bottom) || bottom <= 0) {
-        newErrors.bottomPriceIdr = "Harga minimum wajib diisi.";
-      }
+      if (!form.listedPriceIdr || isNaN(listed) || listed <= 0) newErrors.listedPriceIdr = "Harga tayang wajib diisi.";
+      if (!form.bottomPriceIdr || isNaN(bottom) || bottom <= 0) newErrors.bottomPriceIdr = "Harga minimum wajib diisi.";
       if (!isNaN(listed) && !isNaN(bottom) && bottom > listed) {
         newErrors.bottomPriceIdr = "Harga minimum tidak boleh melebihi harga tayang.";
       }
@@ -191,8 +204,7 @@ export function IntakePage() {
 
       const clientId = uuidv4();
       const body = {
-        clientId,
-        shortId,
+        clientId, shortId,
         ownerUserId: form.ownerUserId,
         intakenByUserId: user!.id,
         eventId: activeEvent?.id,
@@ -220,11 +232,8 @@ export function IntakePage() {
 
       const created = (await api.cards.create(body)) as { id: string };
 
-      // Save to IDB
       await idb.cards.put({
-        id: created.id,
-        clientId,
-        shortId,
+        id: created.id, clientId, shortId,
         ownerUserId: form.ownerUserId,
         intakenByUserId: user!.id,
         eventId: activeEvent?.id,
@@ -253,7 +262,6 @@ export function IntakePage() {
         version: 1,
       });
 
-      // If photo selected, store thumbnail in IDB pending upload
       if (photoFile) {
         try {
           const thumb = await createThumbnail(photoFile);
@@ -262,20 +270,17 @@ export function IntakePage() {
             blob: thumb,
             createdAt: Math.floor(Date.now() / 1000),
           });
-          // Try immediate upload if online
           if (navigator.onLine) {
             const formData = new FormData();
             formData.append("photo", thumb, "photo.jpg");
             fetch(`/api/sync/photo/${clientId}`, {
-              method: "POST",
-              credentials: "include",
-              body: formData,
+              method: "POST", credentials: "include", body: formData,
             }).then(async (res) => {
               if (res.ok) await idb.pendingPhotos.delete(clientId);
             }).catch(() => null);
           }
         } catch {
-          // Non-fatal — photo queued for later upload
+          // Non-fatal
         }
       }
 
@@ -293,241 +298,337 @@ export function IntakePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button onClick={() => navigate("/dashboard")} className="text-sm font-medium opacity-80 hover:opacity-100">
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Intake Kartu</h1>
-        <Link to="/intake/bulk" className="text-xs bg-blue-600 hover:bg-blue-500 border border-blue-400 px-2 py-1 rounded font-medium">
-          Bulk Import
-        </Link>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="Intake Kartu"
+        back
+        onBack={() => navigate("/dashboard")}
+        right={
+          <Link
+            to="/intake/bulk"
+            className="text-xs font-bold text-accent border border-accent border-opacity-40 rounded-lg px-2.5 py-1 hover:bg-accent hover:bg-opacity-10 transition"
+          >
+            Bulk
+          </Link>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
         {successMessage && (
-          <div className="mb-4 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm font-medium">
+          <div className="mb-4 bg-success bg-opacity-10 border border-success border-opacity-30 text-success rounded-2xl px-4 py-3 text-sm font-bold">
             {successMessage}
           </div>
         )}
         {submitError && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+          <div className="mb-4 bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-2xl px-4 py-3 text-sm font-medium">
             {submitError}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-3" noValidate>
           {/* Short ID */}
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">ID Kartu (Short ID)</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">ID Kartu (Short ID)</p>
             <div className="flex items-center gap-3">
-              <span className="font-mono text-2xl font-bold text-blue-700 tracking-widest flex-1">{shortId || "—"}</span>
-              <button type="button" onClick={regenerateShortId}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium border border-blue-300 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+              <span className="font-mono text-2xl font-extrabold text-primary tracking-widest flex-1">
+                {shortId || "—"}
+              </span>
+              <button
+                type="button"
+                onClick={regenerateShortId}
+                className="text-sm font-bold text-accent border border-accent border-opacity-40 rounded-xl px-3 py-1.5 hover:bg-accent hover:bg-opacity-10 transition"
+              >
                 Buat Ulang
               </button>
             </div>
           </div>
 
           {/* Card info */}
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Informasi Kartu</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Informasi Kartu</p>
 
             {/* Owner */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Pemilik <span className="text-red-500">*</span></label>
-              <select value={form.ownerUserId} onChange={(e) => setField("ownerUserId", e.target.value)}
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.ownerUserId ? "border-red-400" : "border-gray-300"}`}>
+            <div>
+              <FieldLabel required>Pemilik</FieldLabel>
+              <select
+                value={form.ownerUserId}
+                onChange={(e) => setField("ownerUserId", e.target.value)}
+                className={inputCls(errors.ownerUserId)}
+              >
                 <option value="">-- Pilih Pemilik --</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
               </select>
-              {errors.ownerUserId && <p className="text-xs text-red-600">{errors.ownerUserId}</p>}
+              {errors.ownerUserId && <p className="text-xs text-destructive mt-1 font-medium">{errors.ownerUserId}</p>}
             </div>
 
             {/* Title */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Judul Kartu <span className="text-red-500">*</span></label>
-              <input type="text" value={form.title} onChange={(e) => setField("title", e.target.value)}
+            <div>
+              <FieldLabel required>Judul Kartu</FieldLabel>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
                 placeholder="Contoh: Charizard VSTAR"
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.title ? "border-red-400" : "border-gray-300"}`} />
-              {errors.title && <p className="text-xs text-red-600">{errors.title}</p>}
+                className={inputCls(errors.title)}
+              />
+              {errors.title && <p className="text-xs text-destructive mt-1 font-medium">{errors.title}</p>}
             </div>
 
             {/* Set Name + Number */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Nama Set</label>
-                <input type="text" value={form.setName} onChange={(e) => setField("setName", e.target.value)}
+              <div>
+                <FieldLabel>Nama Set</FieldLabel>
+                <input
+                  type="text"
+                  value={form.setName}
+                  onChange={(e) => setField("setName", e.target.value)}
                   placeholder="Brilliant Stars"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className={inputCls()}
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Nomor Set</label>
-                <input type="text" value={form.setNumber} onChange={(e) => setField("setNumber", e.target.value)}
+              <div>
+                <FieldLabel>Nomor Set</FieldLabel>
+                <input
+                  type="text"
+                  value={form.setNumber}
+                  onChange={(e) => setField("setNumber", e.target.value)}
                   placeholder="018/172"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className={inputCls()}
+                />
               </div>
             </div>
 
             {/* Rarity */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Kelangkaan (Rarity)</label>
-              <input type="text" value={form.rarity} onChange={(e) => setField("rarity", e.target.value)}
+            <div>
+              <FieldLabel>Kelangkaan (Rarity)</FieldLabel>
+              <input
+                type="text"
+                value={form.rarity}
+                onChange={(e) => setField("rarity", e.target.value)}
                 placeholder="Rare Holo, Ultra Rare"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputCls()}
+              />
             </div>
 
             {/* Language + Condition */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Bahasa</label>
-                <select value={form.language} onChange={(e) => setField("language", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div>
+                <FieldLabel>Bahasa</FieldLabel>
+                <select
+                  value={form.language}
+                  onChange={(e) => setField("language", e.target.value)}
+                  className={inputCls()}
+                >
                   {LANGUAGE_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Kondisi</label>
-                <select value={form.condition} onChange={(e) => setField("condition", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <div>
+                <FieldLabel>Kondisi</FieldLabel>
+                <select
+                  value={form.condition}
+                  onChange={(e) => setField("condition", e.target.value)}
+                  className={inputCls()}
+                >
                   {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
 
             {/* Edition */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Edisi</label>
-              <input type="text" value={form.edition} onChange={(e) => setField("edition", e.target.value)}
+            <div>
+              <FieldLabel>Edisi</FieldLabel>
+              <input
+                type="text"
+                value={form.edition}
+                onChange={(e) => setField("edition", e.target.value)}
                 placeholder="1st Edition, Shadowless"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className={inputCls()}
+              />
             </div>
 
-            {/* Graded toggle + fields (F16) */}
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.isGraded}
-                  onChange={(e) => setField("isGraded", e.target.checked)}
-                  className="w-4 h-4 accent-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Kartu Graded (PSA/BGS/CGC/dll)</span>
-              </label>
+            {/* Graded toggle */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                className={`w-11 h-6 rounded-full relative transition-colors ${form.isGraded ? "bg-accent" : "bg-muted"}`}
+                onClick={() => setField("isGraded", !form.isGraded)}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-card shadow transition-transform ${form.isGraded ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </div>
+              <span className="text-sm font-bold text-fg">Kartu Graded (PSA/BGS/CGC/dll)</span>
+            </label>
 
-              {form.isGraded && (
-                <div className="bg-blue-50 rounded-lg p-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Grading Company <span className="text-red-500">*</span></label>
-                      <select value={form.gradingCompany} onChange={(e) => setField("gradingCompany", e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${errors.gradingCompany ? "border-red-400" : "border-gray-300"}`}>
-                        <option value="">-- Pilih --</option>
-                        {GRADING_COMPANIES.map((gc) => <option key={gc} value={gc}>{gc}</option>)}
-                      </select>
-                      {errors.gradingCompany && <p className="text-xs text-red-600">{errors.gradingCompany}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Grade <span className="text-red-500">*</span></label>
-                      <input type="text" value={form.grade} onChange={(e) => setField("grade", e.target.value)}
-                        placeholder="10, 9.5, 9"
-                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${errors.grade ? "border-red-400" : "border-gray-300"}`} />
-                      {errors.grade && <p className="text-xs text-red-600">{errors.grade}</p>}
-                    </div>
+            {form.isGraded && (
+              <div className="bg-primary bg-opacity-5 rounded-xl border border-primary border-opacity-15 p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel required>Grading Company</FieldLabel>
+                    <select
+                      value={form.gradingCompany}
+                      onChange={(e) => setField("gradingCompany", e.target.value)}
+                      className={inputCls(errors.gradingCompany)}
+                    >
+                      <option value="">-- Pilih --</option>
+                      {GRADING_COMPANIES.map((gc) => <option key={gc} value={gc}>{gc}</option>)}
+                    </select>
+                    {errors.gradingCompany && <p className="text-xs text-destructive mt-1 font-medium">{errors.gradingCompany}</p>}
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Cert Number</label>
-                    <input type="text" value={form.certNumber} onChange={(e) => setField("certNumber", e.target.value)}
-                      placeholder="Nomor sertifikat"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                  <div>
+                    <FieldLabel required>Grade</FieldLabel>
+                    <input
+                      type="text"
+                      value={form.grade}
+                      onChange={(e) => setField("grade", e.target.value)}
+                      placeholder="10, 9.5, 9"
+                      className={inputCls(errors.grade)}
+                    />
+                    {errors.grade && <p className="text-xs text-destructive mt-1 font-medium">{errors.grade}</p>}
                   </div>
                 </div>
-              )}
-            </div>
+                <div>
+                  <FieldLabel>Cert Number</FieldLabel>
+                  <input
+                    type="text"
+                    value={form.certNumber}
+                    onChange={(e) => setField("certNumber", e.target.value)}
+                    placeholder="Nomor sertifikat"
+                    className={inputCls()}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Photo capture (F19) */}
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Foto Kartu (opsional)</p>
+          {/* Photo */}
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Foto Kartu (opsional)</p>
             {photoPreview && (
-              <img src={photoPreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
+              <img
+                src={photoPreview}
+                alt="Preview"
+                className="w-32 h-32 object-cover rounded-xl border border-border"
+              />
             )}
             <div className="flex items-center gap-3">
-              <input ref={photoInputRef} type="file" accept="image/*" capture="environment"
-                onChange={handlePhotoChange} className="hidden" id="photo-input" />
-              <label htmlFor="photo-input"
-                className="text-sm text-blue-600 border border-blue-300 rounded-lg px-3 py-2 cursor-pointer hover:bg-blue-50 transition">
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                className="hidden"
+                id="photo-input"
+              />
+              <label
+                htmlFor="photo-input"
+                className="text-sm font-bold text-accent border border-accent border-opacity-40 rounded-xl px-4 py-2 cursor-pointer hover:bg-accent hover:bg-opacity-10 transition"
+              >
                 {photoFile ? "Ganti Foto" : "Ambil Foto"}
               </label>
               {photoFile && (
-                <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); if (photoInputRef.current) photoInputRef.current.value = ""; }}
-                  className="text-xs text-red-500 hover:text-red-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoFile(null);
+                    setPhotoPreview(null);
+                    if (photoInputRef.current) photoInputRef.current.value = "";
+                  }}
+                  className="text-xs text-destructive font-bold hover:opacity-70"
+                >
                   Hapus
                 </button>
               )}
             </div>
             {photoFile && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-fg">
                 {!navigator.onLine ? "Thumbnail tersimpan lokal, upload saat online." : "Foto akan diupload setelah simpan."}
               </p>
             )}
           </div>
 
           {/* Pricing */}
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Penetapan Harga</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Penetapan Harga</p>
 
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="pricingMode" value="fixed"
-                  checked={form.pricingMode === "fixed"} onChange={() => setField("pricingMode", "fixed")}
-                  className="accent-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Harga Tetap</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="pricingMode" value="negotiable"
-                  checked={form.pricingMode === "negotiable"} onChange={() => setField("pricingMode", "negotiable")}
-                  className="accent-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Harga Negosiasi</span>
-              </label>
+              {(["fixed", "negotiable"] as PricingMode[]).map((mode) => (
+                <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricingMode"
+                    value={mode}
+                    checked={form.pricingMode === mode}
+                    onChange={() => setField("pricingMode", mode)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm font-bold text-fg">
+                    {mode === "fixed" ? "Harga Tetap" : "Harga Negosiasi"}
+                  </span>
+                </label>
+              ))}
             </div>
 
             {form.pricingMode === "fixed" ? (
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Harga (IDR) <span className="text-red-500">*</span></label>
+              <div>
+                <FieldLabel required>Harga (IDR)</FieldLabel>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">Rp</span>
-                  <input type="number" min={1} step={1} value={form.priceIdr}
-                    onChange={(e) => setField("priceIdr", e.target.value)} placeholder="0"
-                    className={`w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.priceIdr ? "border-red-400" : "border-gray-300"}`} />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-fg pointer-events-none">Rp</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={form.priceIdr}
+                    onChange={(e) => setField("priceIdr", e.target.value)}
+                    placeholder="0"
+                    className={`w-full h-11 border rounded-xl pl-10 pr-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition ${errors.priceIdr ? "border-destructive" : "border-border"}`}
+                  />
                 </div>
-                {errors.priceIdr && <p className="text-xs text-red-600">{errors.priceIdr}</p>}
+                {errors.priceIdr && <p className="text-xs text-destructive mt-1 font-medium">{errors.priceIdr}</p>}
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Harga Tayang (IDR) <span className="text-red-500">*</span></label>
+                <div>
+                  <FieldLabel required>Harga Tayang (IDR)</FieldLabel>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">Rp</span>
-                    <input type="number" min={1} step={1} value={form.listedPriceIdr}
-                      onChange={(e) => setField("listedPriceIdr", e.target.value)} placeholder="0"
-                      className={`w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.listedPriceIdr ? "border-red-400" : "border-gray-300"}`} />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-fg pointer-events-none">Rp</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={form.listedPriceIdr}
+                      onChange={(e) => setField("listedPriceIdr", e.target.value)}
+                      placeholder="0"
+                      className={`w-full h-11 border rounded-xl pl-10 pr-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition ${errors.listedPriceIdr ? "border-destructive" : "border-border"}`}
+                    />
                   </div>
-                  {errors.listedPriceIdr && <p className="text-xs text-red-600">{errors.listedPriceIdr}</p>}
+                  {errors.listedPriceIdr && <p className="text-xs text-destructive mt-1 font-medium">{errors.listedPriceIdr}</p>}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Harga Minimum / Bottom (IDR) <span className="text-red-500">*</span></label>
+                <div>
+                  <FieldLabel required>Harga Minimum / Bottom (IDR)</FieldLabel>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">Rp</span>
-                    <input type="number" min={1} step={1} value={form.bottomPriceIdr}
-                      onChange={(e) => setField("bottomPriceIdr", e.target.value)} placeholder="0"
-                      className={`w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bottomPriceIdr ? "border-red-400" : "border-gray-300"}`} />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-fg pointer-events-none">Rp</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={form.bottomPriceIdr}
+                      onChange={(e) => setField("bottomPriceIdr", e.target.value)}
+                      placeholder="0"
+                      className={`w-full h-11 border rounded-xl pl-10 pr-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition ${errors.bottomPriceIdr ? "border-destructive" : "border-border"}`}
+                    />
                   </div>
-                  {errors.bottomPriceIdr && <p className="text-xs text-red-600">{errors.bottomPriceIdr}</p>}
+                  {errors.bottomPriceIdr && <p className="text-xs text-destructive mt-1 font-medium">{errors.bottomPriceIdr}</p>}
                 </div>
               </div>
             )}
           </div>
 
-          <button type="submit" disabled={submitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-base transition disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full h-14 bg-primary text-primary-fg font-bold text-[15px] rounded-2xl hover:opacity-90 transition disabled:opacity-50"
+          >
             {submitting ? "Menyimpan…" : "Simpan Kartu"}
           </button>
         </form>
