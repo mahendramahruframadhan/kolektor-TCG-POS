@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search } from "lucide-react";
+import { X, Search, Camera, Award } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
@@ -76,6 +76,18 @@ function CardDetail({
 
         <StatusBadge status={card.status} />
 
+        {/* Photo */}
+        {card.photoPath && (
+          <div className="rounded-2xl overflow-hidden border border-border bg-surface">
+            <img
+              src={card.photoPath.startsWith("/") ? card.photoPath : `/storage/photos/${card.photoPath}`}
+              alt={card.title}
+              className="w-full h-48 object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         {/* Details grid */}
         <div className="space-y-2">
           <DetailRow label="Pemilik" value={ownerName} />
@@ -90,6 +102,21 @@ function CardDetail({
             value={card.pricingMode === "fixed" ? "Harga Tetap" : "Harga Negosiasi"}
           />
         </div>
+
+        {/* Graded card info */}
+        {card.isGraded && (
+          <div className="bg-warning bg-opacity-5 border border-warning border-opacity-20 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-warning" />
+              <span className="text-xs font-extrabold tracking-widest uppercase text-warning">Kartu Graded</span>
+            </div>
+            <div className="space-y-1">
+              <DetailRow label="Grading" value={card.gradingCompany ?? "—"} />
+              <DetailRow label="Grade" value={card.grade ?? "—"} />
+              {card.certNumber && <DetailRow label="Sertifikat" value={card.certNumber} />}
+            </div>
+          </div>
+        )}
 
         {/* Pricing */}
         <div className="border-t border-border pt-3 space-y-2">
@@ -183,6 +210,7 @@ export function InventoryPage() {
     { value: "available", label: "Tersedia" },
     { value: "held", label: "Ditahan" },
     { value: "sold", label: "Terjual" },
+    { value: "returned", label: "Dikembalikan" },
   ];
 
   return (
