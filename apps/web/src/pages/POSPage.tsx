@@ -16,6 +16,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
+import { nowSec } from "../lib/time.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -606,7 +607,7 @@ export function POSPage() {
       cashierUserId: user!.id,
       eventId: activeEvent.id,
       status: "draft",
-      lastActivityAt: Date.now(),
+      lastActivityAt: nowSec(),
       version: 1,
     });
     setActiveCartId(cartId);
@@ -662,7 +663,7 @@ export function POSPage() {
 
       await idb.cartItems.put(newItem);
       await idb.cards.update(scannedCard.id, {
-        lockedByCartId: cartId, lockedByUserId: user!.id, lockedAt: Date.now(),
+        lockedByCartId: cartId, lockedByUserId: user!.id, lockedAt: nowSec(),
       });
 
       setCartItems((prev) => [...prev, newItem]);
