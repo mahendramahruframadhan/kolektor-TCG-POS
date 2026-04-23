@@ -3,9 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbSetting } from "../lib/db.js";
-
-// ── Editable setting keys ──────────────────────────────────────────────────
 
 const EDITABLE_KEYS: {
   key: string;
@@ -20,38 +19,26 @@ const EDITABLE_KEYS: {
     labelId: "Diskon Maks per Kartu (%)",
     labelEn: "Max Line Discount %",
     description: "Batas persentase diskon maksimum untuk setiap kartu dalam transaksi.",
-    min: 0,
-    max: 100,
+    min: 0, max: 100,
   },
   {
     key: "max_transaction_discount_pct",
     labelId: "Diskon Maks per Transaksi (%)",
     labelEn: "Max Transaction Discount %",
     description: "Batas persentase diskon maksimum untuk total transaksi.",
-    min: 0,
-    max: 100,
+    min: 0, max: 100,
   },
   {
     key: "cart_idle_ttl_minutes",
     labelId: "Waktu Kadaluarsa Keranjang (menit)",
     labelEn: "Cart Idle TTL (minutes)",
-    description:
-      "Berapa menit keranjang tidak aktif sebelum otomatis dibatalkan.",
+    description: "Berapa menit keranjang tidak aktif sebelum otomatis dibatalkan.",
     min: 1,
   },
 ];
 
-// ── Setting row component ──────────────────────────────────────────────────
-
 function SettingRow({
-  settingKey,
-  labelId,
-  labelEn,
-  description,
-  currentValue,
-  min,
-  max,
-  onSaved,
+  settingKey, labelId, labelEn, description, currentValue, min, max, onSaved,
 }: {
   settingKey: string;
   labelId: string;
@@ -62,14 +49,11 @@ function SettingRow({
   max?: number;
   onSaved: (key: string, newValue: number) => void;
 }) {
-  const [inputValue, setInputValue] = useState(
-    String(currentValue ?? "")
-  );
+  const [inputValue, setInputValue] = useState(String(currentValue ?? ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Keep input in sync if external value changes
   useEffect(() => {
     setInputValue(String(currentValue ?? ""));
   }, [currentValue]);
@@ -77,9 +61,7 @@ function SettingRow({
   async function handleSave() {
     const parsed = parseInt(inputValue, 10);
     if (isNaN(parsed) || parsed < (min ?? 0)) {
-      setError(
-        `Nilai tidak valid. ${min !== undefined ? `Minimum: ${min}.` : ""}`
-      );
+      setError(`Nilai tidak valid. ${min !== undefined ? `Minimum: ${min}.` : ""}`);
       return;
     }
     if (max !== undefined && parsed > max) {
@@ -102,11 +84,11 @@ function SettingRow({
   }
 
   return (
-    <div className="py-4 border-b border-gray-100 last:border-b-0 space-y-2">
+    <div className="py-4 border-b border-border last:border-0 space-y-2">
       <div>
-        <p className="text-sm font-semibold text-gray-800">{labelId}</p>
-        <p className="text-xs text-gray-400">{labelEn}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-bold text-fg">{labelId}</p>
+        <p className="text-xs text-muted-fg">{labelEn}</p>
+        <p className="text-xs text-muted-fg mt-0.5">{description}</p>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -115,34 +97,25 @@ function SettingRow({
           max={max}
           step={1}
           value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setError(null);
-            setSaved(false);
-          }}
-          className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            error ? "border-red-400" : "border-gray-300"
-          }`}
+          onChange={(e) => { setInputValue(e.target.value); setError(null); setSaved(false); }}
+          className={`flex-1 h-11 border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition ${error ? "border-destructive" : "border-border"}`}
         />
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-50 shrink-0"
+          className="bg-primary text-primary-fg text-sm font-bold px-4 py-2.5 rounded-xl transition hover:opacity-90 disabled:opacity-50 shrink-0"
         >
           {saving ? "Menyimpan…" : saved ? "Tersimpan ✓" : "Simpan"}
         </button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
     </div>
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
-
 export function AdminPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
   const [allSettings, setAllSettings] = useState<IdbSetting[]>([]);
@@ -160,69 +133,50 @@ export function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   function handleSaved(key: string, newValue: number) {
     setSettings((prev) => ({ ...prev, [key]: newValue }));
   }
 
+  const adminLinks = [
+    { to: "/admin/users", emoji: "👥", label: "Kelola Pengguna", color: "text-primary" },
+    { to: "/admin/events", emoji: "📅", label: "Kelola Event", color: "text-primary" },
+    { to: "/admin/oversold", emoji: "🚨", label: "Antrian Oversold", color: "text-destructive" },
+    { to: "/admin/cash-reconciliation", emoji: "💰", label: "Rekonsiliasi Kas", color: "text-success" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Top bar */}
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-sm font-medium opacity-80 hover:opacity-100"
-        >
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Admin / Settings</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar title="Admin" back onBack={() => navigate("/dashboard")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* Navigation links */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-3">
             Menu Admin
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <Link
-              to="/admin/users"
-              className="block text-center bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg py-2 text-sm font-semibold transition"
-            >
-              👥 Kelola Pengguna
-            </Link>
-            <Link
-              to="/admin/events"
-              className="block text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg py-2 text-sm font-semibold transition"
-            >
-              📅 Kelola Event
-            </Link>
-            <Link
-              to="/admin/oversold"
-              className="block text-center bg-red-50 hover:bg-red-100 text-red-700 rounded-lg py-2 text-sm font-semibold transition"
-            >
-              🚨 Antrian Oversold
-            </Link>
-            <Link
-              to="/admin/cash-reconciliation"
-              className="block text-center bg-green-50 hover:bg-green-100 text-green-700 rounded-lg py-2 text-sm font-semibold transition"
-            >
-              💰 Rekonsiliasi Kas
-            </Link>
+            {adminLinks.map((a) => (
+              <Link
+                key={a.to}
+                to={a.to}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted hover:bg-border text-center text-sm font-bold text-fg transition active:scale-[0.97]"
+              >
+                <span className="text-2xl">{a.emoji}</span>
+                {a.label}
+              </Link>
+            ))}
           </div>
         </div>
 
         {/* Editable settings */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">
-            Pengaturan / Settings
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-2">
+            Pengaturan
           </p>
           {loading ? (
-            <p className="text-sm text-gray-400 py-4">Memuat…</p>
+            <p className="text-sm text-muted-fg py-4">Memuat…</p>
           ) : (
             EDITABLE_KEYS.map((def) => (
               <SettingRow
@@ -240,28 +194,19 @@ export function AdminPage() {
           )}
         </div>
 
-        {/* All settings (read-only view) */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
-            Semua Pengaturan / All Settings
+        {/* All settings read-only */}
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-3">
+            Semua Pengaturan
           </p>
           {allSettings.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">
-              Tidak ada pengaturan tersimpan.
-            </p>
+            <p className="text-sm text-muted-fg italic">Tidak ada pengaturan tersimpan.</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-border">
               {allSettings.map((s) => (
-                <li
-                  key={s.key}
-                  className="flex justify-between items-center py-2 text-sm"
-                >
-                  <span className="text-gray-600 font-mono text-xs">
-                    {s.key}
-                  </span>
-                  <span className="text-gray-800 font-semibold">
-                    {JSON.stringify(s.value)}
-                  </span>
+                <li key={s.key} className="flex justify-between items-center py-2 text-sm">
+                  <span className="text-muted-fg font-mono text-xs">{s.key}</span>
+                  <span className="text-fg font-bold">{JSON.stringify(s.value)}</span>
                 </li>
               ))}
             </ul>

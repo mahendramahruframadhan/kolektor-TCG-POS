@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 
 interface Event {
   id: string;
@@ -12,6 +13,23 @@ interface Event {
   status: string;
   version: number;
   createdAt: number;
+}
+
+const inputCls = "w-full h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition";
+const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1";
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    draft: "bg-muted text-muted-fg",
+    active: "bg-success bg-opacity-15 text-success",
+    closed: "bg-destructive bg-opacity-15 text-destructive",
+  };
+  const label: Record<string, string> = { draft: "Draft", active: "Aktif", closed: "Ditutup" };
+  return (
+    <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full ${map[status] ?? map.draft}`}>
+      {label[status] ?? status}
+    </span>
+  );
 }
 
 export function EventsAdminPage() {
@@ -46,79 +64,37 @@ export function EventsAdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+  useEffect(() => { loadEvents(); }, [loadEvents]);
 
   function resetForm() {
-    setName("");
-    setVenue("");
-    setStartDate("");
-    setEndDate("");
-    setStatus("draft");
-    setFormError(null);
-    setEditId(null);
-    setEditVersion(1);
-    setIsEditing(false);
+    setName(""); setVenue(""); setStartDate(""); setEndDate(""); setStatus("draft");
+    setFormError(null); setEditId(null); setEditVersion(1); setIsEditing(false);
   }
 
-  function startCreate() {
-    resetForm();
-    setIsEditing(true);
-  }
+  function startCreate() { resetForm(); setIsEditing(true); }
 
   function startEdit(ev: Event) {
-    setName(ev.name);
-    setVenue(ev.venue);
-    setStartDate(ev.startDate);
-    setEndDate(ev.endDate);
-    setStatus(ev.status as "draft" | "active" | "closed");
-    setEditId(ev.id);
-    setEditVersion(ev.version);
-    setIsEditing(true);
-    setFormError(null);
+    setName(ev.name); setVenue(ev.venue); setStartDate(ev.startDate);
+    setEndDate(ev.endDate); setStatus(ev.status as "draft" | "active" | "closed");
+    setEditId(ev.id); setEditVersion(ev.version); setIsEditing(true); setFormError(null);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-
-    if (!name.trim()) {
-      setFormError("Nama event wajib diisi.");
-      return;
-    }
-    if (!startDate) {
-      setFormError("Tanggal mulai wajib diisi.");
-      return;
-    }
-    if (!endDate) {
-      setFormError("Tanggal selesai wajib diisi.");
-      return;
-    }
+    if (!name.trim()) { setFormError("Nama event wajib diisi."); return; }
+    if (!startDate) { setFormError("Tanggal mulai wajib diisi."); return; }
+    if (!endDate) { setFormError("Tanggal selesai wajib diisi."); return; }
     if (new Date(startDate) > new Date(endDate)) {
-      setFormError("Tanggal selesai tidak boleh sebelum tanggal mulai.");
-      return;
+      setFormError("Tanggal selesai tidak boleh sebelum tanggal mulai."); return;
     }
 
     setSaving(true);
     try {
       if (editId) {
-        await api.events.update(editId, {
-          name: name.trim(),
-          venue: venue.trim(),
-          startDate,
-          endDate,
-          status,
-          version: editVersion,
-        });
+        await api.events.update(editId, { name: name.trim(), venue: venue.trim(), startDate, endDate, status, version: editVersion });
       } else {
-        await api.events.create({
-          name: name.trim(),
-          venue: venue.trim(),
-          startDate,
-          endDate,
-          status,
-        });
+        await api.events.create({ name: name.trim(), venue: venue.trim(), startDate, endDate, status });
       }
       resetForm();
       await loadEvents();
@@ -129,190 +105,99 @@ export function EventsAdminPage() {
     }
   }
 
-  const statusBadge = (s: string) => {
-    const map: Record<string, string> = {
-      draft: "bg-gray-100 text-gray-600",
-      active: "bg-green-100 text-green-700",
-      closed: "bg-red-100 text-red-700",
-    };
-    const label: Record<string, string> = {
-      draft: "Draft",
-      active: "Aktif",
-      closed: "Ditutup",
-    };
-    return (
-      <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${map[s] ?? map.draft}`}>
-        {label[s] ?? s}
-      </span>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-sm font-medium opacity-80 hover:opacity-100"
-        >
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Kelola Event</h1>
-        <span className="text-sm opacity-70">{me?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="Kelola Event"
+        back
+        onBack={() => navigate("/admin")}
+        right={
+          !isEditing ? (
+            <button
+              onClick={startCreate}
+              className="text-xs font-bold text-accent border border-accent border-opacity-40 rounded-lg px-3 py-1 hover:bg-accent hover:bg-opacity-10 transition"
+            >
+              + Tambah
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {isEditing ? (
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">
-                {editId ? "Edit Event" : "Tambah Event"}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Batal
-              </button>
+              <h2 className="font-bold text-fg">{editId ? "Edit Event" : "Tambah Event"}</h2>
+              <button onClick={resetForm} className="text-xs font-bold text-muted-fg hover:text-fg">Batal</button>
             </div>
 
             {formError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
                 {formError}
-              </p>
+              </div>
             )}
 
             <form onSubmit={handleSave} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama Event <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: Pop Con 2026"
-                />
+                <label className={labelCls}>Nama Event <span className="text-destructive">*</span></label>
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+                  className={inputCls} placeholder="Contoh: Pop Con 2026" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Venue
-                </label>
-                <input
-                  type="text"
-                  value={venue}
-                  onChange={(e) => setVenue(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: Jakarta Convention Center"
-                />
+                <label className={labelCls}>Venue</label>
+                <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)}
+                  className={inputCls} placeholder="Jakarta Convention Center" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal Mulai <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <label className={labelCls}>Tanggal Mulai <span className="text-destructive">*</span></label>
+                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal Selesai <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <label className={labelCls}>Tanggal Selesai <span className="text-destructive">*</span></label>
+                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as "draft" | "active" | "closed")}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
+                <label className={labelCls}>Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active" | "closed")} className={inputCls}>
                   <option value="draft">Draft</option>
                   <option value="active">Aktif</option>
                   <option value="closed">Ditutup</option>
                 </select>
                 {status === "active" && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Hanya boleh ada satu event aktif dalam satu waktu.
-                  </p>
+                  <p className="text-xs text-warning mt-1 font-medium">Hanya boleh ada satu event aktif dalam satu waktu.</p>
                 )}
               </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition disabled:opacity-60"
-              >
+              <button type="submit" disabled={saving}
+                className="w-full h-12 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition disabled:opacity-50">
                 {saving ? "Menyimpan…" : editId ? "Simpan Perubahan" : "Tambah Event"}
               </button>
             </form>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-600">
-                Daftar Event ({events.length})
-              </h2>
-              <button
-                onClick={startCreate}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-              >
-                + Tambah
-              </button>
-            </div>
-
             {loading ? (
-              <p className="text-sm text-gray-400 py-4">Memuat…</p>
+              <p className="text-sm text-muted-fg py-4 text-center">Memuat…</p>
             ) : error ? (
-              <p className="text-sm text-red-600 py-4">{error}</p>
+              <p className="text-sm text-destructive py-4 text-center">{error}</p>
             ) : events.length === 0 ? (
-              <p className="text-sm text-gray-400 italic py-4">
-                Belum ada event.
-              </p>
+              <p className="text-sm text-muted-fg italic py-4 text-center">Belum ada event.</p>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
+              <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
                 {events.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="p-4 flex items-center justify-between"
-                  >
+                  <div key={ev.id} className="p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {ev.name}
-                      </p>
-                      {ev.venue && (
-                        <p className="text-xs text-gray-500 truncate">
-                          {ev.venue}
-                        </p>
-                      )}
+                      <p className="text-sm font-bold text-fg truncate">{ev.name}</p>
+                      {ev.venue && <p className="text-xs text-muted-fg truncate">{ev.venue}</p>}
                       <div className="flex items-center gap-2 mt-1">
-                        {statusBadge(ev.status)}
-                        <span className="text-[10px] text-gray-400">
-                          {ev.startDate} — {ev.endDate}
-                        </span>
+                        <StatusBadge status={ev.status} />
+                        <span className="text-[10px] text-muted-fg">{ev.startDate} — {ev.endDate}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => startEdit(ev)}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium shrink-0 ml-3"
+                      className="text-xs font-bold text-accent shrink-0 hover:opacity-70"
                     >
                       Edit
                     </button>

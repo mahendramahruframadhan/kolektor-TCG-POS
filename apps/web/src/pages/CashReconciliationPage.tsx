@@ -4,6 +4,7 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbEvent, IdbCashReconciliation } from "../lib/db.js";
 
 interface ApiReconciliation {
@@ -18,6 +19,9 @@ interface ApiReconciliation {
   closedAt?: number;
 }
 
+const inputCls = "w-full h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition";
+const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1";
+
 export function CashReconciliationPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -28,15 +32,12 @@ export function CashReconciliationPage() {
   const [reconciliations, setReconciliations] = useState<ApiReconciliation[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Form state
   const [expectedCash, setExpectedCash] = useState("");
   const [countedCash, setCountedCash] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  // Compute expected cash from IDB transactions (cash channel only)
   const [expectedFromIdb, setExpectedFromIdb] = useState<number | null>(null);
 
   useEffect(() => {
@@ -71,13 +72,11 @@ export function CashReconciliationPage() {
       (c) => c.type === "cash" || c.name.toLowerCase().includes("cash") || c.name.toLowerCase().includes("tunai")
     );
     if (!cashChannel) return 0;
-
     const allTxs = await idb.transactions.where("eventId").equals(eventId).toArray();
     const dayTxs = allTxs.filter((tx) => {
       const d = new Date((tx.paidAt ?? tx.createdAt) * 1000).toISOString().slice(0, 10);
       return d === date;
     });
-
     const cashTxs = dayTxs.filter((t) => t.paymentChannelId === cashChannel.id);
     return cashTxs.reduce((s, t) => s + t.totalIdr, 0);
   }
@@ -102,17 +101,11 @@ export function CashReconciliationPage() {
         notes,
       }) as ApiReconciliation;
 
-      // Also persist to IDB for offline access
       const idbRec: IdbCashReconciliation = {
-        id: rec.id,
-        eventId: rec.eventId,
-        date: rec.date,
-        expectedCashIdr: rec.expectedCashIdr,
-        countedCashIdr: rec.countedCashIdr,
-        varianceIdr: rec.varianceIdr,
-        notes: rec.notes,
-        closedByUserId: rec.closedByUserId,
-        closedAt: rec.closedAt,
+        id: rec.id, eventId: rec.eventId, date: rec.date,
+        expectedCashIdr: rec.expectedCashIdr, countedCashIdr: rec.countedCashIdr,
+        varianceIdr: rec.varianceIdr, notes: rec.notes,
+        closedByUserId: rec.closedByUserId, closedAt: rec.closedAt,
       };
       await idb.cashReconciliations.put(idbRec);
 
@@ -128,77 +121,81 @@ export function CashReconciliationPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button onClick={() => navigate("/dashboard")} className="text-sm font-medium opacity-80 hover:opacity-100">
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Rekonsiliasi Kas</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+  const variance =
+    expectedCash && countedCash && !isNaN(parseInt(expectedCash)) && !isNaN(parseInt(countedCash))
+      ? parseInt(countedCash) - parseInt(expectedCash)
+      : null;
 
-      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+  return (
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar title="Rekonsiliasi Kas" back onBack={() => navigate("/admin")} />
+
+      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Filter</p>
-          <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <p className={`${labelCls}`}>Filter</p>
+          <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={inputCls}>
             <option value="">-- Pilih Event --</option>
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>{ev.name}{ev.status === "active" ? " (aktif)" : ""}</option>
             ))}
           </select>
-          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={inputCls} />
         </div>
 
-        {/* New reconciliation form (admin only) */}
+        {/* New reconciliation form */}
         {user?.role === "admin" && (
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Input Rekonsiliasi Baru</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <p className={labelCls}>Input Rekonsiliasi Baru</p>
 
             {expectedFromIdb !== null && (
-              <p className="text-xs text-blue-600">
-                Ekspektasi kas dari sistem: <span className="font-semibold">Rp {expectedFromIdb.toLocaleString("id-ID")}</span>
+              <p className="text-xs font-medium text-primary">
+                Ekspektasi kas dari sistem: <span className="font-extrabold">Rp {expectedFromIdb.toLocaleString("id-ID")}</span>
               </p>
             )}
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Ekspektasi Kas (IDR)</label>
-              <input type="number" value={expectedCash} onChange={(e) => setExpectedCash(e.target.value)}
-                placeholder="0" min={0} step={1000}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <div>
+              <label className={labelCls}>Ekspektasi Kas (IDR)</label>
+              <input type="number" value={expectedCash}
+                onChange={(e) => setExpectedCash(e.target.value)}
+                placeholder="0" min={0} step={1000} className={inputCls} />
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Kas Terhitung (IDR)</label>
-              <input type="number" value={countedCash} onChange={(e) => setCountedCash(e.target.value)}
-                placeholder="0" min={0} step={1000}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <div>
+              <label className={labelCls}>Kas Terhitung (IDR)</label>
+              <input type="number" value={countedCash}
+                onChange={(e) => setCountedCash(e.target.value)}
+                placeholder="0" min={0} step={1000} className={inputCls} />
             </div>
 
-            {expectedCash && countedCash && !isNaN(parseInt(expectedCash)) && !isNaN(parseInt(countedCash)) && (
-              <div className={`text-sm font-semibold px-3 py-2 rounded-lg ${
-                parseInt(countedCash) - parseInt(expectedCash) === 0
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-700"
+            {variance !== null && (
+              <div className={`text-sm font-bold px-3 py-2 rounded-xl ${
+                variance === 0
+                  ? "bg-success bg-opacity-10 text-success border border-success border-opacity-20"
+                  : "bg-destructive bg-opacity-10 text-destructive border border-destructive border-opacity-20"
               }`}>
-                Selisih: Rp {(parseInt(countedCash) - parseInt(expectedCash)).toLocaleString("id-ID")}
+                Selisih: Rp {variance > 0 ? "+" : ""}{variance.toLocaleString("id-ID")}
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Catatan</label>
+            <div>
+              <label className={labelCls}>Catatan</label>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
                 rows={2} placeholder="Keterangan tambahan…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none" />
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
-            {saved && <p className="text-xs text-green-600">Rekonsiliasi berhasil disimpan.</p>}
+            {error && (
+              <p className="text-xs text-destructive font-medium">{error}</p>
+            )}
+            {saved && (
+              <p className="text-xs text-success font-bold">Rekonsiliasi berhasil disimpan.</p>
+            )}
 
-            <button onClick={handleSave} disabled={saving || !selectedEventId || !countedCash}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition">
+            <button
+              onClick={handleSave}
+              disabled={saving || !selectedEventId || !countedCash}
+              className="w-full h-12 bg-primary text-primary-fg font-bold rounded-2xl text-sm disabled:opacity-50 hover:opacity-90 transition"
+            >
               {saving ? "Menyimpan…" : "Simpan Rekonsiliasi"}
             </button>
           </div>
@@ -206,37 +203,41 @@ export function CashReconciliationPage() {
 
         {/* History */}
         {loading ? (
-          <p className="text-sm text-gray-400 text-center py-4">Memuat…</p>
+          <p className="text-sm text-muted-fg text-center py-4">Memuat…</p>
         ) : reconciliations.length > 0 ? (
           <div className="space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium px-1">Riwayat</p>
+            <p className={`${labelCls} px-1`}>Riwayat</p>
             {reconciliations.map((rec) => (
-              <div key={rec.id} className="bg-white rounded-xl shadow-sm p-4 space-y-2">
+              <div key={rec.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-gray-800">{rec.date}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    rec.varianceIdr === 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  <p className="text-sm font-bold text-fg">{rec.date}</p>
+                  <span className={`text-[11px] font-extrabold tracking-widest uppercase px-2.5 py-0.5 rounded-full ${
+                    rec.varianceIdr === 0
+                      ? "bg-success bg-opacity-15 text-success"
+                      : "bg-destructive bg-opacity-15 text-destructive"
                   }`}>
-                    {rec.varianceIdr === 0 ? "BALANCE" : `SELISIH ${rec.varianceIdr > 0 ? "+" : ""}${rec.varianceIdr.toLocaleString("id-ID")}`}
+                    {rec.varianceIdr === 0
+                      ? "BALANCE"
+                      : `SELISIH ${rec.varianceIdr > 0 ? "+" : ""}${rec.varianceIdr.toLocaleString("id-ID")}`}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-xs text-gray-400">Ekspektasi</p>
-                    <MaskedAmount amount={rec.expectedCashIdr} className="font-semibold text-gray-700" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1">Ekspektasi</p>
+                    <MaskedAmount amount={rec.expectedCashIdr} className="font-bold text-fg text-sm" />
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Terhitung</p>
-                    <MaskedAmount amount={rec.countedCashIdr} className="font-semibold text-gray-700" />
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1">Terhitung</p>
+                    <MaskedAmount amount={rec.countedCashIdr} className="font-bold text-fg text-sm" />
                   </div>
                 </div>
-                {rec.notes && <p className="text-xs text-gray-500 italic">{rec.notes}</p>}
+                {rec.notes && <p className="text-xs text-muted-fg italic">{rec.notes}</p>}
               </div>
             ))}
           </div>
         ) : (
           !loading && selectedEventId && (
-            <p className="text-sm text-gray-400 text-center italic py-4">
+            <p className="text-sm text-muted-fg text-center italic py-4">
               Belum ada rekonsiliasi untuk tanggal ini.
             </p>
           )

@@ -1,14 +1,13 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 
-/**
- * Admin: Oversold queue (PRD §R5, §16.3).
- * Lists cards flagged as oversold; allows admin to void one of the two sales.
- */
 export function OversoldQueuePage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
@@ -33,79 +32,79 @@ export function OversoldQueuePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-red-700 text-white px-4 py-3">
-        <h1 className="font-bold text-lg">Antrian Oversold</h1>
-        <p className="text-xs opacity-75">Kartu yang terjual di dua perangkat sekaligus</p>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="Antrian Oversold"
+        back
+        onBack={() => navigate("/admin")}
+      />
 
-      <main className="max-w-2xl mx-auto p-4">
+      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {isLoading && (
-          <p className="text-gray-400 text-center py-8">Memuat…</p>
+          <p className="text-muted-fg text-center py-8 text-sm">Memuat…</p>
         )}
 
         {!isLoading && (!oversoldCards || oversoldCards.length === 0) && (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <p className="text-5xl mb-3">✅</p>
-            <p className="text-gray-600">Tidak ada kartu oversold saat ini.</p>
+          <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-3">
+            <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
+              <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </div>
+            <p className="text-fg font-bold">Tidak ada kartu oversold saat ini.</p>
           </div>
         )}
 
         {oversoldCards && oversoldCards.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-sm text-red-600 font-semibold">
+          <>
+            <p className="text-xs font-extrabold tracking-widest uppercase text-destructive px-1">
               {oversoldCards.length} kartu oversold ditemukan
             </p>
 
             {oversoldCards.map((card) => (
-              <div key={card.id} className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-400">
-                <div className="flex items-start justify-between gap-2 mb-3">
+              <div key={card.id} className="bg-card rounded-2xl border-l-4 border-destructive border border-border p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-gray-800">{card.title}</p>
-                    <p className="text-xs text-gray-400 font-mono">{card.shortId}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {card.setName} {card.setNumber ? `#${card.setNumber}` : ""} · {card.condition}
+                    <p className="font-bold text-fg">{card.title}</p>
+                    <p className="text-xs text-muted-fg font-mono">{card.shortId}</p>
+                    <p className="text-xs text-muted-fg mt-0.5">
+                      {card.setName}{card.setNumber ? ` #${card.setNumber}` : ""} · {card.condition}
                     </p>
                   </div>
-                  <span className="inline-block text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                  <span className="text-[11px] font-extrabold tracking-widest uppercase px-2.5 py-0.5 rounded-full bg-destructive bg-opacity-15 text-destructive shrink-0">
                     OVERSOLD
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-gray-600">Harga</span>
-                  <MaskedAmount
-                    amount={card.listedPriceIdr ?? card.priceIdr}
-                    className="font-semibold text-gray-700"
-                  />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-fg">Harga</span>
+                  <MaskedAmount amount={card.listedPriceIdr ?? card.priceIdr} className="font-bold text-fg" />
                 </div>
 
                 {voidingId === card.id ? (
-                  <div className="space-y-2 bg-red-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-red-700">
+                  <div className="space-y-2 bg-destructive bg-opacity-5 rounded-xl border border-destructive border-opacity-20 p-3">
+                    <p className="text-sm font-bold text-destructive">
                       Void salah satu transaksi — masukkan alasan:
                     </p>
                     <textarea
                       value={voidReason}
                       onChange={(e) => setVoidReason(e.target.value)}
-                      className="w-full border border-red-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                      className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none resize-none"
                       rows={2}
                       placeholder="Alasan void…"
                     />
-                    {error && (
-                      <p className="text-xs text-red-600">{error}</p>
-                    )}
+                    {error && <p className="text-xs text-destructive font-medium">{error}</p>}
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setVoidingId(null); setVoidReason(""); setError(null); }}
-                        className="flex-1 border border-gray-300 text-gray-600 text-sm py-1.5 rounded-lg"
+                        className="flex-1 h-10 border border-border text-fg text-sm font-bold rounded-xl hover:bg-muted transition"
                       >
                         Batal
                       </button>
                       <button
                         onClick={() => handleVoid(card.id, voidReason)}
                         disabled={!voidReason.trim()}
-                        className="flex-1 bg-red-600 text-white text-sm py-1.5 rounded-lg disabled:opacity-50"
+                        className="flex-1 h-10 bg-destructive text-white text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 transition"
                       >
                         Konfirmasi Void
                       </button>
@@ -114,14 +113,14 @@ export function OversoldQueuePage() {
                 ) : (
                   <button
                     onClick={() => setVoidingId(card.id)}
-                    className="w-full border border-red-400 text-red-600 text-sm font-semibold py-2 rounded-xl hover:bg-red-50 transition"
+                    className="w-full h-11 border border-destructive border-opacity-50 text-destructive text-sm font-bold rounded-2xl hover:bg-destructive hover:bg-opacity-5 transition"
                   >
                     Void Transaksi
                   </button>
                 )}
               </div>
             ))}
-          </div>
+          </>
         )}
       </main>
     </div>

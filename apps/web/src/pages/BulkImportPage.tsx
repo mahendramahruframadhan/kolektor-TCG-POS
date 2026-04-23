@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import * as XLSX from "xlsx";
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
@@ -284,59 +285,58 @@ export function BulkImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button onClick={() => navigate("/intake")} className="text-sm font-medium opacity-80 hover:opacity-100">
-          ← Intake
-        </button>
-        <h1 className="font-bold text-base">Bulk Import Kartu</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar title="Bulk Import Kartu" back onBack={() => navigate("/intake")} />
 
-      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {/* Instructions */}
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Instruksi</p>
-          <p className="text-sm text-gray-600">
-            Upload file Excel (.xlsx) dengan kolom: <code className="text-xs bg-gray-100 px-1 rounded">owner, title, setName, setNumber, rarity, language, condition, edition, pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded, gradingCompany, grade, certNumber</code>
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Instruksi</p>
+          <p className="text-sm text-muted-fg">
+            Upload file Excel (.xlsx) dengan kolom:{" "}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded-lg font-mono">
+              owner, title, setName, setNumber, rarity, language, condition, edition, pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded, gradingCompany, grade, certNumber
+            </code>
           </p>
           <button onClick={downloadTemplate}
-            className="text-sm text-blue-600 border border-blue-300 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+            className="text-sm font-bold text-accent border border-accent border-opacity-40 rounded-xl px-3 py-1.5 hover:bg-accent hover:bg-opacity-10 transition">
             Download Template
           </button>
         </div>
 
         {/* File picker */}
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Upload File</p>
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Upload File</p>
           <input type="file" accept=".xlsx,.xls,.csv"
             onChange={handleFile}
-            className="text-sm text-gray-600 file:mr-3 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 file:border-0 file:px-3 file:py-1.5 file:rounded-lg hover:file:bg-blue-100" />
-          {parseError && <p className="text-sm text-red-600">{parseError}</p>}
+            className="text-sm text-muted-fg file:mr-3 file:text-sm file:font-bold file:bg-primary file:bg-opacity-10 file:text-primary file:border-0 file:px-3 file:py-1.5 file:rounded-xl hover:file:bg-opacity-20" />
+          {parseError && (
+            <p className="text-sm text-destructive font-medium">{parseError}</p>
+          )}
         </div>
 
         {/* Validation summary */}
         {rows.length > 0 && !done && (
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Validasi</p>
-            <div className="flex gap-4 text-sm">
-              <div className="flex-1 bg-green-50 rounded-lg px-3 py-2 text-center">
-                <p className="text-2xl font-bold text-green-700">{validRows.length}</p>
-                <p className="text-xs text-green-600">Baris valid</p>
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Validasi</p>
+            <div className="flex gap-3">
+              <div className="flex-1 bg-success bg-opacity-10 rounded-xl px-3 py-3 text-center border border-success border-opacity-20">
+                <p className="text-2xl font-extrabold text-success">{validRows.length}</p>
+                <p className="text-xs font-bold text-success opacity-80">Baris valid</p>
               </div>
-              <div className="flex-1 bg-red-50 rounded-lg px-3 py-2 text-center">
-                <p className="text-2xl font-bold text-red-700">{invalidRows.length}</p>
-                <p className="text-xs text-red-600">Baris error</p>
+              <div className="flex-1 bg-destructive bg-opacity-10 rounded-xl px-3 py-3 text-center border border-destructive border-opacity-20">
+                <p className="text-2xl font-extrabold text-destructive">{invalidRows.length}</p>
+                <p className="text-xs font-bold text-destructive opacity-80">Baris error</p>
               </div>
             </div>
 
             {invalidRows.length > 0 && (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                <p className="text-xs font-medium text-red-700">Error per baris:</p>
+                <p className="text-xs font-extrabold text-destructive">Error per baris:</p>
                 {invalidRows.map((row) => (
-                  <div key={row.rowNum} className="text-xs bg-red-50 rounded-lg px-3 py-2">
-                    <p className="font-semibold text-red-800">Baris {row.rowNum}</p>
-                    <ul className="list-disc list-inside text-red-700 space-y-0.5">
+                  <div key={row.rowNum} className="text-xs bg-destructive bg-opacity-5 rounded-xl px-3 py-2 border border-destructive border-opacity-15">
+                    <p className="font-bold text-destructive">Baris {row.rowNum}</p>
+                    <ul className="list-disc list-inside text-destructive opacity-80 space-y-0.5 mt-1">
                       {row.errors.map((e, i) => <li key={i}>{e}</li>)}
                     </ul>
                   </div>
@@ -346,7 +346,7 @@ export function BulkImportPage() {
 
             {validRows.length > 0 && (
               <button onClick={handleImport} disabled={importing}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition">
+                className="w-full h-12 bg-primary text-primary-fg font-bold rounded-2xl text-sm disabled:opacity-50 hover:opacity-90 transition">
                 {importing
                   ? `Mengimpor… (${importProgress?.done ?? 0}/${importProgress?.total ?? 0})`
                   : `Import ${validRows.length} Kartu`}
@@ -357,25 +357,29 @@ export function BulkImportPage() {
 
         {/* Import done */}
         {done && (
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <div className="text-center">
-              <p className="text-4xl mb-2">✅</p>
-              <p className="font-semibold text-gray-800">Import selesai</p>
-              <p className="text-sm text-gray-500">
-                {validRows.length - importErrors.length} berhasil,{" "}
+          <div className="bg-card rounded-2xl border border-border p-6 space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
+              <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-fg">Import selesai</p>
+              <p className="text-sm text-muted-fg mt-1">
+                {validRows.length - importErrors.length} berhasil
                 {importErrors.length > 0 && (
-                  <span className="text-red-600">{importErrors.length} gagal</span>
+                  <span className="text-destructive font-bold"> · {importErrors.length} gagal</span>
                 )}
               </p>
             </div>
             {importErrors.length > 0 && (
               <button onClick={downloadErrorReport}
-                className="w-full text-sm text-red-600 border border-red-300 rounded-lg px-3 py-2 hover:bg-red-50 transition">
+                className="w-full h-11 text-sm font-bold text-destructive border border-destructive border-opacity-40 rounded-2xl hover:bg-destructive hover:bg-opacity-5 transition">
                 Download Error Report
               </button>
             )}
             <button onClick={() => { setRows([]); setDone(false); setImportErrors([]); }}
-              className="w-full text-sm text-blue-600 border border-blue-300 rounded-lg px-3 py-2 hover:bg-blue-50 transition">
+              className="w-full h-11 text-sm font-bold text-accent border border-accent border-opacity-40 rounded-2xl hover:bg-accent hover:bg-opacity-10 transition">
               Import Lagi
             </button>
           </div>
