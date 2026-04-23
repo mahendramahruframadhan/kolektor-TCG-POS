@@ -1,16 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   ShoppingCart, Package, Plus, BarChart2,
-  Settings, Users, Calendar, DollarSign,
   type LucideIcon,
 } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import { api } from "../lib/api.js";
 import { fetchAndSync } from "../lib/sync.js";
 
 function useDashboardStats(eventId: string | undefined) {
@@ -44,7 +42,6 @@ function useDashboardStats(eventId: string | undefined) {
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const navigate = useNavigate();
   const syncedRef = useRef(false);
 
   useEffect(() => {
@@ -63,12 +60,6 @@ export function DashboardPage() {
   const activeEvent = events?.find((e) => e.status === "active");
   const { data: stats } = useDashboardStats(activeEvent?.id);
 
-  async function handleLogout() {
-    await api.auth.logout().catch(() => null);
-    useAuthStore.getState().setUser(null);
-    navigate("/login");
-  }
-
   const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
     { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
     { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
@@ -76,26 +67,9 @@ export function DashboardPage() {
     { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 
-  const adminActions: { to: string; Icon: LucideIcon; label: string }[] = [
-    { to: "/admin",                       Icon: Settings,     label: "Admin" },
-    { to: "/admin/users",                 Icon: Users,        label: "Pengguna" },
-    { to: "/admin/events",                Icon: Calendar,     label: "Event" },
-    { to: "/admin/cash-reconciliation",   Icon: DollarSign,   label: "Rekonsiliasi" },
-  ];
-
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <MobileAppBar
-        title="KolektaPOS"
-        right={
-          <button
-            onClick={handleLogout}
-            className="text-xs font-bold text-muted-fg hover:text-fg transition"
-          >
-            Keluar
-          </button>
-        }
-      />
+      <MobileAppBar title="KolektaPOS" />
 
       <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* User greeting */}
@@ -164,25 +138,15 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Admin actions */}
+        {/* Admin shortcut */}
         {user?.role === "admin" && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg px-1">
-              Admin
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {adminActions.map((a) => (
-                <Link
-                  key={a.to}
-                  to={a.to}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border text-fg text-sm font-bold text-center hover:bg-muted transition active:scale-[0.97]"
-                >
-                  <a.Icon className="w-6 h-6" />
-                  {a.label}
-                </Link>
-              ))}
-            </div>
-          </div>
+          <Link
+            to="/admin"
+            className="flex items-center gap-3 px-4 py-3 bg-card rounded-2xl border border-border text-sm font-bold text-fg hover:bg-muted transition active:scale-[0.98]"
+          >
+            <span className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Admin Panel</span>
+            <span className="ml-auto text-muted-fg">→</span>
+          </Link>
         )}
       </main>
     </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { SyncDot } from "./SyncDot.js";
+import { HamburgerMenu } from "./HamburgerMenu.js";
 
 interface MobileAppBarProps {
   title: string;
@@ -8,6 +9,7 @@ interface MobileAppBarProps {
   onBack?: () => void;
   right?: React.ReactNode;
   syncState?: "online" | "syncing" | "offline";
+  showMenu?: boolean;
 }
 
 export function MobileAppBar({
@@ -16,6 +18,7 @@ export function MobileAppBar({
   onBack,
   right,
   syncState = "online",
+  showMenu = true,
 }: MobileAppBarProps) {
   return (
     <header className="h-14 flex items-center gap-0 px-4 bg-card border-b border-border shrink-0 z-10">
@@ -36,6 +39,7 @@ export function MobileAppBar({
       <div className="flex items-center gap-2 ml-2 shrink-0">
         <SyncDot state={syncState} />
         {right}
+        {showMenu && <HamburgerMenu />}
       </div>
     </header>
   );
