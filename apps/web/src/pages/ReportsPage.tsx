@@ -4,6 +4,7 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -103,15 +104,11 @@ function buildDailyCsv(report: DailyReport): string {
   lines.push(`"Jumlah Transaksi","${report.transactionCount}"`);
   lines.push(``);
   lines.push(`"Channel","Jumlah","Total (IDR)"`);
-  for (const b of report.channelBreakdown) {
-    lines.push(`"${b.channelName}","${b.count}","${b.gross}"`);
-  }
+  for (const b of report.channelBreakdown) lines.push(`"${b.channelName}","${b.count}","${b.gross}"`);
   lines.push(``);
   lines.push(`"Top 5 Sales"`);
   lines.push(`"Kartu","Harga Jual (IDR)","ID Transaksi"`);
-  for (const item of report.topItems) {
-    lines.push(`"${item.cardTitle}","${item.soldPriceIdr}","${item.transactionId}"`);
-  }
+  for (const item of report.topItems) lines.push(`"${item.cardTitle}","${item.soldPriceIdr}","${item.transactionId}"`);
   return lines.join("\n");
 }
 
@@ -120,18 +117,14 @@ function buildSettlementCsv(report: SettlementReport): string {
   lines.push(`"Settlement Report"`);
   lines.push(`"Event","${report.eventName}"`);
   lines.push(`"Status","${report.settledAt ? "SETTLED" : "PENDING"}"`);
-  if (report.settledAt) {
-    lines.push(`"Settled At","${new Date(report.settledAt * 1000).toISOString()}"`);
-  }
+  if (report.settledAt) lines.push(`"Settled At","${new Date(report.settledAt * 1000).toISOString()}"`);
   lines.push(``);
   lines.push(`"Gross Sales IDR","${report.grandTotalSalesIdr}"`);
   lines.push(`"Total Voids/Refunds IDR","${report.grandTotalVoidsIdr}"`);
   lines.push(`"Net IDR","${report.netIdr}"`);
   lines.push(``);
   lines.push(`"Owner","Items Sold","Payout IDR"`);
-  for (const row of report.breakdown) {
-    lines.push(`"${row.ownerName}","${row.itemsSold}","${row.totalPayoutIdr}"`);
-  }
+  for (const row of report.breakdown) lines.push(`"${row.ownerName}","${row.itemsSold}","${row.totalPayoutIdr}"`);
   return lines.join("\n");
 }
 
@@ -147,19 +140,66 @@ function buildMonthlyCsv(report: MonthlyReport): string {
   lines.push(`"Total Transaksi","${report.transactionCount}"`);
   lines.push(``);
   lines.push(`"Tanggal","Gross IDR","Net IDR","Transaksi"`);
-  for (const day of report.dailyBreakdown) {
-    lines.push(`"${day.date}","${day.grossIdr}","${day.netIdr}","${day.count}"`);
-  }
+  for (const day of report.dailyBreakdown) lines.push(`"${day.date}","${day.grossIdr}","${day.netIdr}","${day.count}"`);
   return lines.join("\n");
+}
+
+// ── Shared sub-components ──────────────────────────────────────────────────
+
+function ReportRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-border last:border-0">
+      <span className="text-sm text-muted-fg">{label}</span>
+      {value}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-surface rounded-xl border border-border px-3 py-2.5">
+      <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">{label}</p>
+      <p className="text-base font-extrabold text-fg mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+      {children}
+    </p>
+  );
+}
+
+function CsvButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-xs font-bold text-accent border border-accent border-opacity-40 rounded-lg px-3 py-1 hover:bg-accent hover:bg-opacity-10 transition"
+    >
+      Ekspor CSV
+    </button>
+  );
+}
+
+function selectCls() {
+  return "w-full h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary";
 }
 
 // ── Sub-page: Daily ────────────────────────────────────────────────────────
 
 function DailyTab({ events }: { events: IdbEvent[] }) {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -177,7 +217,6 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
       const event = events.find((e) => e.id === selectedEventId);
       const allTxs = await idb.transactions.where("eventId").equals(selectedEventId).toArray();
       const dayTxs = allTxs.filter((tx) => toIsoDate(tx.createdAt) === selectedDate);
-
       const saleTxs = dayTxs.filter((t) => t.kind === "sale");
       const voidRefundTxs = dayTxs.filter((t) => t.kind === "void" || t.kind === "refund");
 
@@ -197,15 +236,11 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
         breakdownMap[chId]!.count += 1;
         breakdownMap[chId]!.gross += tx.totalIdr;
       }
-      const channelBreakdown: ChannelBreakdown[] = Object.entries(breakdownMap).map(
-        ([channelId, v]) => ({ channelId, ...v })
-      );
+      const channelBreakdown: ChannelBreakdown[] = Object.entries(breakdownMap).map(([channelId, v]) => ({ channelId, ...v }));
 
       const saleTxIds = saleTxs.map((t) => t.id);
       let txItems: IdbTransactionItem[] = [];
-      if (saleTxIds.length > 0) {
-        txItems = await idb.transactionItems.where("transactionId").anyOf(saleTxIds).toArray();
-      }
+      if (saleTxIds.length > 0) txItems = await idb.transactionItems.where("transactionId").anyOf(saleTxIds).toArray();
       const sorted = [...txItems].sort((a, b) => b.soldPriceIdr - a.soldPriceIdr).slice(0, 5);
       const cardIds = sorted.map((i) => i.cardId);
       const cardList = await idb.cards.bulkGet(cardIds);
@@ -234,73 +269,75 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
   useEffect(() => { if (selectedEventId) computeReport(); }, [selectedEventId, selectedDate, computeReport]);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Filter</p>
-        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+    <div className="space-y-3">
+      <SectionCard>
+        <SectionLabel>Filter</SectionLabel>
+        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={selectCls()}>
           <option value="">-- Pilih Event --</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>{ev.name}{ev.status === "active" ? " (aktif)" : ""}</option>
           ))}
         </select>
-        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
-      </div>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className={selectCls()}
+        />
+      </SectionCard>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Menghitung…</p>}
+      {loading && <p className="text-sm text-muted-fg text-center py-6">Menghitung…</p>}
       {!loading && report && (
         <>
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <SectionCard>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Ringkasan</p>
-              <button onClick={() => downloadCsv(buildDailyCsv(report), `laporan-harian-${selectedDate}.csv`)}
-                className="text-xs text-blue-600 border border-blue-300 rounded-lg px-3 py-1 hover:bg-blue-50 transition">
-                Ekspor CSV
-              </button>
+              <SectionLabel>Ringkasan</SectionLabel>
+              <CsvButton onClick={() => downloadCsv(buildDailyCsv(report), `laporan-harian-${selectedDate}.csv`)} />
             </div>
-            <p className="text-sm text-gray-500">{report.date} — {report.eventName}</p>
-            <ReportRow label="Penjualan Kotor" value={<MaskedAmount amount={report.gross} className="font-bold text-gray-800" />} />
-            <ReportRow label="Void / Refund" value={<MaskedAmount amount={report.voidRefundAmount} className="font-semibold text-red-600" />} />
-            <ReportRow label="Penjualan Bersih" value={<MaskedAmount amount={report.net} className="font-bold text-green-700 text-lg" />} />
-            <ReportRow label="Jumlah Transaksi" value={<span className="font-semibold">{report.transactionCount}</span>} />
-          </div>
+            <p className="text-xs text-muted-fg">{report.date} — {report.eventName}</p>
+            <ReportRow label="Penjualan Kotor" value={<MaskedAmount amount={report.gross} className="font-bold text-fg" />} />
+            <ReportRow label="Void / Refund" value={<MaskedAmount amount={report.voidRefundAmount} className="font-bold text-destructive" />} />
+            <ReportRow label="Penjualan Bersih" value={<MaskedAmount amount={report.net} className="font-extrabold text-success text-lg" />} />
+            <ReportRow label="Jumlah Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
+          </SectionCard>
 
           {report.channelBreakdown.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Rincian Pembayaran</p>
+            <SectionCard>
+              <SectionLabel>Rincian Pembayaran</SectionLabel>
               {report.channelBreakdown.map((b) => (
-                <div key={b.channelId} className="flex justify-between items-center py-1">
+                <div key={b.channelId} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{b.channelName}</p>
-                    <p className="text-xs text-gray-400">{b.count} transaksi</p>
+                    <p className="text-sm font-bold text-fg">{b.channelName}</p>
+                    <p className="text-xs text-muted-fg">{b.count} transaksi</p>
                   </div>
-                  <MaskedAmount amount={b.gross} className="text-sm font-semibold text-gray-800" />
+                  <MaskedAmount amount={b.gross} className="text-sm font-bold text-fg" />
                 </div>
               ))}
-            </div>
+            </SectionCard>
           )}
 
           {report.topItems.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Top 5 Penjualan</p>
-              <ol className="space-y-2">
+            <SectionCard>
+              <SectionLabel>Top 5 Penjualan</SectionLabel>
+              <ol className="space-y-2 mt-1">
                 {report.topItems.map((item, idx) => (
                   <li key={`${item.transactionId}-${item.cardId}`} className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
+                    <span className="w-6 h-6 rounded-full bg-primary bg-opacity-15 text-primary text-xs font-extrabold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{item.cardTitle}</p>
-                      <p className="text-xs text-gray-400 font-mono">#{item.transactionId.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-sm font-bold text-fg truncate">{item.cardTitle}</p>
+                      <p className="text-xs text-muted-fg font-mono">#{item.transactionId.slice(0, 8).toUpperCase()}</p>
                     </div>
-                    <MaskedAmount amount={item.soldPriceIdr} className="text-sm font-semibold text-gray-700 shrink-0" />
+                    <MaskedAmount amount={item.soldPriceIdr} className="text-sm font-bold text-fg shrink-0" />
                   </li>
                 ))}
               </ol>
-            </div>
+            </SectionCard>
           )}
 
           {report.transactionCount === 0 && (
-            <p className="text-sm text-gray-400 text-center italic py-4">Tidak ada transaksi pada tanggal ini.</p>
+            <p className="text-sm text-muted-fg text-center italic py-4">Tidak ada transaksi pada tanggal ini.</p>
           )}
         </>
       )}
@@ -336,53 +373,52 @@ function MonthlyTab() {
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm p-4 flex gap-3">
-        <div className="flex-1">
-          <label className="text-xs text-gray-500 font-medium">Tahun</label>
-          <input type="number" value={year} min={2020} max={2099}
-            onChange={(e) => setYear(parseInt(e.target.value, 10))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+    <div className="space-y-3">
+      <SectionCard>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
+            <input type="number" value={year} min={2020} max={2099}
+              onChange={(e) => setYear(parseInt(e.target.value, 10))}
+              className={selectCls()} />
+          </div>
+          <div className="flex-1">
+            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
+            <input type="number" value={month} min={1} max={12}
+              onChange={(e) => setMonth(parseInt(e.target.value, 10))}
+              className={selectCls()} />
+          </div>
         </div>
-        <div className="flex-1">
-          <label className="text-xs text-gray-500 font-medium">Bulan</label>
-          <input type="number" value={month} min={1} max={12}
-            onChange={(e) => setMonth(parseInt(e.target.value, 10))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
-        </div>
-      </div>
+      </SectionCard>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Memuat…</p>}
-      {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+      {loading && <p className="text-sm text-muted-fg text-center py-6">Memuat…</p>}
+      {error && <p className="text-sm text-destructive text-center">{error}</p>}
       {!loading && report && (
         <>
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <SectionCard>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Ringkasan Bulanan</p>
-              <button onClick={() => downloadCsv(buildMonthlyCsv(report), `laporan-bulanan-${monthStr}.csv`)}
-                className="text-xs text-blue-600 border border-blue-300 rounded-lg px-3 py-1 hover:bg-blue-50 transition">
-                Ekspor CSV
-              </button>
+              <SectionLabel>Ringkasan Bulanan</SectionLabel>
+              <CsvButton onClick={() => downloadCsv(buildMonthlyCsv(report), `laporan-bulanan-${monthStr}.csv`)} />
             </div>
-            <ReportRow label="Gross IDR" value={<MaskedAmount amount={report.grossIdr} className="font-bold text-gray-800" />} />
-            <ReportRow label="Void/Refund IDR" value={<MaskedAmount amount={report.voidRefundIdr} className="font-semibold text-red-600" />} />
-            <ReportRow label="Net IDR" value={<MaskedAmount amount={report.netIdr} className="font-bold text-green-700 text-lg" />} />
-            <ReportRow label="Total Transaksi" value={<span className="font-semibold">{report.transactionCount}</span>} />
-          </div>
+            <ReportRow label="Gross IDR" value={<MaskedAmount amount={report.grossIdr} className="font-bold text-fg" />} />
+            <ReportRow label="Void/Refund IDR" value={<MaskedAmount amount={report.voidRefundIdr} className="font-bold text-destructive" />} />
+            <ReportRow label="Net IDR" value={<MaskedAmount amount={report.netIdr} className="font-extrabold text-success text-lg" />} />
+            <ReportRow label="Total Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
+          </SectionCard>
 
           {report.dailyBreakdown.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Per Hari</p>
+            <SectionCard>
+              <SectionLabel>Per Hari</SectionLabel>
               {report.dailyBreakdown.map((day) => (
-                <div key={day.date} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
+                <div key={day.date} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{day.date}</p>
-                    <p className="text-xs text-gray-400">{day.count} transaksi</p>
+                    <p className="text-sm font-bold text-fg">{day.date}</p>
+                    <p className="text-xs text-muted-fg">{day.count} transaksi</p>
                   </div>
-                  <MaskedAmount amount={day.netIdr} className="text-sm font-semibold text-gray-800" />
+                  <MaskedAmount amount={day.netIdr} className="text-sm font-bold text-fg" />
                 </div>
               ))}
-            </div>
+            </SectionCard>
           )}
         </>
       )}
@@ -438,33 +474,32 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
   }
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <label className="text-xs text-gray-500 font-medium block mb-1">Event</label>
-        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+    <div className="space-y-3">
+      <SectionCard>
+        <SectionLabel>Event</SectionLabel>
+        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={selectCls()}>
           <option value="">-- Pilih Event --</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>{ev.name} ({ev.status})</option>
           ))}
         </select>
-      </div>
+      </SectionCard>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Memuat…</p>}
-      {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+      {loading && <p className="text-sm text-muted-fg text-center py-6">Memuat…</p>}
+      {error && <p className="text-sm text-destructive text-center">{error}</p>}
       {!loading && report && (
         <>
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Settlement — {report.eventName}</p>
+          <SectionCard>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <SectionLabel>Settlement — {report.eventName}</SectionLabel>
               <div className="flex gap-2">
-                <button onClick={() => downloadCsv(buildSettlementCsv(report), `settlement-${selectedEventId.slice(0, 8)}.csv`)}
-                  className="text-xs text-blue-600 border border-blue-300 rounded-lg px-3 py-1 hover:bg-blue-50 transition">
-                  CSV
-                </button>
+                <CsvButton onClick={() => downloadCsv(buildSettlementCsv(report), `settlement-${selectedEventId.slice(0, 8)}.csv`)} />
                 {userRole === "admin" && !report.settledAt && events.find((e) => e.id === selectedEventId)?.status === "closed" && (
-                  <button onClick={handleSettle} disabled={settling}
-                    className="text-xs bg-green-600 text-white rounded-lg px-3 py-1 disabled:opacity-50">
+                  <button
+                    onClick={handleSettle}
+                    disabled={settling}
+                    className="text-xs font-bold bg-success text-white rounded-lg px-3 py-1 disabled:opacity-50 hover:opacity-90 transition"
+                  >
                     {settling ? "Mengunci…" : "Kunci Settlement"}
                   </button>
                 )}
@@ -472,29 +507,29 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
             </div>
 
             {report.settledAt && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
+              <div className="bg-success bg-opacity-10 border border-success border-opacity-30 rounded-xl px-3 py-2 text-xs font-bold text-success">
                 SETTLED — {new Date(report.settledAt * 1000).toLocaleString("id-ID")}
               </div>
             )}
 
-            <ReportRow label="Gross Sales" value={<MaskedAmount amount={report.grandTotalSalesIdr} className="font-bold text-gray-800" />} />
-            <ReportRow label="Total Void/Refund" value={<MaskedAmount amount={report.grandTotalVoidsIdr} className="font-semibold text-red-600" />} />
-            <ReportRow label="Net" value={<MaskedAmount amount={report.netIdr} className="font-bold text-green-700 text-lg" />} />
-          </div>
+            <ReportRow label="Gross Sales" value={<MaskedAmount amount={report.grandTotalSalesIdr} className="font-bold text-fg" />} />
+            <ReportRow label="Total Void/Refund" value={<MaskedAmount amount={report.grandTotalVoidsIdr} className="font-bold text-destructive" />} />
+            <ReportRow label="Net" value={<MaskedAmount amount={report.netIdr} className="font-extrabold text-success text-lg" />} />
+          </SectionCard>
 
           {report.breakdown.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Payout per Pemilik</p>
+            <SectionCard>
+              <SectionLabel>Payout per Pemilik</SectionLabel>
               {report.breakdown.map((row) => (
-                <div key={row.ownerId} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                <div key={row.ownerId} className="flex justify-between items-center py-2 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">{row.ownerName}</p>
-                    <p className="text-xs text-gray-400">{row.itemsSold} kartu terjual</p>
+                    <p className="text-sm font-bold text-fg">{row.ownerName}</p>
+                    <p className="text-xs text-muted-fg">{row.itemsSold} kartu terjual</p>
                   </div>
-                  <MaskedAmount amount={row.totalPayoutIdr} className="text-sm font-bold text-gray-800" />
+                  <MaskedAmount amount={row.totalPayoutIdr} className="text-sm font-extrabold text-fg" />
                 </div>
               ))}
-            </div>
+            </SectionCard>
           )}
         </>
       )}
@@ -534,35 +569,34 @@ function InventoryTab({ events }: { events: IdbEvent[] }) {
   useEffect(() => { if (selectedEventId) load(); }, [selectedEventId, load]);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <label className="text-xs text-gray-500 font-medium block mb-1">Event</label>
-        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+    <div className="space-y-3">
+      <SectionCard>
+        <SectionLabel>Event</SectionLabel>
+        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={selectCls()}>
           <option value="">-- Pilih Event --</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>{ev.name} ({ev.status})</option>
           ))}
         </select>
-      </div>
+      </SectionCard>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-8">Memuat…</p>}
-      {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+      {loading && <p className="text-sm text-muted-fg text-center py-6">Memuat…</p>}
+      {error && <p className="text-sm text-destructive text-center">{error}</p>}
       {!loading && report && (
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Nilai Inventori</p>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+        <SectionCard>
+          <SectionLabel>Nilai Inventori</SectionLabel>
+          <div className="grid grid-cols-2 gap-2 mt-1">
             <Stat label="Total Kartu" value={String(report.totalCards)} />
             <Stat label="Tersedia" value={String(report.availableCount)} />
             <Stat label="Ditahan" value={String(report.heldCount)} />
             <Stat label="Terjual" value={String(report.soldCount)} />
           </div>
-          <div className="pt-2 space-y-2 border-t border-gray-100">
-            <ReportRow label="Nilai Tersedia" value={<MaskedAmount amount={report.availableValueIdr} className="font-bold text-green-700" />} />
-            <ReportRow label="Nilai Ditahan" value={<MaskedAmount amount={report.heldValueIdr} className="font-semibold text-yellow-700" />} />
-            <ReportRow label="Total Nilai Listed" value={<MaskedAmount amount={report.totalListedValueIdr} className="font-bold text-gray-800 text-lg" />} />
+          <div className="pt-2 space-y-1 border-t border-border mt-2">
+            <ReportRow label="Nilai Tersedia" value={<MaskedAmount amount={report.availableValueIdr} className="font-bold text-success" />} />
+            <ReportRow label="Nilai Ditahan" value={<MaskedAmount amount={report.heldValueIdr} className="font-bold text-warning" />} />
+            <ReportRow label="Total Nilai Listed" value={<MaskedAmount amount={report.totalListedValueIdr} className="font-extrabold text-fg text-lg" />} />
           </div>
-        </div>
+        </SectionCard>
       )}
     </div>
   );
@@ -590,25 +624,23 @@ export function ReportsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button onClick={() => navigate("/dashboard")} className="text-sm font-medium opacity-80 hover:opacity-100">
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Laporan / Reports</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="Laporan"
+        back
+        onBack={() => navigate("/dashboard")}
+      />
 
       {/* Tab bar */}
-      <div className="bg-white border-b border-gray-200 flex shrink-0">
+      <div className="bg-card border-b border-border flex shrink-0">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 text-sm font-medium py-3 transition ${
+            className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 ${
               tab === t.id
-                ? "text-blue-700 border-b-2 border-blue-700"
-                : "text-gray-500 hover:text-gray-700"
+                ? "text-primary border-primary"
+                : "text-muted-fg border-transparent hover:text-fg"
             }`}
           >
             {t.label}
@@ -622,26 +654,6 @@ export function ReportsPage() {
         {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
         {tab === "inventory" && <InventoryTab events={events} />}
       </div>
-    </div>
-  );
-}
-
-// ── Shared components ──────────────────────────────────────────────────────
-
-function ReportRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      {value}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-gray-50 rounded-lg px-3 py-2">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-base font-bold text-gray-800">{value}</p>
     </div>
   );
 }
