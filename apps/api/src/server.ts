@@ -25,7 +25,7 @@ import { auditLogRoutes } from "./routes/audit-log.js";
 import { overrideRoutes } from "./routes/overrides.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 
-const PORT = parseInt(process.env.PORT ?? "3000", 10);
+const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
 const DB_PATH = process.env.DATABASE_PATH ?? "kolektapos.db";
 
