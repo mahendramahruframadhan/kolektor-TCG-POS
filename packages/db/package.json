@@ -2,5 +2,27 @@
   "name": "@kolektapos/db",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./seed": "./src/seed.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "drizzle-orm": "^0.38.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
 }
