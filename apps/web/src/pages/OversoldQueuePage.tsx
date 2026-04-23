@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -47,9 +48,7 @@ export function OversoldQueuePage() {
         {!isLoading && (!oversoldCards || oversoldCards.length === 0) && (
           <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-3">
             <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
-              <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+              <Check className="w-8 h-8 text-success" />
             </div>
             <p className="text-fg font-bold">Tidak ada kartu oversold saat ini.</p>
           </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Users, Calendar, AlertTriangle, DollarSign, type LucideIcon } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -139,11 +140,11 @@ export function AdminPage() {
     setSettings((prev) => ({ ...prev, [key]: newValue }));
   }
 
-  const adminLinks = [
-    { to: "/admin/users", emoji: "👥", label: "Kelola Pengguna", color: "text-primary" },
-    { to: "/admin/events", emoji: "📅", label: "Kelola Event", color: "text-primary" },
-    { to: "/admin/oversold", emoji: "🚨", label: "Antrian Oversold", color: "text-destructive" },
-    { to: "/admin/cash-reconciliation", emoji: "💰", label: "Rekonsiliasi Kas", color: "text-success" },
+  const adminLinks: { to: string; Icon: LucideIcon; label: string }[] = [
+    { to: "/admin/users",                 Icon: Users,          label: "Kelola Pengguna" },
+    { to: "/admin/events",                Icon: Calendar,       label: "Kelola Event" },
+    { to: "/admin/oversold",              Icon: AlertTriangle,  label: "Antrian Oversold" },
+    { to: "/admin/cash-reconciliation",   Icon: DollarSign,     label: "Rekonsiliasi Kas" },
   ];
 
   return (
@@ -163,7 +164,7 @@ export function AdminPage() {
                 to={a.to}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted hover:bg-border text-center text-sm font-bold text-fg transition active:scale-[0.97]"
               >
-                <span className="text-2xl">{a.emoji}</span>
+                <a.Icon className="w-6 h-6" />
                 {a.label}
               </Link>
             ))}

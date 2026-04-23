@@ -1,6 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
+import {
+  ShoppingCart, Package, Plus, BarChart2,
+  Settings, Users, Calendar, DollarSign,
+  type LucideIcon,
+} from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
@@ -64,18 +69,18 @@ export function DashboardPage() {
     navigate("/login");
   }
 
-  const quickActions = [
-    { to: "/pos", emoji: "🛒", label: "Mulai Kasir", primary: true },
-    { to: "/inventory", emoji: "📦", label: "Inventaris", primary: false },
-    { to: "/intake", emoji: "➕", label: "Intake Kartu", primary: false },
-    { to: "/reports", emoji: "📊", label: "Laporan", primary: false },
+  const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
+    { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
+    { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
+    { to: "/intake",    Icon: Plus,         label: "Intake Kartu",primary: false },
+    { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 
-  const adminActions = [
-    { to: "/admin", emoji: "⚙️", label: "Admin" },
-    { to: "/admin/users", emoji: "👥", label: "Pengguna" },
-    { to: "/admin/events", emoji: "📅", label: "Event" },
-    { to: "/admin/cash-reconciliation", emoji: "💰", label: "Rekonsiliasi" },
+  const adminActions: { to: string; Icon: LucideIcon; label: string }[] = [
+    { to: "/admin",                       Icon: Settings,     label: "Admin" },
+    { to: "/admin/users",                 Icon: Users,        label: "Pengguna" },
+    { to: "/admin/events",                Icon: Calendar,     label: "Event" },
+    { to: "/admin/cash-reconciliation",   Icon: DollarSign,   label: "Rekonsiliasi" },
   ];
 
   return (
@@ -153,7 +158,7 @@ export function DashboardPage() {
                   : "bg-card border border-border text-fg hover:bg-muted"
               }`}
             >
-              <span className="text-2xl">{a.emoji}</span>
+              <a.Icon className="w-6 h-6" />
               {a.label}
             </Link>
           ))}
@@ -172,7 +177,7 @@ export function DashboardPage() {
                   to={a.to}
                   className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border text-fg text-sm font-bold text-center hover:bg-muted transition active:scale-[0.97]"
                 >
-                  <span className="text-2xl">{a.emoji}</span>
+                  <a.Icon className="w-6 h-6" />
                   {a.label}
                 </Link>
               ))}

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import * as XLSX from "xlsx";
 import { v4 as uuidv4 } from "uuid";
@@ -359,9 +360,7 @@ export function BulkImportPage() {
         {done && (
           <div className="bg-card rounded-2xl border border-border p-6 space-y-4 text-center">
             <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
-              <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+              <Check className="w-8 h-8 text-success" />
             </div>
             <div>
               <p className="font-bold text-fg">Import selesai</p>

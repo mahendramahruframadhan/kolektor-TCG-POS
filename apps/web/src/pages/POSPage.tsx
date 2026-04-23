@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { X, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
@@ -312,9 +313,7 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
         <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
-          <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path d="M20 6L9 17l-5-5" />
-          </svg>
+          <Check className="w-8 h-8 text-success" />
         </div>
         <div>
           <h2 className="text-xl font-extrabold text-fg">Pembayaran Berhasil</h2>
@@ -822,17 +821,7 @@ export function POSPage() {
                       className="text-border hover:text-destructive transition ml-1 shrink-0"
                       aria-label="Hapus dari keranjang"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
+                      <X className="w-4 h-4" />
                     </button>
                   </li>
                 );
