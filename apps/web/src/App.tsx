@@ -15,6 +15,9 @@ import { EventsAdminPage } from "./pages/EventsAdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
+import { DocsPage } from "./pages/DocsPage.js";
+import { QRLabelPage } from "./pages/QRLabelPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -123,6 +126,23 @@ export function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/change-password"
+            element={
+              <RequireAuth>
+                <ChangePasswordPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/labels"
+            element={
+              <RequireAuth>
+                <QRLabelPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/docs" element={<DocsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
