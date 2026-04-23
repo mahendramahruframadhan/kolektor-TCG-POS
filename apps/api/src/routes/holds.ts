@@ -3,12 +3,13 @@ import { eq, isNull } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards, holds } from "@kolektapos/db/schema";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, makeRequireHoldOwnerOrAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
 export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
+  const requireHoldOwnerOrAdmin = makeRequireHoldOwnerOrAdmin(db);
 
   // POST /holds — create a hold on a card
   app.post("/holds", { preHandler: requireAuth }, async (request, reply) => {
@@ -66,7 +67,7 @@ export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
   // DELETE /holds/:id — release a hold manually
   app.delete(
     "/holds/:id",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireHoldOwnerOrAdmin] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
 

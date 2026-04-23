@@ -15,7 +15,7 @@ import {
   AddCartItemSchema,
   PayCartSchema,
 } from "@kolektapos/types";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, makeRequireCartOwnerOrAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -36,6 +36,7 @@ function getCartIdleTtl(db: Db): number {
 
 export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
+  const requireCartOwnerOrAdmin = makeRequireCartOwnerOrAdmin(db);
 
   // POST /carts — create a new cart
   app.post("/carts", { preHandler: requireAuth }, async (request, reply) => {
@@ -92,7 +93,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/items — add card to cart
   app.post(
     "/carts/:id/items",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
       const body = AddCartItemSchema.safeParse(request.body);
@@ -234,7 +235,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // DELETE /carts/:id/items/:cardId — remove card from cart and release lock
   app.delete(
     "/carts/:id/items/:cardId",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId, cardId } = request.params as {
         id: string;
@@ -291,7 +292,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/pay — complete cart and create transaction
   app.post(
     "/carts/:id/pay",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
       const body = PayCartSchema.safeParse(request.body);
@@ -458,7 +459,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/abandon — abandon cart and release all locks
   app.post(
     "/carts/:id/abandon",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
 

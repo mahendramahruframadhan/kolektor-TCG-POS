@@ -4,7 +4,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards } from "@kolektapos/db/schema";
 import { CreateCardSchema, UpdateCardSchema } from "@kolektapos/types";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -64,7 +64,7 @@ export async function cardRoutes(app: FastifyInstance, opts: { db: Db }) {
   // PATCH /cards/:id — update card (optimistic concurrency via version)
   app.patch(
     "/cards/:id",
-    { preHandler: requireAuth },
+    { preHandler: requireAdmin },
     async (request, reply) => {
       const { id } = request.params as { id: string };
       const body = UpdateCardSchema.safeParse(request.body);

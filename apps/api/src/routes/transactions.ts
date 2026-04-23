@@ -3,7 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards, transactions, transactionItems } from "@kolektapos/db/schema";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -62,7 +62,7 @@ export async function transactionRoutes(
   // POST /transactions/:id/void — void a sale transaction
   app.post(
     "/transactions/:id/void",
-    { preHandler: requireAuth },
+    { preHandler: requireAdmin },
     async (request, reply) => {
       return handleVoidRefund(app, db, request, reply, "void");
     }
@@ -71,7 +71,7 @@ export async function transactionRoutes(
   // POST /transactions/:id/refund — refund a sale transaction
   app.post(
     "/transactions/:id/refund",
-    { preHandler: requireAuth },
+    { preHandler: requireAdmin },
     async (request, reply) => {
       return handleVoidRefund(app, db, request, reply, "refund");
     }
