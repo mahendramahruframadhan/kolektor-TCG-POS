@@ -20,10 +20,34 @@ export function OversoldQueuePage() {
     refetchInterval: 30000,
   });
 
-  async function handleVoid(transactionId: string, reason: string) {
+  async function handleVoid(cardId: string, reason: string) {
     setError(null);
     try {
-      await api.transactions.void(transactionId, { reason, clientId: crypto.randomUUID() });
+      const items = await idb.transactionItems.where("cardId").equals(cardId).toArray();
+      if (items.length === 0) {
+        setError("Tidak ada transaksi ditemukan untuk kartu ini.");
+        return;
+      }
+      const txIds = items.map((i) => i.transactionId);
+      const txs = await idb.transactions.bulkGet(txIds);
+      const presentTxs = txs.filter((t): t is NonNullable<typeof t> => !!t);
+      const sales = presentTxs.filter((t) => t.kind === "sale");
+      if (sales.length === 0) {
+        setError("Tidak ada transaksi 'sale' yang bisa di-void.");
+        return;
+      }
+      const voidedParentIds = new Set(
+        presentTxs
+          .filter((t) => t.kind === "void" && !!t.parentTransactionId)
+          .map((t) => t.parentTransactionId as string)
+      );
+      const openSales = sales.filter((s) => !voidedParentIds.has(s.id));
+      if (openSales.length === 0) {
+        setError("Semua transaksi untuk kartu ini sudah di-void.");
+        return;
+      }
+      const target = openSales.reduce((a, b) => ((a.createdAt ?? 0) >= (b.createdAt ?? 0) ? a : b));
+      await api.transactions.void(target.id, { reason, clientId: crypto.randomUUID() });
       await queryClient.invalidateQueries({ queryKey: ["oversold-cards"] });
       setVoidingId(null);
       setVoidReason("");
