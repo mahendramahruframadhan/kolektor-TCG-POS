@@ -30,11 +30,11 @@ export function LoginPage() {
   }
 
   const inputCls =
-    "w-full h-12 border border-border rounded-xl px-4 text-sm font-medium text-fg bg-card focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition placeholder:text-muted-fg";
+    "w-full h-12 border border-border rounded-xl px-4 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition placeholder:text-muted-fg";
 
   return (
-    // bg-surface matches the light lavender background of hero.webp
-    <div className="min-h-screen bg-surface flex flex-col overflow-hidden">
+    // bg-white matches the pure-white background of hero.webp
+    <div className="min-h-screen bg-white flex flex-col overflow-hidden">
 
       {/* ── Top bar: back button left + logo centered ── */}
       <div className="relative flex items-center justify-center h-14 px-4 shrink-0">
