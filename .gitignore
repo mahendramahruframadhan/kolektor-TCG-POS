@@ -16,6 +16,8 @@ build
 *.sqlite-shm
 storage/
 
+scratch/
+
 .DS_Store
 .vscode/*
 !.vscode/settings.json
