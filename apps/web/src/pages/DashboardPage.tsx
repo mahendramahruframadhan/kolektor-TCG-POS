@@ -32,7 +32,7 @@ function useDashboardStats(eventId: string | undefined) {
         .reduce((s, t) => s + t.totalIdr, 0);
       const voids = todayTxs
         .filter((t) => t.kind === "void" || t.kind === "refund")
-        .reduce((s, t) => s + t.totalIdr, 0);
+        .reduce((s, t) => s + Math.abs(t.totalIdr), 0);
 
       return { gross, net: gross - voids, count: todayTxs.filter((t) => t.kind === "sale").length };
     },

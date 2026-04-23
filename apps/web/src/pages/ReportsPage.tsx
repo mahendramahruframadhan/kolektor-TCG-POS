@@ -221,7 +221,7 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
       const voidRefundTxs = dayTxs.filter((t) => t.kind === "void" || t.kind === "refund");
 
       const gross = saleTxs.reduce((s, t) => s + t.totalIdr, 0);
-      const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + t.totalIdr, 0);
+      const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + Math.abs(t.totalIdr), 0);
       const net = gross - voidRefundAmount;
 
       const channels = await idb.paymentChannels.toArray();
