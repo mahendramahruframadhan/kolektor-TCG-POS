@@ -90,6 +90,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    update: (id: string, body: unknown) =>
+      request<unknown>(`/cards/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   holds: {
     create: (body: unknown) =>

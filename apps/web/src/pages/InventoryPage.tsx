@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search, Camera, Award } from "lucide-react";
+import { X, Search, Camera, Award, Pencil } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { CardEditForm } from "../components/CardEditForm.js";
 import type { IdbCard } from "../lib/db.js";
 
 // ── Status badge ───────────────────────────────────────────────────────────
@@ -51,6 +52,9 @@ function CardDetail({
   ownerName: string;
   onClose: () => void;
 }) {
+  const user = useAuthStore((s) => s.user);
+  const [editing, setEditing] = useState(false);
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50">
       <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -65,16 +69,35 @@ function CardDetail({
             <p className="font-bold text-fg text-lg leading-tight">{card.title}</p>
             <p className="text-xs text-muted-fg font-mono mt-0.5">{card.shortId}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
-            aria-label="Tutup"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {user?.role === "admin" && !editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
+                aria-label="Edit kartu"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
+              aria-label="Tutup"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <StatusBadge status={card.status} />
+        {editing ? (
+          <CardEditForm
+            card={card}
+            onSaved={() => { setEditing(false); onClose(); }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <StatusBadge status={card.status} />
 
         {/* Photo */}
         {card.photoPath && (
@@ -144,12 +167,14 @@ function CardDetail({
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
-        >
-          Tutup
-        </button>
+            <button
+              onClick={onClose}
+              className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
+            >
+              Tutup
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
