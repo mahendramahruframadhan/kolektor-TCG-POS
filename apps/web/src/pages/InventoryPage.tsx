@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search, Camera, Award, Pencil } from "lucide-react";
+import { X, Search, Camera, Award, Pencil, RotateCcw } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
+import { api } from "../lib/api.js";
 import type { IdbCard } from "../lib/db.js";
 
 // ── Status badge ───────────────────────────────────────────────────────────
@@ -167,6 +168,10 @@ function CardDetail({
           )}
         </div>
 
+        {user?.role === "admin" && card.status === "available" && (
+          <ReturnCardButton card={card} onReturned={onClose} />
+        )}
+
             <button
               onClick={onClose}
               className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
@@ -186,6 +191,65 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-sm text-muted-fg shrink-0">{label}</span>
       <span className="text-sm font-semibold text-fg text-right">{value}</span>
     </div>
+  );
+}
+
+// ── Return card button ─────────────────────────────────────────────────────
+
+function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleReturn() {
+    setBusy(true);
+    try {
+      await api.cards.update(card.id, {
+        status: "returned",
+        version: card.version,
+      });
+      await idb.cards.update(card.id, { status: "returned" });
+      onReturned();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Gagal mengembalikan kartu.");
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  if (confirming) {
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-muted-fg text-center">
+          Yakin ingin mengembalikan kartu ini ke pemilik?
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setConfirming(false)}
+            className="flex-1 h-10 border border-border text-fg font-bold rounded-xl hover:bg-muted text-xs transition"
+          >
+            Batal
+          </button>
+          <button
+            onClick={handleReturn}
+            disabled={busy}
+            className="flex-1 h-10 bg-primary text-primary-fg font-bold rounded-xl hover:opacity-90 text-xs transition disabled:opacity-50"
+          >
+            {busy ? "Menyimpan…" : "Kembalikan"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className="w-full h-11 border border-primary border-opacity-40 text-primary font-bold rounded-2xl hover:bg-primary hover:bg-opacity-5 text-sm transition flex items-center justify-center gap-2"
+    >
+      <RotateCcw className="w-4 h-4" />
+      Kembalikan ke Pemilik
+    </button>
   );
 }
 
