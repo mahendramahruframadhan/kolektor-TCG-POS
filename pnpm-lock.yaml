@@ -50,6 +50,9 @@ importers:
       '@kolektapos/types':
         specifier: workspace:*
         version: link:../../packages/types
+      archiver:
+        specifier: ^7.0.1
+        version: 7.0.1
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.3
@@ -81,9 +84,6 @@ importers:
       '@types/node-cron':
         specifier: ^3.0.11
         version: 3.0.11
-      archiver:
-        specifier: ^7.0.1
-        version: 7.0.1
       tsx:
         specifier: ^4.19.2
         version: 4.21.0

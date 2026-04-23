@@ -16,6 +16,7 @@
     "@fastify/session": "^11.0.1",
     "@kolektapos/db": "workspace:*",
     "@kolektapos/types": "workspace:*",
+    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^17.4.2",
@@ -28,7 +29,6 @@
     "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node-cron": "^3.0.11",
-    "archiver": "^7.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.0"
   }
