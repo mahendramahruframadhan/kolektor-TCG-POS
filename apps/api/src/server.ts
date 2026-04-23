@@ -1,4 +1,11 @@
+import { config as dotenvConfig } from "dotenv";
+import { fileURLToPath } from "url";
+import { resolve, dirname } from "path";
 import Fastify from "fastify";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenvConfig({ path: resolve(__dirname, "../../../.env") });
+dotenvConfig({ path: resolve(__dirname, "../../.env") });
 import { runMigrations, seed } from "@kolektapos/db";
 import { sessionPlugin } from "./plugins/session.js";
 import { auditPlugin } from "./plugins/audit.js";
