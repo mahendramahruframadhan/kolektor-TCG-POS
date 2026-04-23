@@ -8,7 +8,7 @@ Monorepo scaffold only; no source code yet. The PRD (`docs/01-prd.md`, v1.0, all
 
 ## Project summary
 
-KolektaPOS — private, self-hosted, single-booth POS for one group (Benny + 10 co-owners) running shared Pokémon TCG booths at Indonesian conventions. Not multi-tenant, not a product. 11 known users, one booth, one purpose.
+KolektaPOS — private, self-hosted, single-booth POS for one group (Revota + 10 co-owners) running shared TCG Sales booths at Indonesian conventions. Not multi-tenant, not a product. 11 known users, one booth, one purpose.
 
 ## Planned architecture (per PRD §12)
 

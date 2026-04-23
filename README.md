@@ -1,6 +1,6 @@
 # KolektaPOS
 
-Private, self-hosted, single-booth POS for Pokémon TCG conventions. Local-first PWA + Fastify sync server.
+Private, self-hosted, single-booth POS for TCG Sales conventions. Local-first PWA + Fastify sync server.
 
 - [`docs/01-prd.md`](docs/01-prd.md) — consolidated PRD (v1.0)
 - [`docs/02-implementation-plan.md`](docs/02-implementation-plan.md) — milestone-by-milestone build plan

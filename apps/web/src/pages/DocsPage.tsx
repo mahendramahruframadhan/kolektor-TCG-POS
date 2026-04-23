@@ -132,7 +132,7 @@ const SECTIONS: Section[] = [
       <div className="space-y-3 text-muted-fg">
         <p className="leading-relaxed">
           <strong className="text-fg">KolektaPOS</strong> adalah sistem kasir offline-first yang dirancang
-          khusus untuk booth Pokémon TCG Benny &amp; co-owners di konvensi Indonesia.
+          khusus untuk booth TCG Sales Revota &amp; co-owners di konvensi Indonesia.
         </p>
         <p className="leading-relaxed">
           Aplikasi ini berjalan sepenuhnya tanpa internet. Semua transaksi tersimpan lokal di perangkat,

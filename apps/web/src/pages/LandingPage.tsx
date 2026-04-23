@@ -22,7 +22,7 @@ export function LandingPage() {
           </span>
         </div>
         <p className="text-xs text-primary-fg opacity-50 tracking-widest uppercase font-bold mt-1">
-          Booth · Pokémon TCG
+          Booth · TCG Sales
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export function LandingPage() {
               Siap untuk berdagang!
             </h1>
             <p className="text-muted-fg text-sm mt-2 leading-relaxed">
-              Kasir offline-first untuk booth Pokémon TCG di konvensi Indonesia
+              Kasir offline-first untuk booth TCG Sales di konvensi Indonesia
             </p>
           </div>
 
@@ -65,7 +65,7 @@ export function LandingPage() {
           <div className="mt-auto">
             <button
               onClick={() => navigate("/login")}
-              className="w-full h-14 bg-accent text-accent-fg font-extrabold text-base rounded-full hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
+              className="w-full h-14 bg-accent text-accent-fg font-extrabold text-base rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
               style={{ boxShadow: "0 8px 24px hsla(265,100%,60%,0.35)" }}
             >
               Mulai →

@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: "KolektaPOS",
         short_name: "KolektaPOS",
-        description: "POS untuk booth Pokémon TCG",
+        description: "POS untuk booth TCG Sales",
         theme_color: "#1d4ed8",
         background_color: "#ffffff",
         display: "standalone",

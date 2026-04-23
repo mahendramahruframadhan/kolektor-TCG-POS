@@ -1,7 +1,7 @@
 # KolektaPOS — First Event Runbook
 
 **Version:** 1.0 — 2026-04-23  
-**Audience:** Benny + designated admins  
+**Audience:** Revota + designated admins  
 **System:** KolektaPOS (offline-first PWA + Fastify API on single VPS)
 
 ---
@@ -26,7 +26,7 @@ pm2 restart kolektapos-api   # or: systemctl restart kolektapos
 ### 1.2 Seed admin account
 On first deploy only:
 ```bash
-ADMIN_EMAIL=benny@example.com \
+ADMIN_EMAIL=Revota@example.com \
 ADMIN_PASSWORD=<secure-passphrase> \
 DATABASE_PATH=/data/kolektapos.db \
 node apps/api/dist/seed.js
@@ -216,6 +216,6 @@ If intake says "duplicate short ID":
 
 ## 9. Contacts & escalation
 
-- **Benny** — admin account, has backup files
+- **Revota** — admin account, has backup files
 - **VPS access** — SSH key required; keep credentials in password manager
 - **Issues** — file at https://github.com/thebennies/kolektapos/issues

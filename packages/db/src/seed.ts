@@ -72,7 +72,7 @@ export async function seed(db: ReturnType<typeof drizzle>) {
         id: crypto.randomUUID(),
         email: adminEmail,
         passwordHash: hashPassword(adminPassword),
-        displayName: "Benny",
+        displayName: "Revota",
         role: "admin",
       })
       .run();
