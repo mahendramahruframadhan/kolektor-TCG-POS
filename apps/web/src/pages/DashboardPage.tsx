@@ -155,6 +155,12 @@ export function DashboardPage() {
                 👥 Pengguna
               </Link>
               <Link
+                to="/admin/events"
+                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
+              >
+                📅 Event
+              </Link>
+              <Link
                 to="/admin/cash-reconciliation"
                 className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
               >

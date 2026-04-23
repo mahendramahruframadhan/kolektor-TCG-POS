@@ -11,6 +11,7 @@ import { InventoryPage } from "./pages/InventoryPage.js";
 import { ReportsPage } from "./pages/ReportsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
 import { UsersAdminPage } from "./pages/UsersAdminPage.js";
+import { EventsAdminPage } from "./pages/EventsAdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
@@ -87,6 +88,14 @@ export function App() {
             element={
               <RequireAdmin>
                 <UsersAdminPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/events"
+            element={
+              <RequireAdmin>
+                <EventsAdminPage />
               </RequireAdmin>
             }
           />

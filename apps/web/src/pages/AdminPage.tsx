@@ -196,6 +196,12 @@ export function AdminPage() {
               👥 Kelola Pengguna
             </Link>
             <Link
+              to="/admin/events"
+              className="block text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg py-2 text-sm font-semibold transition"
+            >
+              📅 Kelola Event
+            </Link>
+            <Link
               to="/admin/oversold"
               className="block text-center bg-red-50 hover:bg-red-100 text-red-700 rounded-lg py-2 text-sm font-semibold transition"
             >
