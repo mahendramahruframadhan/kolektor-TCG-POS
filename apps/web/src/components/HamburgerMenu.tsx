@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, DollarSign, LogOut,
-  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, type LucideIcon,
+  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/admin/events",              Icon: Calendar,     label: "Kelola Event",      adminOnly: true },
   { to: "/admin/oversold",            Icon: AlertTriangle,label: "Antrian Oversold",  adminOnly: true },
   { to: "/admin/cash-reconciliation", Icon: DollarSign,   label: "Rekonsiliasi Kas",  adminOnly: true },
+  { to: "/admin/audit-log",           Icon: ClipboardList,label: "Audit Log",         adminOnly: true },
 ];
 
 export function HamburgerMenu() {

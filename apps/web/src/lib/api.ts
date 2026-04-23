@@ -117,6 +117,9 @@ export const api = {
         body: JSON.stringify(body),
       }),
   },
+  auditLog: {
+    list: () => request<unknown[]>("/audit-log"),
+  },
   backup: {
     download: () => fetch("/api/backup", { credentials: "include" }),
   },
