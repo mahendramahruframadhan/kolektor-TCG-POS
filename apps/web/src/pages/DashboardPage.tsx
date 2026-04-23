@@ -69,7 +69,16 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <MobileAppBar title="KolektaPOS" />
+      <MobileAppBar
+        title="KolektaPOS"
+        logo={
+          <img
+            src="/favicon.png"
+            alt="KolektaPOS"
+            className="h-7 w-auto rounded-lg object-cover"
+          />
+        }
+      />
 
       <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* User greeting */}

@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 
 export function LandingPage() {
@@ -17,9 +16,7 @@ export function LandingPage() {
       {/* ── Top: brand header ── */}
       <div className="flex flex-col items-center justify-center pt-14 pb-10 px-6">
         <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center">
-            <ShoppingCart className="w-4 h-4 text-accent-fg" />
-          </div>
+          <img src="/favicon.png" alt="KolektaPOS" className="w-9 h-9 rounded-xl object-cover" />
           <span className="text-2xl font-extrabold text-primary-fg tracking-tight">
             KolektaPOS
           </span>
