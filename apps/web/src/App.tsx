@@ -18,6 +18,7 @@ import { BulkImportPage } from "./pages/BulkImportPage.js";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
 import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
+import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -143,6 +144,14 @@ export function App() {
             }
           />
           <Route path="/docs" element={<DocsPage />} />
+          <Route
+            path="/my-payout"
+            element={
+              <RequireAuth>
+                <MyPayoutPage />
+              </RequireAuth>
+            }
+          />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
