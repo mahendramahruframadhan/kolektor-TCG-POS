@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Receipt, ArrowLeft } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
+import { fmt } from "../lib/format.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbUser } from "../lib/db.js";
@@ -10,12 +11,6 @@ import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbUser } from "../li
 interface TxDetail {
   transaction: IdbTransaction;
   items: (IdbTransactionItem & { card?: IdbCard; ownerName?: string })[];
-}
-
-function fmt(ts: number) {
-  return new Date(ts * 1000).toLocaleString("id-ID", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 function kindLabel(kind: IdbTransaction["kind"]) {

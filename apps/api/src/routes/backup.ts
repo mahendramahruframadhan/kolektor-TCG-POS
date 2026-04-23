@@ -1,9 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { createReadStream, statSync, existsSync } from "fs";
-import { createWriteStream } from "fs";
-import { pipeline } from "stream/promises";
-import { tmpdir } from "os";
-import { join } from "path";
 import archiver from "archiver";
 import { requireAdmin } from "../plugins/auth-guard.js";
 

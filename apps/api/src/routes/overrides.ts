@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { transactions, transactionItems, users } from "@kolektapos/db/schema";
@@ -34,8 +34,10 @@ export async function overrideRoutes(app: FastifyInstance, opts: { db: Db }) {
       .limit(200)
       .all();
 
-    // Enrich with cashier names
-    const allUsers = db.select().from(users).all();
+    const cashierIds = [...new Set(items.map((i) => i.cashierId))];
+    const allUsers = cashierIds.length > 0
+      ? db.select().from(users).where(inArray(users.id, cashierIds)).all()
+      : [];
     const userMap: Record<string, string> = {};
     for (const u of allUsers) userMap[u.id] = u.displayName;
 

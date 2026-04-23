@@ -735,11 +735,13 @@ export function POSPage() {
 
     const txId = response.transaction.id;
     await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
-    for (const item of cartItems) {
-      await idb.cards.update(item.cardId, {
-        status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
-      });
-    }
+    await Promise.all(
+      cartItems.map((item) =>
+        idb.cards.update(item.cardId, {
+          status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
+        })
+      )
+    );
     setShowPayModal(false);
     setReceipt({ transactionId: txId, totalIdr, itemCount: cartItems.length });
   }
@@ -766,11 +768,13 @@ export function POSPage() {
       // Best effort — tetap lanjutkan cleanup lokal walau server gagal
     }
     try {
-      for (const item of cartItems) {
-        await idb.cards.update(item.cardId, {
-          lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
-        });
-      }
+      await Promise.all(
+        cartItems.map((item) =>
+          idb.cards.update(item.cardId, {
+            lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
+          })
+        )
+      );
     } catch {
       // Best effort
     }

@@ -1,9 +1,8 @@
 import { beforeAll } from 'vitest'
 
-beforeAll(() => {
+beforeAll(async () => {
   if (typeof globalThis.crypto === 'undefined') {
-    const { webcrypto } = require('node:crypto')
-    // @ts-ignore
-    globalThis.crypto = webcrypto
+    const { webcrypto } = await import('node:crypto')
+    globalThis.crypto = webcrypto as unknown as Crypto
   }
 })

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { api } from "../lib/api.js";
+import { fmt } from "../lib/format.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 
@@ -17,12 +18,6 @@ interface OverrideEntry {
   cashierName: string;
 }
 
-function fmt(ts: number) {
-  return new Date(ts * 1000).toLocaleString("id-ID", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
 export function OverrideHistoryPage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<OverrideEntry[]>([]);
@@ -30,17 +25,8 @@ export function OverrideHistoryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.auth
-      .me()
-      .then((user) => {
-        if (user.role !== "admin") {
-          navigate("/dashboard");
-          return;
-        }
-        loadEntries();
-      })
-      .catch(() => navigate("/login"));
-  }, [navigate]);
+    loadEntries();
+  }, []);
 
   async function loadEntries() {
     setLoading(true);

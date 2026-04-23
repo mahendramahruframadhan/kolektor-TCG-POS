@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClipboardList } from "lucide-react";
 import { api } from "../lib/api.js";
+import { fmt } from "../lib/format.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 
 interface AuditEntry {
@@ -12,16 +13,6 @@ interface AuditEntry {
   entityId: string | null;
   diffJson: string | null;
   createdAt: number;
-}
-
-function fmt(ts: number) {
-  return new Date(ts * 1000).toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function actionLabel(action: string) {
@@ -41,17 +32,8 @@ export function AuditLogPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.auth
-      .me()
-      .then((user) => {
-        if (user.role !== "admin") {
-          navigate("/dashboard");
-          return;
-        }
-        loadEntries();
-      })
-      .catch(() => navigate("/login"));
-  }, [navigate]);
+    loadEntries();
+  }, []);
 
   async function loadEntries() {
     setLoading(true);
