@@ -36,7 +36,17 @@ export const api = {
       ),
   },
   events: {
-    list: () => request<unknown[]>("/events"),
+    list: () => request<{ id: string; name: string; venue: string; startDate: string; endDate: string; status: string; version: number; createdAt: number }[]>("/events"),
+    create: (body: { name: string; venue: string; startDate: string; endDate: string; status: string }) =>
+      request<{ id: string; name: string; venue: string; startDate: string; endDate: string; status: string }>("/events", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    update: (id: string, body: { name?: string; venue?: string; startDate?: string; endDate?: string; status?: string; version: number }) =>
+      request<{ id: string; name: string; venue: string; startDate: string; endDate: string; status: string; version: number }>(`/events/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   paymentChannels: {
     list: () => request<unknown[]>("/payment-channels"),
