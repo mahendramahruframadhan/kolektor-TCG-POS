@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { api } from "../lib/api.js";
+import { fetchAndSync } from "../lib/sync.js";
 
 function useDashboardStats(eventId: string | undefined) {
   return useQuery({
@@ -38,6 +39,16 @@ function useDashboardStats(eventId: string | undefined) {
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const syncedRef = useRef(false);
+
+  // Initial pull on first mount (runs once per session mount)
+  useEffect(() => {
+    if (syncedRef.current) return;
+    syncedRef.current = true;
+    fetchAndSync().catch((err) => {
+      console.warn("[sync] Initial pull failed (offline?):", err);
+    });
+  }, []);
 
   const { data: events } = useQuery({
     queryKey: ["events"],

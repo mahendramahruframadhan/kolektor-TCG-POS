@@ -15,7 +15,7 @@ export async function auditPlugin(app: FastifyInstance, opts: { db: Db }) {
     const status = reply.statusCode;
     if (status < 200 || status >= 300) return payload;
 
-    const userId: string | undefined = (request.session as Record<string, unknown>)?.userId as string | undefined;
+    const userId: string | undefined = (request.session as unknown as Record<string, unknown>)?.userId as string | undefined;
     const url = request.url;
     const parts = url.split("/").filter(Boolean);
     const entityType = parts[1] ?? "unknown";

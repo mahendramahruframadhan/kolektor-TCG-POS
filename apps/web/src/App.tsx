@@ -5,6 +5,7 @@ import { queryClient } from "./lib/query-client.js";
 import { useAuthStore } from "./store/auth.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
+import { POSPage } from "./pages/POSPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -39,7 +40,7 @@ export function App() {
             path="/pos"
             element={
               <RequireAuth>
-                <Placeholder name="POS / Kasir" />
+                <POSPage />
               </RequireAuth>
             }
           />

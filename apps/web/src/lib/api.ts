@@ -47,4 +47,32 @@ export const api = {
   users: {
     list: () => request<unknown[]>("/users"),
   },
+  cards: {
+    byShortId: (shortId: string) =>
+      request<unknown>(`/cards/by-short-id/${shortId}`),
+    list: () => request<unknown[]>("/cards"),
+  },
+  carts: {
+    create: (body: unknown) =>
+      request<unknown>("/carts", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    addItem: (cartId: string, body: unknown) =>
+      request<unknown>(`/carts/${cartId}/items`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    removeItem: (cartId: string, cardId: string) =>
+      request<unknown>(`/carts/${cartId}/items/${cardId}`, {
+        method: "DELETE",
+      }),
+    pay: (cartId: string, body: unknown) =>
+      request<unknown>(`/carts/${cartId}/pay`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    abandon: (cartId: string) =>
+      request<unknown>(`/carts/${cartId}/abandon`, { method: "POST" }),
+  },
 };

@@ -7,6 +7,9 @@ import { userRoutes } from "./routes/users.js";
 import { eventRoutes } from "./routes/events.js";
 import { paymentChannelRoutes } from "./routes/payment-channels.js";
 import { settingsRoutes } from "./routes/settings.js";
+import { cardRoutes } from "./routes/cards.js";
+import { cartRoutes } from "./routes/carts.js";
+import { startCartSweeper } from "./jobs/cart-sweeper.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -29,6 +32,11 @@ async function build() {
   await eventRoutes(app, { db });
   await paymentChannelRoutes(app, { db });
   await settingsRoutes(app, { db });
+  await cardRoutes(app, { db });
+  await cartRoutes(app, { db });
+
+  // Start background jobs
+  startCartSweeper(db);
 
   return app;
 }
