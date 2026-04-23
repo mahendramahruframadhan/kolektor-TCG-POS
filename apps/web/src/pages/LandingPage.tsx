@@ -71,7 +71,7 @@ export function LandingPage() {
               Mulai →
             </button>
             <p className="text-center text-[11px] text-muted-fg mt-3">
-              KolektaPOS · Khusus internal
+              KolektaPOS · Revota © 2026
             </p>
           </div>
         </div>

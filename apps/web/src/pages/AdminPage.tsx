@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Users, Calendar, AlertTriangle, DollarSign, type LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -140,37 +139,11 @@ export function AdminPage() {
     setSettings((prev) => ({ ...prev, [key]: newValue }));
   }
 
-  const adminLinks: { to: string; Icon: LucideIcon; label: string }[] = [
-    { to: "/admin/users",                 Icon: Users,          label: "Kelola Pengguna" },
-    { to: "/admin/events",                Icon: Calendar,       label: "Kelola Event" },
-    { to: "/admin/oversold",              Icon: AlertTriangle,  label: "Antrian Oversold" },
-    { to: "/admin/cash-reconciliation",   Icon: DollarSign,     label: "Rekonsiliasi Kas" },
-  ];
-
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <MobileAppBar title="Admin" back onBack={() => navigate("/dashboard")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
-        {/* Navigation links */}
-        <div className="bg-card rounded-2xl border border-border p-4">
-          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-3">
-            Menu Admin
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {adminLinks.map((a) => (
-              <Link
-                key={a.to}
-                to={a.to}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted hover:bg-border text-center text-sm font-bold text-fg transition active:scale-[0.97]"
-              >
-                <a.Icon className="w-6 h-6" />
-                {a.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
         {/* Editable settings */}
         <div className="bg-card rounded-2xl border border-border p-4">
           <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-2">

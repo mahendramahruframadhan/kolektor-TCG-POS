@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, DollarSign, LogOut,
-  KeyRound, BookOpen, Tag, Wallet, type LucideIcon,
+  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -22,10 +22,11 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
-  { to: "/admin",                     Icon: Settings,  label: "Admin",        adminOnly: true },
-  { to: "/admin/users",               Icon: Users,     label: "Pengguna",     adminOnly: true },
-  { to: "/admin/events",              Icon: Calendar,  label: "Event",        adminOnly: true },
-  { to: "/admin/cash-reconciliation", Icon: DollarSign,label: "Rekonsiliasi", adminOnly: true },
+  { to: "/admin",                     Icon: Settings,     label: "Admin",             adminOnly: true },
+  { to: "/admin/users",               Icon: Users,        label: "Kelola Pengguna",   adminOnly: true },
+  { to: "/admin/events",              Icon: Calendar,     label: "Kelola Event",      adminOnly: true },
+  { to: "/admin/oversold",            Icon: AlertTriangle,label: "Antrian Oversold",  adminOnly: true },
+  { to: "/admin/cash-reconciliation", Icon: DollarSign,   label: "Rekonsiliasi Kas",  adminOnly: true },
 ];
 
 export function HamburgerMenu() {

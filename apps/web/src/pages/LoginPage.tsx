@@ -110,7 +110,7 @@ export function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-muted-fg mt-6">
-          KolektaPOS · Khusus internal
+          KolektaPOS · Revota © 2026
         </p>
       </div>
 
