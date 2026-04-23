@@ -6,6 +6,10 @@ import { useAuthStore } from "./store/auth.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { POSPage } from "./pages/POSPage.js";
+import { IntakePage } from "./pages/IntakePage.js";
+import { InventoryPage } from "./pages/InventoryPage.js";
+import { ReportsPage } from "./pages/ReportsPage.js";
+import { AdminPage } from "./pages/AdminPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -13,13 +17,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Lazy placeholder for routes built in later milestones
-function Placeholder({ name }: { name: string }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center text-gray-500">
-      <p className="text-lg">{name} — tersedia di milestone berikutnya</p>
-    </div>
-  );
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
 }
 
 export function App() {
@@ -48,7 +50,7 @@ export function App() {
             path="/inventory"
             element={
               <RequireAuth>
-                <Placeholder name="Inventaris" />
+                <InventoryPage />
               </RequireAuth>
             }
           />
@@ -56,7 +58,7 @@ export function App() {
             path="/intake"
             element={
               <RequireAuth>
-                <Placeholder name="Intake Kartu" />
+                <IntakePage />
               </RequireAuth>
             }
           />
@@ -64,8 +66,16 @@ export function App() {
             path="/reports"
             element={
               <RequireAuth>
-                <Placeholder name="Laporan" />
+                <ReportsPage />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RequireAdmin>
+                <AdminPage />
+              </RequireAdmin>
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

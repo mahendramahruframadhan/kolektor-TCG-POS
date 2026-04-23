@@ -1,8 +1,8 @@
 import cron from "node-cron";
-import { eq, and, lt, inArray } from "drizzle-orm";
+import { eq, and, lt, isNull, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
-import { cards, carts, cartItems, settings } from "@kolektapos/db/schema";
+import { cards, carts, cartItems, holds, settings } from "@kolektapos/db/schema";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -91,6 +91,37 @@ export function startCartSweeper(db: Db): cron.ScheduledTask {
       console.log(
         `[cart-sweeper] Abandoned ${idleCarts.length} idle cart(s) (TTL=${ttlMinutes}m)`
       );
+
+      // ── Expire overdue holds ────────────────────────────────────────────
+      try {
+        const expiredHolds = db
+          .select({ id: holds.id, cardId: holds.cardId })
+          .from(holds)
+          .where(and(lt(holds.expiresAt, nowSec), isNull(holds.releasedAt)))
+          .all();
+
+        if (expiredHolds.length > 0) {
+          db.transaction(() => {
+            for (const hold of expiredHolds) {
+              db.update(holds)
+                .set({ releasedAt: nowSec, releaseReason: "expired" })
+                .where(eq(holds.id, hold.id))
+                .run();
+
+              db.update(cards)
+                .set({ status: "available", updatedAt: nowSec })
+                .where(eq(cards.id, hold.cardId))
+                .run();
+            }
+          });
+
+          console.log(
+            `[cart-sweeper] Expired ${expiredHolds.length} hold(s)`
+          );
+        }
+      } catch (holdErr) {
+        console.error("[cart-sweeper] Error expiring holds:", holdErr);
+      }
     } catch (err) {
       console.error("[cart-sweeper] Error during sweep:", err);
     }

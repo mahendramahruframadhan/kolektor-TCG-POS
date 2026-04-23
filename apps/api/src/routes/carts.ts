@@ -127,6 +127,50 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
           .send({ error: "Card is locked by another cart" });
       }
 
+      // ── Floor price / discount validation ───────────────────────────────
+      const requiresAdminOverride = body.data.requiresAdminOverride ?? false;
+
+      if (card.pricingMode === "fixed") {
+        // Compute line discount % from intended vs listed/fixed price
+        const listedPrice = card.priceIdr ?? 0;
+        if (listedPrice > 0) {
+          const lineDiscountPct =
+            body.data.lineDiscountIdr > 0
+              ? Math.round((body.data.lineDiscountIdr / listedPrice) * 100)
+              : 0;
+
+          // Read max_line_discount_pct_fixed from settings
+          const settingRow = db
+            .select()
+            .from(settings)
+            .where(eq(settings.key, "max_line_discount_pct_fixed"))
+            .get();
+          let maxPct = 100; // fallback: unlimited
+          if (settingRow) {
+            try {
+              maxPct = Number(JSON.parse(settingRow.valueJson)) || 100;
+            } catch {
+              maxPct = 100;
+            }
+          }
+
+          if (lineDiscountPct > maxPct && !requiresAdminOverride) {
+            return reply.status(422).send({
+              error: "Diskon melebihi batas",
+              maxPct,
+            });
+          }
+        }
+      } else if (card.pricingMode === "negotiable") {
+        const bottomPrice = card.bottomPriceIdr ?? 0;
+        if (bottomPrice > 0 && body.data.intendedPriceIdr < bottomPrice && !requiresAdminOverride) {
+          return reply.status(422).send({
+            error: "Di bawah harga minimum (bottom price)",
+            bottomPriceIdr: bottomPrice,
+          });
+        }
+      }
+
       const nowSec = Math.floor(Date.now() / 1000);
       const cashierUserId = request.session.userId!;
 

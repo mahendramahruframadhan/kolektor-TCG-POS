@@ -306,6 +306,10 @@ export function POSPage() {
     itemCount: number;
   } | null>(null);
 
+  // Negotiable pricing state
+  const [finalPriceInput, setFinalPriceInput] = useState("");
+  const [belowBottomError, setBelowBottomError] = useState(false);
+
   const scanRef = useRef<HTMLInputElement>(null);
 
   // Keep scan input focused
@@ -359,6 +363,9 @@ export function POSPage() {
         setScannedCard(null);
       } else {
         setScannedCard(card);
+        // Reset negotiable price inputs for this new card
+        setFinalPriceInput("");
+        setBelowBottomError(false);
       }
     } finally {
       setScanning(false);
@@ -414,23 +421,61 @@ export function POSPage() {
     try {
       const cartId = await ensureCart();
 
-      const priceIdr = scannedCard.listedPriceIdr ?? scannedCard.priceIdr ?? 0;
+      let intendedPriceIdr: number;
+      let lineDiscountIdr: number;
+      let lineDiscountPct: number;
+      let requiresAdminOverride = false;
+
+      if (scannedCard.pricingMode === "negotiable") {
+        const finalPrice = parseInt(finalPriceInput, 10);
+        const listed = scannedCard.listedPriceIdr ?? 0;
+        const bottom = scannedCard.bottomPriceIdr ?? 0;
+
+        if (isNaN(finalPrice) || finalPrice <= 0) {
+          setAddError("Masukkan harga final yang valid.");
+          setAddingCard(false);
+          return;
+        }
+
+        if (finalPrice < bottom) {
+          // Admin role can bypass; cashier cannot
+          if (user?.role !== "admin") {
+            setBelowBottomError(true);
+            setAddError("Harga final di bawah harga minimum. Hubungi admin untuk override.");
+            setAddingCard(false);
+            return;
+          }
+          requiresAdminOverride = true;
+        }
+
+        intendedPriceIdr = finalPrice;
+        lineDiscountIdr = Math.max(0, listed - finalPrice);
+        lineDiscountPct =
+          listed > 0
+            ? Math.round(((listed - finalPrice) / listed) * 100)
+            : 0;
+      } else {
+        intendedPriceIdr = scannedCard.priceIdr ?? 0;
+        lineDiscountIdr = 0;
+        lineDiscountPct = 0;
+      }
 
       const response = (await api.carts.addItem(cartId, {
         cardId: scannedCard.id,
-        intendedPriceIdr: priceIdr,
-        lineDiscountIdr: 0,
-        lineDiscountPct: 0,
+        intendedPriceIdr,
+        lineDiscountIdr,
+        lineDiscountPct,
+        requiresAdminOverride,
       })) as { id: string };
 
       const newItem: IdbCartItem = {
         id: response.id,
         cartId,
         cardId: scannedCard.id,
-        intendedPriceIdr: priceIdr,
-        lineDiscountIdr: 0,
-        lineDiscountPct: 0,
-        requiresAdminOverride: false,
+        intendedPriceIdr,
+        lineDiscountIdr,
+        lineDiscountPct,
+        requiresAdminOverride,
       };
 
       await idb.cartItems.put(newItem);
@@ -452,6 +497,8 @@ export function POSPage() {
         },
       }));
       setScannedCard(null);
+      setFinalPriceInput("");
+      setBelowBottomError(false);
       refocusScan();
     } catch (err: unknown) {
       setAddError(err instanceof Error ? err.message : "Gagal menambah kartu.");
@@ -535,6 +582,8 @@ export function POSPage() {
     setCartCards({});
     setScanError(null);
     setAddError(null);
+    setFinalPriceInput("");
+    setBelowBottomError(false);
     refocusScan();
   }
 
@@ -636,13 +685,79 @@ export function POSPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Harga</span>
-              <MaskedAmount
-                amount={scannedCard.listedPriceIdr ?? scannedCard.priceIdr}
-                className="text-lg font-bold text-gray-900"
-              />
-            </div>
+            {scannedCard.pricingMode === "negotiable" ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Harga Tayang</span>
+                  <MaskedAmount
+                    amount={scannedCard.listedPriceIdr}
+                    className="text-lg font-bold text-gray-900"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">
+                    Harga Final (IDR)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                      Rp
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={finalPriceInput}
+                      onChange={(e) => {
+                        setFinalPriceInput(e.target.value);
+                        setBelowBottomError(false);
+                        // Validate against bottom price live
+                        const val = parseInt(e.target.value, 10);
+                        const bottom = scannedCard.bottomPriceIdr ?? 0;
+                        if (!isNaN(val) && val < bottom) {
+                          setBelowBottomError(true);
+                        }
+                      }}
+                      placeholder="0"
+                      className={`w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        belowBottomError ? "border-red-400" : "border-gray-300"
+                      }`}
+                    />
+                  </div>
+                  {belowBottomError && (
+                    <p className="text-xs text-red-600 font-semibold">
+                      Di bawah harga minimum
+                      {user?.role === "admin"
+                        ? " — admin override diizinkan."
+                        : " — tidak dapat ditambahkan ke keranjang."}
+                    </p>
+                  )}
+                  {finalPriceInput &&
+                    !isNaN(parseInt(finalPriceInput, 10)) &&
+                    parseInt(finalPriceInput, 10) > 0 &&
+                    scannedCard.listedPriceIdr &&
+                    parseInt(finalPriceInput, 10) < scannedCard.listedPriceIdr && (
+                      <p className="text-xs text-gray-500">
+                        Diskon:{" "}
+                        {Math.round(
+                          ((scannedCard.listedPriceIdr -
+                            parseInt(finalPriceInput, 10)) /
+                            scannedCard.listedPriceIdr) *
+                            100
+                        )}
+                        %
+                      </p>
+                    )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Harga</span>
+                <MaskedAmount
+                  amount={scannedCard.priceIdr}
+                  className="text-lg font-bold text-gray-900"
+                />
+              </div>
+            )}
 
             {addError && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
@@ -654,6 +769,8 @@ export function POSPage() {
               <button
                 onClick={() => {
                   setScannedCard(null);
+                  setFinalPriceInput("");
+                  setBelowBottomError(false);
                   refocusScan();
                 }}
                 className="flex-1 border border-gray-300 text-gray-600 font-medium py-2 rounded-xl hover:bg-gray-50 text-sm transition"
@@ -670,7 +787,10 @@ export function POSPage() {
               ) : cardIsAvailableToAdd ? (
                 <button
                   onClick={handleAddToCart}
-                  disabled={addingCard}
+                  disabled={
+                    addingCard ||
+                    (belowBottomError && user?.role !== "admin")
+                  }
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl text-sm transition disabled:opacity-50"
                 >
                   {addingCard ? "Menambah…" : "Tambah ke Keranjang"}

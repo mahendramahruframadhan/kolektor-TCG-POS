@@ -43,6 +43,11 @@ export const api = {
   },
   settings: {
     get: () => request<Record<string, unknown>>("/settings"),
+    set: (key: string, value: unknown) =>
+      request<unknown>(`/settings/${key}`, {
+        method: "PUT",
+        body: JSON.stringify({ value }),
+      }),
   },
   users: {
     list: () => request<unknown[]>("/users"),
@@ -51,6 +56,35 @@ export const api = {
     byShortId: (shortId: string) =>
       request<unknown>(`/cards/by-short-id/${shortId}`),
     list: () => request<unknown[]>("/cards"),
+    create: (body: unknown) =>
+      request<unknown>("/cards", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+  holds: {
+    create: (body: unknown) =>
+      request<unknown>("/holds", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    release: (id: string) =>
+      request<unknown>(`/holds/${id}`, { method: "DELETE" }),
+  },
+  transactions: {
+    void: (id: string, body: unknown) =>
+      request<unknown>(`/transactions/${id}/void`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    refund: (id: string, body: unknown) =>
+      request<unknown>(`/transactions/${id}/refund`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+  backup: {
+    download: () => fetch("/api/backup", { credentials: "include" }),
   },
   carts: {
     create: (body: unknown) =>

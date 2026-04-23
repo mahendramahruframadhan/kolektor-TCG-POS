@@ -9,6 +9,10 @@ import { paymentChannelRoutes } from "./routes/payment-channels.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { cardRoutes } from "./routes/cards.js";
 import { cartRoutes } from "./routes/carts.js";
+import { holdRoutes } from "./routes/holds.js";
+import { transactionRoutes } from "./routes/transactions.js";
+import { backupRoute } from "./routes/backup.js";
+import { syncRoutes } from "./routes/sync.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -34,6 +38,10 @@ async function build() {
   await settingsRoutes(app, { db });
   await cardRoutes(app, { db });
   await cartRoutes(app, { db });
+  await holdRoutes(app, { db });
+  await transactionRoutes(app, { db });
+  await backupRoute(app, { dbPath: DB_PATH });
+  await syncRoutes(app, { db });
 
   // Start background jobs
   startCartSweeper(db);
