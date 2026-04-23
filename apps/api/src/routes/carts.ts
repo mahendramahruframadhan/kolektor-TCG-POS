@@ -176,6 +176,14 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
               maxPct,
             });
           }
+
+          // Hard floor: intendedPriceIdr must be >= listed price unless admin override.
+          if (body.data.intendedPriceIdr < listedPrice && !requiresAdminOverride) {
+            return reply.status(422).send({
+              error: "Di bawah harga tetap (fixed price)",
+              fixedPriceIdr: listedPrice,
+            });
+          }
         }
       } else if (card.pricingMode === "negotiable") {
         const bottomPrice = card.bottomPriceIdr ?? 0;
