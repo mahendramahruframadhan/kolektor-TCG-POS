@@ -6,7 +6,7 @@ export interface IdbUser {
   email: string;
   displayName: string;
   role: "admin" | "cashier";
-  version: number;
+  version?: number;
 }
 
 export interface IdbEvent {
