@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import { api } from "../lib/api.js";
 import { fetchAndSync } from "../lib/sync.js";
 
@@ -41,7 +42,6 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const syncedRef = useRef(false);
 
-  // Initial pull on first mount (runs once per session mount)
   useEffect(() => {
     if (syncedRef.current) return;
     syncedRef.current = true;
@@ -64,112 +64,131 @@ export function DashboardPage() {
     navigate("/login");
   }
 
+  const quickActions = [
+    { to: "/pos", emoji: "🛒", label: "Mulai Kasir", primary: true },
+    { to: "/inventory", emoji: "📦", label: "Inventaris", primary: false },
+    { to: "/intake", emoji: "➕", label: "Intake Kartu", primary: false },
+    { to: "/reports", emoji: "📊", label: "Laporan", primary: false },
+  ];
+
+  const adminActions = [
+    { to: "/admin", emoji: "⚙️", label: "Admin" },
+    { to: "/admin/users", emoji: "👥", label: "Pengguna" },
+    { to: "/admin/events", emoji: "📅", label: "Event" },
+    { to: "/admin/cash-reconciliation", emoji: "💰", label: "Rekonsiliasi" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between">
-        <h1 className="font-bold text-lg">KolektaPOS</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm opacity-80">{user?.displayName}</span>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="KolektaPOS"
+        right={
           <button
             onClick={handleLogout}
-            className="text-xs bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded"
+            className="text-xs font-bold text-muted-fg hover:text-fg transition"
           >
             Keluar
           </button>
-        </div>
-      </header>
+        }
+      />
 
-      <main className="max-w-xl mx-auto p-4 space-y-4">
-        {/* Active event card */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+        {/* User greeting */}
+        <div className="flex items-center gap-3 pt-1">
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+            <span className="text-sm font-bold text-primary-fg">
+              {user?.displayName?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-fg">{user?.displayName}</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-muted-fg">
+              {user?.role === "admin" ? "Admin" : "Kasir"}
+            </p>
+          </div>
+        </div>
+
+        {/* Active event */}
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1">
             Event Aktif
           </p>
           {activeEvent ? (
-            <p className="font-semibold text-gray-800">{activeEvent.name}</p>
+            <p className="font-bold text-fg">{activeEvent.name}</p>
           ) : (
-            <p className="text-gray-400 italic">Tidak ada event aktif</p>
+            <p className="text-muted-fg italic text-sm">Tidak ada event aktif</p>
           )}
         </div>
 
-        {/* Today's totals (masked) */}
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">
+        {/* Today's stats */}
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
             Hari Ini
           </p>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Total Penjualan</span>
-            <MaskedAmount amount={stats?.gross} className="text-lg font-bold text-gray-800" />
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Net (setelah void)</span>
-            <MaskedAmount amount={stats?.net} className="text-base font-semibold text-green-700" />
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Jumlah Transaksi</span>
-            <span className="text-base font-semibold text-gray-700">
-              {stats?.count ?? 0}
-            </span>
-          </div>
+          <StatRow
+            label="Total Penjualan"
+            value={<MaskedAmount amount={stats?.gross} className="text-lg font-extrabold text-fg" />}
+          />
+          <StatRow
+            label="Net (setelah void)"
+            value={<MaskedAmount amount={stats?.net} className="text-base font-bold text-success" />}
+          />
+          <StatRow
+            label="Jumlah Transaksi"
+            value={
+              <span className="text-base font-bold text-fg">{stats?.count ?? 0}</span>
+            }
+          />
         </div>
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/pos"
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 text-center font-semibold transition"
-          >
-            🛒 Mulai Kasir
-          </Link>
-          <Link
-            to="/inventory"
-            className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-          >
-            📦 Inventaris
-          </Link>
-          <Link
-            to="/intake"
-            className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-          >
-            ➕ Intake Kartu
-          </Link>
-          <Link
-            to="/reports"
-            className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-          >
-            📊 Laporan
-          </Link>
-          {user?.role === "admin" && (
-            <>
-              <Link
-                to="/admin"
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-              >
-                ⚙️ Admin
-              </Link>
-              <Link
-                to="/admin/users"
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-              >
-                👥 Pengguna
-              </Link>
-              <Link
-                to="/admin/events"
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-              >
-                📅 Event
-              </Link>
-              <Link
-                to="/admin/cash-reconciliation"
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-              >
-                💰 Rekonsiliasi
-              </Link>
-            </>
-          )}
+          {quickActions.map((a) => (
+            <Link
+              key={a.to}
+              to={a.to}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl font-bold text-sm text-center transition active:scale-[0.97] ${
+                a.primary
+                  ? "bg-primary text-primary-fg hover:opacity-90"
+                  : "bg-card border border-border text-fg hover:bg-muted"
+              }`}
+            >
+              <span className="text-2xl">{a.emoji}</span>
+              {a.label}
+            </Link>
+          ))}
         </div>
+
+        {/* Admin actions */}
+        {user?.role === "admin" && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg px-1">
+              Admin
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {adminActions.map((a) => (
+                <Link
+                  key={a.to}
+                  to={a.to}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border text-fg text-sm font-bold text-center hover:bg-muted transition active:scale-[0.97]"
+                >
+                  <span className="text-2xl">{a.emoji}</span>
+                  {a.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
+    </div>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center border-b border-border pb-2.5 last:border-0 last:pb-0">
+      <span className="text-sm text-muted-fg">{label}</span>
+      {value}
     </div>
   );
 }
