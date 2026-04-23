@@ -141,12 +141,20 @@ export function DashboardPage() {
             📊 Laporan
           </Link>
           {user?.role === "admin" && (
-            <Link
-              to="/admin"
-              className="col-span-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
-            >
-              ⚙️ Admin / Pengaturan
-            </Link>
+            <>
+              <Link
+                to="/admin"
+                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
+              >
+                ⚙️ Admin
+              </Link>
+              <Link
+                to="/admin/cash-reconciliation"
+                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl p-4 text-center font-semibold transition"
+              >
+                💰 Rekonsiliasi
+              </Link>
+            </>
           )}
         </div>
       </main>

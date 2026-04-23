@@ -36,6 +36,8 @@ export const events = sqliteTable("events", {
   status: text("status", { enum: ["draft", "active", "closed"] })
     .notNull()
     .default("draft"),
+  settledAt: integer("settled_at"),
+  settledByUserId: text("settled_by_user_id").references(() => users.id),
   createdAt: integer("created_at").notNull().default(now),
   updatedAt: integer("updated_at").notNull().default(now),
   version: integer("version").notNull().default(1),

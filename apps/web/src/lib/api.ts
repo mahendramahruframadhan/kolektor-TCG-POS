@@ -86,6 +86,36 @@ export const api = {
   backup: {
     download: () => fetch("/api/backup", { credentials: "include" }),
   },
+  reports: {
+    settlement: (eventId: string) =>
+      request<unknown>(`/reports/event/${eventId}/settlement`),
+    inventoryValue: (eventId: string) =>
+      request<unknown>(`/reports/event/${eventId}/inventory-value`),
+    monthly: (year: number, month: number) =>
+      request<unknown>(`/reports/monthly?year=${year}&month=${month}`),
+    settleEvent: (eventId: string) =>
+      request<unknown>(`/events/${eventId}/settle`, { method: "POST" }),
+  },
+  cashReconciliations: {
+    list: (eventId?: string, date?: string) => {
+      const params = new URLSearchParams();
+      if (eventId) params.set("eventId", eventId);
+      if (date) params.set("date", date);
+      const qs = params.toString();
+      return request<unknown[]>(`/cash-reconciliations${qs ? `?${qs}` : ""}`);
+    },
+    create: (body: {
+      eventId: string;
+      date: string;
+      expectedCashIdr: number;
+      countedCashIdr: number;
+      notes?: string;
+    }) =>
+      request<unknown>("/cash-reconciliations", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
   sync: {
     pull: (cursor: number, deviceId: string) =>
       request<unknown>(`/sync/pull?cursor=${cursor}&deviceId=${encodeURIComponent(deviceId)}`),

@@ -13,6 +13,7 @@ import { holdRoutes } from "./routes/holds.js";
 import { transactionRoutes } from "./routes/transactions.js";
 import { backupRoute } from "./routes/backup.js";
 import { syncRoutes } from "./routes/sync.js";
+import { settlementRoutes } from "./routes/settlement.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -42,6 +43,7 @@ async function build() {
   await transactionRoutes(app, { db });
   await backupRoute(app, { dbPath: DB_PATH });
   await syncRoutes(app, { db });
+  await settlementRoutes(app, { db });
 
   // Start background jobs
   startCartSweeper(db);

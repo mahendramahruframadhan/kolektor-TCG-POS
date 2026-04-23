@@ -16,7 +16,21 @@ export interface IdbEvent {
   startDate: string;
   endDate: string;
   status: "draft" | "active" | "closed";
+  settledAt?: number;
+  settledByUserId?: string;
   version: number;
+}
+
+export interface IdbCashReconciliation {
+  id: string;
+  eventId: string;
+  date: string;
+  expectedCashIdr: number;
+  countedCashIdr: number;
+  varianceIdr: number;
+  notes: string;
+  closedByUserId?: string;
+  closedAt?: number;
 }
 
 export interface IdbPaymentChannel {
@@ -139,6 +153,7 @@ class KolektaDb extends Dexie {
   transactions!: Table<IdbTransaction>;
   transactionItems!: Table<IdbTransactionItem>;
   pendingPhotos!: Table<IdbPendingPhoto>;
+  cashReconciliations!: Table<IdbCashReconciliation>;
 
   constructor() {
     super("kolektapos");
@@ -153,6 +168,9 @@ class KolektaDb extends Dexie {
       transactions: "id, clientId, eventId, cashierUserId, kind",
       transactionItems: "id, transactionId, cardId, ownerUserIdSnapshot",
       pendingPhotos: "cardClientId",
+    });
+    this.version(2).stores({
+      cashReconciliations: "id, eventId, date",
     });
   }
 }

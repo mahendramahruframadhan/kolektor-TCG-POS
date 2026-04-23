@@ -8,6 +8,7 @@ import type {
   IdbCart,
   IdbTransaction,
   IdbTransactionItem,
+  IdbCashReconciliation,
 } from "./db.js";
 
 const SYNC_CURSOR_KEY = "kolekta-sync-cursor";
@@ -56,6 +57,9 @@ async function applyChanges(changes: unknown[]) {
           break;
         case "transaction_item":
           await idb.transactionItems.put(change.payload as unknown as IdbTransactionItem);
+          break;
+        case "cash_reconciliation":
+          await idb.cashReconciliations.put(change.payload as unknown as IdbCashReconciliation);
           break;
       }
     } catch (err) {
