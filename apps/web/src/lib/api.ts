@@ -106,6 +106,7 @@ export const api = {
       request<unknown>(`/holds/${id}`, { method: "DELETE" }),
   },
   transactions: {
+    get: (id: string) => request<unknown>(`/transactions/${id}`),
     void: (id: string, body: unknown) =>
       request<unknown>(`/transactions/${id}/void`, {
         method: "POST",
