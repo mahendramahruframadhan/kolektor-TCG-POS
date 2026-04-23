@@ -1,14 +1,8 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
-import { createHash } from "crypto";
+import bcrypt from "bcryptjs";
 import * as schema from "./schema.js";
-
-// Minimal bcrypt-equivalent using SHA-256 for seed only.
-// Production uses bcrypt via the API layer.
-function hashPassword(plain: string): string {
-  return "sha256:" + createHash("sha256").update(plain).digest("hex");
-}
 
 export async function seed(db: ReturnType<typeof drizzle>) {
   // ── payment channels ──────────────────────────────────────────────────
@@ -58,20 +52,27 @@ export async function seed(db: ReturnType<typeof drizzle>) {
     }
   }
 
-  // ── admin user (env-seeded password) ─────────────────────────────────
-  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@kolekta.id";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "changeme";
+  // ── admin user (explicit env, bcrypt only) ───────────────────────────
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    console.log("[seed] ADMIN_EMAIL/ADMIN_PASSWORD unset — skipping admin user creation.");
+    console.log("[seed] done");
+    return;
+  }
+
   const exists = db
     .select()
     .from(schema.users)
     .where(eq(schema.users.email, adminEmail))
     .get();
   if (!exists) {
+    const hash = await bcrypt.hash(adminPassword, 12);
     db.insert(schema.users)
       .values({
         id: crypto.randomUUID(),
         email: adminEmail,
-        passwordHash: hashPassword(adminPassword),
+        passwordHash: hash,
         displayName: "Revota",
         role: "admin",
       })
