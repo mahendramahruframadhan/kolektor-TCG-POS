@@ -2,5 +2,29 @@
   "name": "@kolektapos/api",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/session": "^11.0.1",
+    "@kolektapos/db": "workspace:*",
+    "@kolektapos/types": "workspace:*",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^11.7.0",
+    "drizzle-orm": "^0.38.4",
+    "fastify": "^5.2.1",
+    "node-cron": "^3.0.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
 }
