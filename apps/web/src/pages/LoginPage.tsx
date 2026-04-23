@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 
@@ -32,18 +33,29 @@ export function LoginPage() {
     "w-full h-12 border border-border rounded-xl px-4 text-sm font-medium text-fg bg-card focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition placeholder:text-muted-fg";
 
   return (
+    // bg-surface matches the light lavender background of hero.webp
     <div className="min-h-screen bg-surface flex flex-col overflow-hidden">
-      {/* ── Scrollable content ── */}
-      <div className="flex-1 flex flex-col max-w-sm mx-auto w-full px-6 pt-10 pb-6">
 
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+      {/* ── Top bar: back button left + logo centered ── */}
+      <div className="relative flex items-center justify-center h-14 px-4 shrink-0">
+        <button
+          onClick={() => navigate("/")}
+          className="absolute left-4 w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition"
+          aria-label="Kembali ke halaman awal"
+        >
+          <ArrowLeft className="w-5 h-5 text-fg" />
+        </button>
+        <div className="flex items-center gap-2">
           <img src="/favicon.png" alt="KolektaPOS" className="w-7 h-7 rounded-lg object-cover" />
           <span className="text-base font-extrabold text-fg tracking-tight">KolektaPOS</span>
         </div>
+      </div>
 
-        {/* Title + subtitle */}
-        <div className="mb-8">
+      {/* ── Content ── */}
+      <div className="flex-1 flex flex-col max-w-sm mx-auto w-full px-6 pt-6 pb-6">
+
+        {/* Title + subtitle — centered */}
+        <div className="text-center mb-8">
           <h1 className="text-[28px] font-extrabold text-fg leading-tight mb-2">
             Masuk ke KolektaPOS
           </h1>
@@ -103,7 +115,7 @@ export function LoginPage() {
         </p>
       </div>
 
-      {/* ── Bottom illustration ── */}
+      {/* ── Bottom illustration — bg-surface blends into hero.webp background ── */}
       <div className="shrink-0 w-full">
         <img
           src="/hero.webp"
