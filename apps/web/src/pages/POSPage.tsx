@@ -14,6 +14,7 @@ import { usePosStore } from "../store/pos.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
+import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -55,6 +56,33 @@ function StatusBadge({
     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
       Tersedia
     </span>
+  );
+}
+
+// ── Bottom price tap-and-hold reveal ───────────────────────────────────────
+
+function BottomPriceReveal({ amount }: { amount: number | undefined }) {
+  const { revealed, startReveal, endReveal } = useTapHoldReveal(5000);
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-muted-fg">Harga Minimum</span>
+      <button
+        type="button"
+        onMouseDown={startReveal}
+        onMouseUp={endReveal}
+        onMouseLeave={endReveal}
+        onTouchStart={startReveal}
+        onTouchEnd={endReveal}
+        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none"
+        aria-label="Tap dan tahan untuk melihat harga minimum"
+      >
+        {revealed ? (
+          <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
+        ) : (
+          <span className="tracking-widest">••••••</span>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -830,13 +858,7 @@ export function POSPage() {
                     Rp {scannedCard.listedPriceIdr?.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-fg">Harga Minimum</span>
-                  <MaskedAmount
-                    amount={scannedCard.bottomPriceIdr}
-                    className="text-sm font-bold text-fg"
-                  />
-                </div>
+                <BottomPriceReveal amount={scannedCard.bottomPriceIdr} />
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
                     Harga Final (IDR)
