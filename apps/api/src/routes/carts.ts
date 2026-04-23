@@ -140,6 +140,12 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
       // ── Floor price / discount validation ───────────────────────────────
       const requiresAdminOverride = body.data.requiresAdminOverride ?? false;
 
+      if (requiresAdminOverride && request.session.userRole !== "admin") {
+        return reply.status(403).send({
+          error: "Only admin sessions may set requiresAdminOverride.",
+        });
+      }
+
       if (card.pricingMode === "fixed") {
         // Compute line discount % from intended vs listed/fixed price
         const listedPrice = card.priceIdr ?? 0;

@@ -134,3 +134,46 @@ describe("authz boundaries", () => {
     expect([200, 201]).toContain(res.statusCode);
   });
 });
+
+describe("cart add-item requiresAdminOverride gate", () => {
+  it("rejects add-item with requiresAdminOverride=true from a non-admin session", async () => {
+    // Seed a negotiable card and a cart for the cashier.
+    const bottomPriceIdr = 20_000;
+    const cardUuid = crypto.randomUUID();
+    const eventUuid = crypto.randomUUID();
+    sqlite.prepare(
+      "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, listed_price_idr, bottom_price_idr, status, owner_user_id, intaken_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(cardUuid, crypto.randomUUID(), "R-NEG01", "Neg Card", "negotiable", 30_000, bottomPriceIdr, "available", "u-admin", "u-admin");
+
+    // Need an active event for carts; use the one seeded earlier by the first block
+    // or seed a new one here.
+    sqlite.prepare(
+      "INSERT INTO events (id, name, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)"
+    ).run(eventUuid, "OverrideTest", "2026-04-24", "2026-04-30", "active");
+
+    // Create cart via API so the session.cashierUserId is set correctly.
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/carts",
+      headers: { cookie: cashierCookie },
+      payload: { clientId: crypto.randomUUID(), eventId: eventUuid },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const cart = JSON.parse(createRes.payload) as { id: string };
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/carts/${cart.id}/items`,
+      headers: { cookie: cashierCookie },
+      payload: {
+        cardId: cardUuid,
+        intendedPriceIdr: 10_000, // below bottom
+        lineDiscountIdr: 0,
+        requiresAdminOverride: true,
+      },
+    });
+    expect(res.statusCode).toBe(403);
+    const body = JSON.parse(res.payload) as { error: string };
+    expect(body.error).toMatch(/admin/i);
+  });
+});
