@@ -50,7 +50,17 @@ export const api = {
       }),
   },
   users: {
-    list: () => request<unknown[]>("/users"),
+    list: () => request<{ id: string; email: string; displayName: string; role: string; createdAt: number }[]>("/users"),
+    create: (body: { email: string; password: string; displayName: string; role: string }) =>
+      request<{ id: string; email: string; displayName: string; role: string }>("/users", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    update: (id: string, body: { displayName?: string; role?: string; password?: string }) =>
+      request<{ id: string; email: string; displayName: string; role: string }>(`/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   cards: {
     byShortId: (shortId: string) =>
