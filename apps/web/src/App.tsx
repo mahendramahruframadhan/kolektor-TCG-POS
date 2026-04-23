@@ -19,6 +19,7 @@ import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
 import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
+import { LandingPage } from "./pages/LandingPage.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -38,6 +39,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/dashboard"
@@ -152,7 +154,7 @@ export function App() {
               </RequireAuth>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
