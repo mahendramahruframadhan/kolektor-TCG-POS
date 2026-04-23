@@ -99,3 +99,68 @@ describe("/sync/pull user payload redaction", () => {
     }
   });
 });
+
+describe("/sync/push validation", () => {
+  it("rejects create_card op with unknown field (forged oversold)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/sync/push",
+      headers: { cookie },
+      payload: {
+        deviceId: crypto.randomUUID(),
+        ops: [
+          {
+            type: "create_card",
+            clientId: crypto.randomUUID(),
+            clientCreatedAt: Math.floor(Date.now() / 1000),
+            payload: {
+              shortId: "R-ABCDE",
+              ownerUserId: crypto.randomUUID(),
+              intakenByUserId: "u1",
+              title: "Test Card",
+              pricingMode: "fixed",
+              priceIdr: 1000,
+              // FORBIDDEN — server-owned / never from client
+              oversold: true,
+            },
+          },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload) as { results: Array<{ status: string; reason?: string }> };
+    expect(body.results[0].status).toBe("rejected");
+  });
+
+  it("rejects create_transaction op whose payload fails schema (missing required fields)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/sync/push",
+      headers: { cookie },
+      payload: {
+        deviceId: crypto.randomUUID(),
+        ops: [
+          {
+            type: "create_transaction",
+            clientId: crypto.randomUUID(),
+            clientCreatedAt: Math.floor(Date.now() / 1000),
+            payload: {},
+          },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload) as { results: Array<{ status: string }> };
+    expect(body.results[0].status).toBe("rejected");
+  });
+
+  it("rejects malformed push body (missing deviceId) with 400", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/sync/push",
+      headers: { cookie },
+      payload: { ops: [] }, // no deviceId
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});

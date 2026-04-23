@@ -18,6 +18,7 @@
     "@fastify/rate-limit": "^10",
     "@fastify/session": "^11.0.1",
     "@kolektapos/db": "workspace:*",
+    "@kolektapos/sync": "workspace:*",
     "@kolektapos/types": "workspace:*",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.2",
