@@ -11,6 +11,7 @@ import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { usePosStore } from "../store/pos.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -26,14 +27,14 @@ function StatusBadge({
 }) {
   if (card.status === "sold") {
     return (
-      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+      <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-muted text-muted-fg">
         Terjual
       </span>
     );
   }
   if (card.status === "held") {
     return (
-      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+      <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-warning bg-opacity-15 text-warning">
         Ditahan
       </span>
     );
@@ -42,22 +43,14 @@ function StatusBadge({
     const isMyCart =
       card.lockedByCartId === activeCartId ||
       card.lockedByUserId === currentUserId;
-    if (isMyCart) {
-      return (
-        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-          Di keranjang Anda
-        </span>
-      );
-    }
-    // Locked by someone else — try to show their name (best-effort sync)
     return (
-      <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-        Di keranjang pengguna lain
+      <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-warning bg-opacity-15 text-warning">
+        {isMyCart ? "Di keranjang Anda" : "Di keranjang lain"}
       </span>
     );
   }
   return (
-    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+    <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
       Tersedia
     </span>
   );
@@ -146,46 +139,63 @@ function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-bold text-gray-800">Pembayaran</h2>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
+      <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        {/* Handle */}
+        <div className="flex justify-center -mb-1">
+          <div className="w-9 h-1 rounded-full bg-border" />
+        </div>
 
-        {/* Subtotal + discount */}
-        <div className="space-y-1 border-b pb-3">
+        <h2 className="text-base font-bold text-fg">Pembayaran</h2>
+
+        {/* Totals */}
+        <div className="space-y-1.5 border-b border-border pb-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Subtotal</span>
-            <MaskedAmount amount={subtotalIdr} className="font-semibold text-gray-800" />
+            <span className="text-sm text-muted-fg">Subtotal</span>
+            <MaskedAmount amount={subtotalIdr} className="font-bold text-fg" />
           </div>
           {txDiscountIdr > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Diskon Transaksi</span>
-              <span className="text-sm font-semibold text-red-600">- Rp {txDiscountIdr.toLocaleString("id-ID")}</span>
+              <span className="text-sm text-muted-fg">Diskon Transaksi</span>
+              <span className="text-sm font-bold text-destructive">- Rp {txDiscountIdr.toLocaleString("id-ID")}</span>
             </div>
           )}
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Total</span>
-            <MaskedAmount amount={totalIdr} className="text-xl font-bold text-gray-900" />
+            <span className="text-sm font-semibold text-fg">Total</span>
+            <MaskedAmount amount={totalIdr} className="text-xl font-extrabold text-primary" />
           </div>
         </div>
 
-        {/* Transaction discount (F23) */}
+        {/* Transaction discount */}
         {maxTxDiscountPct > 0 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Diskon Transaksi (maks {maxTxDiscountPct}%)</label>
-            <input type="number" min={0} step={1000} value={txDiscountInput}
-              onChange={(e) => setTxDiscountInput(e.target.value)} placeholder="0"
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${discountExceedsCap ? "border-red-400" : "border-gray-300"}`} />
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+              Diskon Transaksi (maks {maxTxDiscountPct}%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1000}
+              value={txDiscountInput}
+              onChange={(e) => setTxDiscountInput(e.target.value)}
+              placeholder="0"
+              className={`w-full h-11 border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${discountExceedsCap ? "border-destructive" : "border-border"}`}
+            />
             {txDiscountIdr > 0 && (
-              <input type="text" value={txDiscountReason} onChange={(e) => setTxDiscountReason(e.target.value)}
+              <input
+                type="text"
+                value={txDiscountReason}
+                onChange={(e) => setTxDiscountReason(e.target.value)}
                 placeholder="Alasan diskon…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full h-11 border border-border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             )}
           </div>
         )}
 
-        {/* Payment channel selector */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">
+        {/* Payment channel */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
             Metode Pembayaran
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -197,10 +207,10 @@ function PaymentModal({
                   setCashTender(null);
                   setCustomInput("");
                 }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                className={`h-11 rounded-xl text-sm font-bold border transition ${
                   selectedChannel === ch.id
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                    ? "bg-primary border-primary text-primary-fg"
+                    : "bg-card border-border text-fg hover:bg-muted"
                 }`}
               >
                 {ch.name}
@@ -209,29 +219,24 @@ function PaymentModal({
           </div>
         </div>
 
-        {/* Cash tender section */}
+        {/* Cash tender */}
         {isCash && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
               Uang Diterima
             </label>
             <div className="flex flex-wrap gap-2">
               {quickAmounts.map((amt) => (
                 <button
                   key={amt}
-                  onClick={() => {
-                    setCashTender(amt);
-                    setCustomInput("");
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  onClick={() => { setCashTender(amt); setCustomInput(""); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
                     cashTender === amt && customInput === ""
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
+                      ? "bg-accent border-accent text-accent-fg"
+                      : "bg-muted border-border text-muted-fg hover:bg-border"
                   }`}
                 >
-                  {amt >= 1000000
-                    ? `${amt / 1000000}jt`
-                    : `${amt / 1000}k`}
+                  {amt >= 1000000 ? `${amt / 1000000}jt` : `${amt / 1000}k`}
                 </button>
               ))}
             </div>
@@ -240,49 +245,50 @@ function PaymentModal({
               min={0}
               placeholder="Nominal lainnya…"
               value={customInput}
-              onChange={(e) => {
-                setCustomInput(e.target.value);
-                setCashTender(null);
-              }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => { setCustomInput(e.target.value); setCashTender(null); }}
+              className="w-full h-11 border border-border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {effectiveTender > 0 && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Kembalian</span>
-                <span className="font-bold text-green-700">
-                  Rp {change.toLocaleString("id-ID")}
-                </span>
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-muted-fg">Kembalian</span>
+                <span className="text-success">Rp {change.toLocaleString("id-ID")}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Transaction notes (F30) */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Catatan Transaksi</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-            rows={2} placeholder="Catatan opsional…"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+        {/* Notes */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+            Catatan Transaksi
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Catatan opsional…"
+            className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none"
+          />
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-4 py-3 text-sm font-medium">
             {error}
-          </p>
+          </div>
         )}
 
         <div className="flex gap-3 pt-1">
           <button
             onClick={onCancel}
             disabled={paying}
-            className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition disabled:opacity-50"
+            className="flex-1 h-14 border border-border text-fg font-bold rounded-2xl hover:bg-muted transition disabled:opacity-50"
           >
             Batal
           </button>
           <button
             onClick={handleConfirm}
             disabled={paying || !selectedChannel}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+            className="flex-1 h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition disabled:opacity-50"
           >
             {paying ? "Memproses…" : "Bayar"}
           </button>
@@ -301,31 +307,34 @@ interface ReceiptModalProps {
   onDone: () => void;
 }
 
-function ReceiptModal({
-  transactionId,
-  totalIdr,
-  itemCount,
-  onDone,
-}: ReceiptModalProps) {
+function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 space-y-4 text-center">
-        <div className="text-5xl">✅</div>
-        <h2 className="text-xl font-bold text-gray-800">Pembayaran Berhasil</h2>
-        <p className="text-sm text-gray-500">#{transactionId.slice(0, 8).toUpperCase()}</p>
-        <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-left">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
+        <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
+          <svg width="32" height="32" fill="none" stroke="hsl(152,60%,40%)" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-xl font-extrabold text-fg">Pembayaran Berhasil</h2>
+          <p className="text-sm text-muted-fg font-mono mt-1">
+            #{transactionId.slice(0, 8).toUpperCase()}
+          </p>
+        </div>
+        <div className="bg-surface rounded-2xl p-4 space-y-2 text-left border border-border">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Jumlah kartu</span>
-            <span className="font-semibold">{itemCount}</span>
+            <span className="text-muted-fg">Jumlah kartu</span>
+            <span className="font-bold text-fg">{itemCount}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Total</span>
-            <MaskedAmount amount={totalIdr} className="font-bold text-gray-800" />
+            <span className="text-muted-fg">Total</span>
+            <MaskedAmount amount={totalIdr} className="font-extrabold text-primary" />
           </div>
         </div>
         <button
           onClick={onDone}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition"
+          className="w-full h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
         >
           Transaksi Baru
         </button>
@@ -339,8 +348,7 @@ function ReceiptModal({
 export function POSPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { activeCartId, scannedCard, setActiveCartId, setScannedCard } =
-    usePosStore();
+  const { activeCartId, scannedCard, setActiveCartId, setScannedCard } = usePosStore();
 
   const [scanInput, setScanInput] = useState("");
   const [cartItems, setCartItems] = useState<IdbCartItem[]>([]);
@@ -356,13 +364,11 @@ export function POSPage() {
     itemCount: number;
   } | null>(null);
 
-  // Negotiable pricing state
   const [finalPriceInput, setFinalPriceInput] = useState("");
   const [belowBottomError, setBelowBottomError] = useState(false);
 
   const scanRef = useRef<HTMLInputElement>(null);
 
-  // Keep scan input focused
   const refocusScan = useCallback(() => {
     setTimeout(() => scanRef.current?.focus(), 50);
   }, []);
@@ -376,7 +382,6 @@ export function POSPage() {
     });
   }, []);
 
-  // Load cart items from IDB whenever activeCartId changes
   useEffect(() => {
     if (!activeCartId) {
       setCartItems([]);
@@ -384,19 +389,12 @@ export function POSPage() {
       return;
     }
     async function loadCart() {
-      const items = await idb.cartItems
-        .where("cartId")
-        .equals(activeCartId!)
-        .toArray();
+      const items = await idb.cartItems.where("cartId").equals(activeCartId!).toArray();
       setCartItems(items);
-
-      // Fetch card metadata for display
       const cardIds = items.map((i) => i.cardId);
       const cards = await idb.cards.bulkGet(cardIds);
       const byId: Record<string, IdbCard> = {};
-      for (const c of cards) {
-        if (c) byId[c.id] = c;
-      }
+      for (const c of cards) if (c) byId[c.id] = c;
       setCartCards(byId);
     }
     loadCart();
@@ -404,11 +402,9 @@ export function POSPage() {
 
   const totalIdr = cartItems.reduce((sum, item) => sum + item.intendedPriceIdr - item.lineDiscountIdr, 0);
 
-  // Look up card by shortId in IDB
   async function handleScan(rawInput: string) {
     const shortId = rawInput.trim().toUpperCase();
     if (!shortId) return;
-
     setScanError(null);
     setScanning(true);
     try {
@@ -418,7 +414,6 @@ export function POSPage() {
         setScannedCard(null);
       } else {
         setScannedCard(card);
-        // Reset negotiable price inputs for this new card
         setFinalPriceInput("");
         setBelowBottomError(false);
       }
@@ -436,35 +431,21 @@ export function POSPage() {
     }
   }
 
-  // Ensure or create a draft cart for current user + active event
   async function ensureCart(): Promise<string> {
     if (activeCartId) return activeCartId;
-
-    const activeEvent = await idb.events
-      .filter((ev) => ev.status === "active")
-      .first();
-
+    const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
     if (!activeEvent) throw new Error("Tidak ada event aktif.");
-
     const clientId = uuidv4();
-    const response = (await api.carts.create({
-      clientId,
-      eventId: activeEvent.id,
-    })) as { id: string };
-
+    const response = (await api.carts.create({ clientId, eventId: activeEvent.id })) as { id: string };
     const cartId = response.id;
-
-    // Persist cart locally
     await idb.carts.put({
-      id: cartId,
-      clientId,
+      id: cartId, clientId,
       cashierUserId: user!.id,
       eventId: activeEvent.id,
       status: "draft",
       lastActivityAt: Date.now(),
       version: 1,
     });
-
     setActiveCartId(cartId);
     return cartId;
   }
@@ -475,7 +456,6 @@ export function POSPage() {
     setAddingCard(true);
     try {
       const cartId = await ensureCart();
-
       let intendedPriceIdr: number;
       let lineDiscountIdr: number;
       let lineDiscountPct: number;
@@ -485,15 +465,12 @@ export function POSPage() {
         const finalPrice = parseInt(finalPriceInput, 10);
         const listed = scannedCard.listedPriceIdr ?? 0;
         const bottom = scannedCard.bottomPriceIdr ?? 0;
-
         if (isNaN(finalPrice) || finalPrice <= 0) {
           setAddError("Masukkan harga final yang valid.");
           setAddingCard(false);
           return;
         }
-
         if (finalPrice < bottom) {
-          // Admin role can bypass; cashier cannot
           if (user?.role !== "admin") {
             setBelowBottomError(true);
             setAddError("Harga final di bawah harga minimum. Hubungi admin untuk override.");
@@ -502,13 +479,9 @@ export function POSPage() {
           }
           requiresAdminOverride = true;
         }
-
         intendedPriceIdr = finalPrice;
         lineDiscountIdr = Math.max(0, listed - finalPrice);
-        lineDiscountPct =
-          listed > 0
-            ? Math.round(((listed - finalPrice) / listed) * 100)
-            : 0;
+        lineDiscountPct = listed > 0 ? Math.round(((listed - finalPrice) / listed) * 100) : 0;
       } else {
         intendedPriceIdr = scannedCard.priceIdr ?? 0;
         lineDiscountIdr = 0;
@@ -516,40 +489,23 @@ export function POSPage() {
       }
 
       const response = (await api.carts.addItem(cartId, {
-        cardId: scannedCard.id,
-        intendedPriceIdr,
-        lineDiscountIdr,
-        lineDiscountPct,
-        requiresAdminOverride,
+        cardId: scannedCard.id, intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
       })) as { id: string };
 
       const newItem: IdbCartItem = {
-        id: response.id,
-        cartId,
-        cardId: scannedCard.id,
-        intendedPriceIdr,
-        lineDiscountIdr,
-        lineDiscountPct,
-        requiresAdminOverride,
+        id: response.id, cartId, cardId: scannedCard.id,
+        intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
       };
 
       await idb.cartItems.put(newItem);
-
-      // Update denorm on card (optimistic local)
       await idb.cards.update(scannedCard.id, {
-        lockedByCartId: cartId,
-        lockedByUserId: user!.id,
-        lockedAt: Date.now(),
+        lockedByCartId: cartId, lockedByUserId: user!.id, lockedAt: Date.now(),
       });
 
       setCartItems((prev) => [...prev, newItem]);
       setCartCards((prev) => ({
         ...prev,
-        [scannedCard.id]: {
-          ...scannedCard,
-          lockedByCartId: cartId,
-          lockedByUserId: user!.id,
-        },
+        [scannedCard.id]: { ...scannedCard, lockedByCartId: cartId, lockedByUserId: user!.id },
       }));
       setScannedCard(null);
       setFinalPriceInput("");
@@ -567,37 +523,28 @@ export function POSPage() {
     try {
       await api.carts.removeItem(activeCartId, item.cardId);
       await idb.cartItems.delete(item.id);
-
-      // Release lock on card (optimistic)
       await idb.cards.update(item.cardId, {
-        lockedByCartId: undefined,
-        lockedByUserId: undefined,
-        lockedAt: undefined,
+        lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
       });
-
       setCartItems((prev) => prev.filter((i) => i.id !== item.id));
       setCartCards((prev) => {
         const updated = { ...prev };
         const existing = updated[item.cardId];
         if (existing) {
           updated[item.cardId] = {
-            ...existing,
-            lockedByCartId: undefined,
-            lockedByUserId: undefined,
-            lockedAt: undefined,
+            ...existing, lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
           };
         }
         return updated;
       });
     } catch {
-      // Ignore network errors for offline resilience; local state already updated
+      // Best effort for offline resilience
     }
     refocusScan();
   }
 
   async function handlePay(channelId: string, discountIdr: number, discountReason: string, notes: string) {
     if (!activeCartId) throw new Error("Tidak ada keranjang aktif.");
-
     const response = (await api.carts.pay(activeCartId, {
       paymentChannelId: channelId,
       transactionClientId: uuidv4(),
@@ -607,29 +554,14 @@ export function POSPage() {
     })) as { transaction: { id: string }; receipt: unknown[] };
 
     const txId = response.transaction.id;
-
-    // Update local cart status
-    await idb.carts.update(activeCartId, {
-      status: "paid",
-      paidTransactionId: txId,
-    });
-
-    // Mark cards as sold
+    await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
     for (const item of cartItems) {
       await idb.cards.update(item.cardId, {
-        status: "sold",
-        lockedByCartId: undefined,
-        lockedByUserId: undefined,
-        lockedAt: undefined,
+        status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
       });
     }
-
     setShowPayModal(false);
-    setReceipt({
-      transactionId: txId,
-      totalIdr,
-      itemCount: cartItems.length,
-    });
+    setReceipt({ transactionId: txId, totalIdr, itemCount: cartItems.length });
   }
 
   function handleReceiptDone() {
@@ -650,12 +582,9 @@ export function POSPage() {
     try {
       await api.carts.abandon(activeCartId);
       await idb.carts.update(activeCartId, { status: "abandoned" });
-      // Release locks
       for (const item of cartItems) {
         await idb.cards.update(item.cardId, {
-          lockedByCartId: undefined,
-          lockedByUserId: undefined,
-          lockedAt: undefined,
+          lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
         });
       }
     } catch {
@@ -669,32 +598,24 @@ export function POSPage() {
   }
 
   const cardIsAvailableToAdd =
-    scannedCard &&
-    scannedCard.status === "available" &&
-    !scannedCard.lockedByCartId;
+    scannedCard && scannedCard.status === "available" && !scannedCard.lockedByCartId;
 
   const cardAlreadyInCart =
     scannedCard?.lockedByCartId === activeCartId ||
     cartItems.some((i) => i.cardId === scannedCard?.id);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Top bar */}
-      <header className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-sm font-medium opacity-80 hover:opacity-100"
-        >
-          ← Dasbor
-        </button>
-        <h1 className="font-bold text-base">Kasir POS</h1>
-        <span className="text-sm opacity-70">{user?.displayName}</span>
-      </header>
+    <div className="min-h-screen bg-surface flex flex-col">
+      <MobileAppBar
+        title="Kasir POS"
+        back
+        onBack={() => navigate("/dashboard")}
+      />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
         {/* ── Scanner section ── */}
-        <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
             Scan / Ketik ID Kartu
           </p>
           <input
@@ -708,27 +629,27 @@ export function POSPage() {
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full border-2 border-blue-400 rounded-xl px-4 py-3 text-2xl font-mono text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-300"
+            className="w-full h-16 border-2 border-accent rounded-2xl px-4 text-3xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border"
           />
           {scanning && (
-            <p className="text-sm text-gray-400 text-center">Mencari…</p>
+            <p className="text-sm text-muted-fg text-center">Mencari…</p>
           )}
           {scanError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
               {scanError}
-            </p>
+            </div>
           )}
         </div>
 
         {/* ── Scanned card review ── */}
         {scannedCard && (
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 leading-tight truncate">
+                <p className="font-bold text-fg leading-tight truncate">
                   {scannedCard.title}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-muted-fg mt-0.5">
                   {scannedCard.setName}{" "}
                   {scannedCard.setNumber ? `#${scannedCard.setNumber}` : ""}
                   {" · "}
@@ -746,18 +667,18 @@ export function POSPage() {
             {scannedCard.pricingMode === "negotiable" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Harga Tayang</span>
+                  <span className="text-sm text-muted-fg">Harga Tayang</span>
                   <MaskedAmount
                     amount={scannedCard.listedPriceIdr}
-                    className="text-lg font-bold text-gray-900"
+                    className="text-lg font-extrabold text-fg"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
                     Harga Final (IDR)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-fg pointer-events-none">
                       Rp
                     </span>
                     <input
@@ -768,25 +689,18 @@ export function POSPage() {
                       onChange={(e) => {
                         setFinalPriceInput(e.target.value);
                         setBelowBottomError(false);
-                        // Validate against bottom price live
                         const val = parseInt(e.target.value, 10);
                         const bottom = scannedCard.bottomPriceIdr ?? 0;
-                        if (!isNaN(val) && val < bottom) {
-                          setBelowBottomError(true);
-                        }
+                        if (!isNaN(val) && val < bottom) setBelowBottomError(true);
                       }}
                       placeholder="0"
-                      className={`w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        belowBottomError ? "border-red-400" : "border-gray-300"
-                      }`}
+                      className={`w-full h-11 border rounded-xl pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${belowBottomError ? "border-destructive" : "border-border"}`}
                     />
                   </div>
                   {belowBottomError && (
-                    <p className="text-xs text-red-600 font-semibold">
+                    <p className="text-xs text-destructive font-bold">
                       Di bawah harga minimum
-                      {user?.role === "admin"
-                        ? " — admin override diizinkan."
-                        : " — tidak dapat ditambahkan ke keranjang."}
+                      {user?.role === "admin" ? " — admin override diizinkan." : " — tidak dapat ditambahkan ke keranjang."}
                     </p>
                   )}
                   {finalPriceInput &&
@@ -794,33 +708,30 @@ export function POSPage() {
                     parseInt(finalPriceInput, 10) > 0 &&
                     scannedCard.listedPriceIdr &&
                     parseInt(finalPriceInput, 10) < scannedCard.listedPriceIdr && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-fg">
                         Diskon:{" "}
                         {Math.round(
-                          ((scannedCard.listedPriceIdr -
-                            parseInt(finalPriceInput, 10)) /
-                            scannedCard.listedPriceIdr) *
-                            100
-                        )}
-                        %
+                          ((scannedCard.listedPriceIdr - parseInt(finalPriceInput, 10)) /
+                            scannedCard.listedPriceIdr) * 100
+                        )}%
                       </p>
                     )}
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Harga</span>
+                <span className="text-sm text-muted-fg">Harga</span>
                 <MaskedAmount
                   amount={scannedCard.priceIdr}
-                  className="text-lg font-bold text-gray-900"
+                  className="text-lg font-extrabold text-fg"
                 />
               </div>
             )}
 
             {addError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
                 {addError}
-              </p>
+              </div>
             )}
 
             <div className="flex gap-2">
@@ -831,32 +742,29 @@ export function POSPage() {
                   setBelowBottomError(false);
                   refocusScan();
                 }}
-                className="flex-1 border border-gray-300 text-gray-600 font-medium py-2 rounded-xl hover:bg-gray-50 text-sm transition"
+                className="flex-1 h-11 border border-border text-muted-fg font-bold rounded-xl hover:bg-muted text-sm transition"
               >
                 Tutup
               </button>
               {cardAlreadyInCart ? (
                 <button
                   disabled
-                  className="flex-1 bg-gray-100 text-gray-400 font-semibold py-2 rounded-xl text-sm cursor-not-allowed"
+                  className="flex-1 h-11 bg-muted text-muted-fg font-bold rounded-xl text-sm cursor-not-allowed"
                 >
                   Sudah di keranjang
                 </button>
               ) : cardIsAvailableToAdd ? (
                 <button
                   onClick={handleAddToCart}
-                  disabled={
-                    addingCard ||
-                    (belowBottomError && user?.role !== "admin")
-                  }
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl text-sm transition disabled:opacity-50"
+                  disabled={addingCard || (belowBottomError && user?.role !== "admin")}
+                  className="flex-1 h-11 bg-accent text-accent-fg font-bold rounded-xl text-sm transition hover:opacity-90 disabled:opacity-50"
                 >
                   {addingCard ? "Menambah…" : "Tambah ke Keranjang"}
                 </button>
               ) : (
                 <button
                   disabled
-                  className="flex-1 bg-gray-100 text-gray-400 font-semibold py-2 rounded-xl text-sm cursor-not-allowed"
+                  className="flex-1 h-11 bg-muted text-muted-fg font-bold rounded-xl text-sm cursor-not-allowed"
                 >
                   Tidak tersedia
                 </button>
@@ -866,15 +774,15 @@ export function POSPage() {
         )}
 
         {/* ── Cart panel ── */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
               Keranjang ({cartItems.length} kartu)
             </p>
             {activeCartId && cartItems.length > 0 && (
               <button
                 onClick={handleAbandonCart}
-                className="text-xs text-red-500 hover:text-red-700 font-medium"
+                className="text-xs text-destructive hover:opacity-70 font-bold"
               >
                 Batalkan
               </button>
@@ -882,25 +790,22 @@ export function POSPage() {
           </div>
 
           {cartItems.length === 0 ? (
-            <p className="px-4 pb-4 text-sm text-gray-400 italic">
+            <p className="px-4 pb-4 text-sm text-muted-fg italic">
               Keranjang kosong
             </p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-border">
               {cartItems.map((item) => {
                 const card = cartCards[item.cardId];
                 const lineTotal = item.intendedPriceIdr - item.lineDiscountIdr;
                 return (
-                  <li
-                    key={item.id}
-                    className="flex items-center gap-3 px-4 py-3"
-                  >
+                  <li key={item.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">
+                      <p className="text-sm font-bold text-fg truncate">
                         {card?.title ?? item.cardId}
                       </p>
                       {card && (
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-muted-fg truncate">
                           {card.setName}
                           {card.setNumber ? ` #${card.setNumber}` : ""}
                           {" · "}
@@ -910,11 +815,11 @@ export function POSPage() {
                     </div>
                     <MaskedAmount
                       amount={lineTotal}
-                      className="text-sm font-semibold text-gray-700 shrink-0"
+                      className="text-sm font-bold text-fg shrink-0"
                     />
                     <button
                       onClick={() => handleRemoveItem(item)}
-                      className="text-gray-300 hover:text-red-400 transition ml-1 shrink-0"
+                      className="text-border hover:text-destructive transition ml-1 shrink-0"
                       aria-label="Hapus dari keranjang"
                     >
                       <svg
@@ -935,21 +840,15 @@ export function POSPage() {
             </ul>
           )}
 
-          {/* Total + pay button */}
           {cartItems.length > 0 && (
-            <div className="px-4 py-4 border-t border-gray-100 space-y-3">
+            <div className="px-4 py-4 border-t border-border space-y-3">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-700">Total</span>
-                <MaskedAmount
-                  amount={totalIdr}
-                  className="text-xl font-bold text-gray-900"
-                />
+                <span className="font-bold text-fg">Total</span>
+                <MaskedAmount amount={totalIdr} className="text-xl font-extrabold text-primary" />
               </div>
               <button
-                onClick={() => {
-                  setShowPayModal(true);
-                }}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-base transition"
+                onClick={() => setShowPayModal(true)}
+                className="w-full h-14 bg-primary text-primary-fg font-bold text-base rounded-2xl hover:opacity-90 transition"
               >
                 Bayar
               </button>
@@ -958,21 +857,16 @@ export function POSPage() {
         </div>
       </div>
 
-      {/* Payment modal */}
       {showPayModal && (
         <PaymentModal
           cartItems={cartItems}
           subtotalIdr={totalIdr}
           maxTxDiscountPct={maxTxDiscountPct}
           onConfirm={handlePay}
-          onCancel={() => {
-            setShowPayModal(false);
-            refocusScan();
-          }}
+          onCancel={() => { setShowPayModal(false); refocusScan(); }}
         />
       )}
 
-      {/* Receipt modal */}
       {receipt && (
         <ReceiptModal
           transactionId={receipt.transactionId}
