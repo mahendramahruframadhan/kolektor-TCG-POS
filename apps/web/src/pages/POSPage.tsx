@@ -77,7 +77,6 @@ function PaymentModal({
 }: PaymentModalProps) {
   const [channels, setChannels] = useState<IdbPaymentChannel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string>("");
-  const [cashTender, setCashTender] = useState<number | null>(null);
   const [customInput, setCustomInput] = useState("");
   const [txDiscountInput, setTxDiscountInput] = useState("");
   const [txDiscountReason, setTxDiscountReason] = useState("");
@@ -103,12 +102,10 @@ function PaymentModal({
   const discountExceedsCap = txDiscountIdr > maxDiscountIdr;
   const totalIdr = Math.max(0, subtotalIdr - txDiscountIdr);
 
-  const effectiveTender =
-    customInput !== ""
-      ? parseInt(customInput.replace(/\D/g, ""), 10) || 0
-      : (cashTender ?? 0);
+  const effectiveTender = parseInt(customInput.replace(/\D/g, ""), 10) || 0;
 
-  const change = isCash ? Math.max(0, effectiveTender - totalIdr) : 0;
+  const change = isCash ? effectiveTender - totalIdr : 0;
+  const tenderShortfall = change < 0;
 
   const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
 
@@ -154,7 +151,7 @@ function PaymentModal({
         <div className="space-y-1.5 border-b border-border pb-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-fg">Subtotal</span>
-            <MaskedAmount amount={subtotalIdr} className="font-bold text-fg" />
+            <span className="font-bold text-fg">Rp {subtotalIdr.toLocaleString("id-ID")}</span>
           </div>
           {txDiscountIdr > 0 && (
             <div className="flex justify-between items-center">
@@ -164,7 +161,7 @@ function PaymentModal({
           )}
           <div className="flex justify-between items-center">
             <span className="text-sm font-semibold text-fg">Total</span>
-            <MaskedAmount amount={totalIdr} className="text-xl font-extrabold text-primary" />
+            <span className="text-xl font-extrabold text-primary">Rp {totalIdr.toLocaleString("id-ID")}</span>
           </div>
         </div>
 
@@ -172,7 +169,7 @@ function PaymentModal({
         {maxTxDiscountPct > 0 && (
           <div className="space-y-1.5">
             <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-              Diskon Transaksi (maks {maxTxDiscountPct}%)
+              Diskon Transaksi IDR (maks {maxTxDiscountPct}% dari total)
             </label>
             <input
               type="number"
@@ -206,7 +203,6 @@ function PaymentModal({
                 key={ch.id}
                 onClick={() => {
                   setSelectedChannel(ch.id);
-                  setCashTender(null);
                   setCustomInput("");
                 }}
                 className={`h-11 rounded-xl text-sm font-bold border transition ${
@@ -231,29 +227,39 @@ function PaymentModal({
               {quickAmounts.map((amt) => (
                 <button
                   key={amt}
-                  onClick={() => { setCashTender(amt); setCustomInput(""); }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
-                    cashTender === amt && customInput === ""
-                      ? "bg-accent border-accent text-accent-fg"
-                      : "bg-muted border-border text-muted-fg hover:bg-border"
-                  }`}
-                >
-                  {amt >= 1000000 ? `${amt / 1000000}jt` : `${amt / 1000}k`}
-                </button>
-              ))}
+                  onClick={() => {
+                  const current = parseInt(customInput.replace(/\D/g, ""), 10) || 0;
+                  setCustomInput(String(current + amt));
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-muted border-border text-muted-fg hover:bg-border"
+              >
+                {amt >= 1000000 ? `${amt / 1000000}jt` : `${amt / 1000}k`}
+              </button>
+            ))}
+              <button
+                onClick={() => setCustomInput(String(totalIdr))}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-primary border-primary text-primary-fg hover:opacity-90"
+              >
+                Total
+              </button>
             </div>
             <input
               type="number"
               min={0}
               placeholder="Nominal lainnya…"
               value={customInput}
-              onChange={(e) => { setCustomInput(e.target.value); setCashTender(null); }}
+              onChange={(e) => setCustomInput(e.target.value)}
               className="w-full h-11 border border-border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            {effectiveTender > 0 && (
+            {customInput !== "" && (
               <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-muted-fg">Kembalian</span>
-                <span className="text-success">Rp {change.toLocaleString("id-ID")}</span>
+                <span className={tenderShortfall ? "text-destructive" : "text-muted-fg"}>
+                  {tenderShortfall ? "Kurang" : "Kembalian"}
+                </span>
+                <span className={tenderShortfall ? "text-destructive" : "text-success"}>
+                  Rp {Math.abs(change).toLocaleString("id-ID")}
+                  {tenderShortfall && " (kurang)"}
+                </span>
               </div>
             )}
           </div>
@@ -329,7 +335,7 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-fg">Total</span>
-            <MaskedAmount amount={totalIdr} className="font-extrabold text-primary" />
+            <span className="font-extrabold text-primary">Rp {totalIdr.toLocaleString("id-ID")}</span>
           </div>
         </div>
         <button
@@ -357,6 +363,7 @@ export function POSPage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [addingCard, setAddingCard] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
   const [receipt, setReceipt] = useState<{
     transactionId: string;
@@ -381,6 +388,51 @@ export function POSPage() {
       if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const userId = user.id;
+    async function restoreAndCleanup() {
+      const draftCarts = await idb.carts
+        .filter((c) => c.status === "draft" && c.cashierUserId === userId)
+        .toArray();
+      const mostRecent = draftCarts.sort((a, b) => b.lastActivityAt - a.lastActivityAt)[0];
+      const targetCartId = mostRecent?.id ?? null;
+      if (targetCartId) setActiveCartId(targetCartId);
+
+      // Clear stale locks: cards locked by carts that are not the active draft
+      const lockedCards = await idb.cards.filter((c) => !!c.lockedByCartId).toArray();
+      for (const card of lockedCards) {
+        if (!card.lockedByCartId) continue;
+        const cart = await idb.carts.get(card.lockedByCartId);
+        const stale =
+          !cart ||
+          cart.status !== "draft" ||
+          cart.cashierUserId !== userId ||
+          (targetCartId && card.lockedByCartId !== targetCartId);
+        if (stale) {
+          await idb.cards.update(card.id, {
+            lockedByCartId: undefined,
+            lockedByUserId: undefined,
+            lockedAt: undefined,
+          });
+          continue;
+        }
+        // Locked by active cart — verify item actually exists
+        if (targetCartId) {
+          const item = await idb.cartItems.where({ cartId: targetCartId, cardId: card.id }).first();
+          if (!item) {
+            await idb.cards.update(card.id, {
+              lockedByCartId: undefined,
+              lockedByUserId: undefined,
+              lockedAt: undefined,
+            });
+          }
+        }
+      }
+    }
+    restoreAndCleanup();
+  }, [user, setActiveCartId]);
 
   useEffect(() => {
     if (!activeCartId) {
@@ -408,13 +460,44 @@ export function POSPage() {
     setScanError(null);
     setScanning(true);
     try {
-      const card = await idb.cards.where("shortId").equals(shortId).first();
+      let card = await idb.cards.where("shortId").equals(shortId).first();
       if (!card) {
         setScanError(`Kartu "${shortId}" tidak ditemukan di database lokal.`);
         setScannedCard(null);
       } else {
-        setScannedCard(card);
-        setFinalPriceInput("");
+        // Clear stale lock if the locking cart is gone / not draft / not ours
+        if (card.lockedByCartId && user) {
+          const cart = await idb.carts.get(card.lockedByCartId);
+          const stale =
+            !cart ||
+            cart.status !== "draft" ||
+            cart.cashierUserId !== user.id ||
+            (activeCartId && card.lockedByCartId !== activeCartId);
+          if (stale) {
+            await idb.cards.update(card.id, {
+              lockedByCartId: undefined,
+              lockedByUserId: undefined,
+              lockedAt: undefined,
+            });
+            card = await idb.cards.get(card.id);
+          } else if (activeCartId) {
+            const item = await idb.cartItems.where({ cartId: activeCartId, cardId: card.id }).first();
+            if (!item) {
+              await idb.cards.update(card.id, {
+                lockedByCartId: undefined,
+                lockedByUserId: undefined,
+                lockedAt: undefined,
+              });
+              card = await idb.cards.get(card.id);
+            }
+          }
+        }
+        setScannedCard(card ?? null);
+        if (card?.pricingMode === "negotiable") {
+          setFinalPriceInput(String(card.listedPriceIdr ?? ""));
+        } else {
+          setFinalPriceInput("");
+        }
         setBelowBottomError(false);
       }
     } finally {
@@ -490,10 +573,10 @@ export function POSPage() {
 
       const response = (await api.carts.addItem(cartId, {
         cardId: scannedCard.id, intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
-      })) as { id: string };
+      })) as { item: { id: string } };
 
       const newItem: IdbCartItem = {
-        id: response.id, cartId, cardId: scannedCard.id,
+        id: response.item.id, cartId, cardId: scannedCard.id,
         intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
       };
 
@@ -520,8 +603,25 @@ export function POSPage() {
 
   async function handleRemoveItem(item: IdbCartItem) {
     if (!activeCartId) return;
+    setRemoveError(null);
     try {
       await api.carts.removeItem(activeCartId, item.cardId);
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      if (status === 404) {
+        // Item tidak ada di server — tetap lanjutkan cleanup lokal
+      } else if (status === 409) {
+        // Keranjang sudah tidak draft di server — bersihkan state lokal
+        setRemoveError("Keranjang sudah tidak aktif di server. Membuat keranjang baru…");
+        handleAbandonCart();
+        return;
+      } else {
+        const message = err instanceof Error ? err.message : "Gagal menghapus dari keranjang.";
+        setRemoveError(message);
+        return;
+      }
+    }
+    try {
       await idb.cartItems.delete(item.id);
       await idb.cards.update(item.cardId, {
         lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
@@ -582,6 +682,10 @@ export function POSPage() {
     try {
       await api.carts.abandon(activeCartId);
       await idb.carts.update(activeCartId, { status: "abandoned" });
+    } catch {
+      // Best effort — tetap lanjutkan cleanup lokal walau server gagal
+    }
+    try {
       for (const item of cartItems) {
         await idb.cards.update(item.cardId, {
           lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
@@ -594,6 +698,7 @@ export function POSPage() {
     setScannedCard(null);
     setCartItems([]);
     setCartCards({});
+    setRemoveError(null);
     refocusScan();
   }
 
@@ -601,7 +706,7 @@ export function POSPage() {
     scannedCard && scannedCard.status === "available" && !scannedCard.lockedByCartId;
 
   const cardAlreadyInCart =
-    scannedCard?.lockedByCartId === activeCartId ||
+    (!!activeCartId && scannedCard?.lockedByCartId === activeCartId) ||
     cartItems.some((i) => i.cardId === scannedCard?.id);
 
   return (
@@ -669,9 +774,15 @@ export function POSPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-fg">Harga Tayang</span>
+                  <span className="text-lg font-extrabold text-fg">
+                    Rp {scannedCard.listedPriceIdr?.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-fg">Harga Minimum</span>
                   <MaskedAmount
-                    amount={scannedCard.listedPriceIdr}
-                    className="text-lg font-extrabold text-fg"
+                    amount={scannedCard.bottomPriceIdr}
+                    className="text-sm font-bold text-fg"
                   />
                 </div>
                 <div className="space-y-1">
@@ -789,6 +900,11 @@ export function POSPage() {
               </button>
             )}
           </div>
+          {removeError && (
+            <div className="mx-4 mb-2 bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
+              {removeError}
+            </div>
+          )}
 
           {cartItems.length === 0 ? (
             <p className="px-4 pb-4 text-sm text-muted-fg italic">
@@ -814,10 +930,9 @@ export function POSPage() {
                         </p>
                       )}
                     </div>
-                    <MaskedAmount
-                      amount={lineTotal}
-                      className="text-sm font-bold text-fg shrink-0"
-                    />
+                    <span className="text-sm font-bold text-fg shrink-0">
+                      Rp {lineTotal.toLocaleString("id-ID")}
+                    </span>
                     <button
                       onClick={() => handleRemoveItem(item)}
                       className="text-border hover:text-destructive transition ml-1 shrink-0"
@@ -835,7 +950,9 @@ export function POSPage() {
             <div className="px-4 py-4 border-t border-border space-y-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-fg">Total</span>
-                <MaskedAmount amount={totalIdr} className="text-xl font-extrabold text-primary" />
+                <span className="text-xl font-extrabold text-primary">
+                  Rp {totalIdr.toLocaleString("id-ID")}
+                </span>
               </div>
               <button
                 onClick={() => setShowPayModal(true)}

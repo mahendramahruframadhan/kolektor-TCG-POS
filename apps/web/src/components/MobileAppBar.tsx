@@ -23,7 +23,7 @@ export function MobileAppBar({
   showMenu = true,
 }: MobileAppBarProps) {
   return (
-    <header className="h-14 flex items-center gap-0 px-4 bg-card border-b border-border shrink-0 z-10">
+    <header className="sticky top-0 h-14 flex items-center gap-0 px-4 bg-card border-b border-border shrink-0 z-10">
       {back && (
         <button
           onClick={onBack}

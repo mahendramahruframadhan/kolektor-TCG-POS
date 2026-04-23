@@ -115,16 +115,25 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         .get();
       if (!card) return reply.status(404).send({ error: "Card not found" });
 
-      // Card must be available — not held, sold, or locked by another cart
+      // Card must be available — not held, sold, or locked by another active cart
       if (card.status !== "available") {
         return reply
           .status(409)
           .send({ error: `Card is not available (status: ${card.status})` });
       }
       if (card.lockedByCartId !== null && card.lockedByCartId !== cartId) {
-        return reply
-          .status(409)
-          .send({ error: "Card is locked by another cart" });
+        // Check if the locking cart is still a valid draft; if not, allow stealing
+        const lockingCart = db
+          .select()
+          .from(carts)
+          .where(eq(carts.id, card.lockedByCartId))
+          .get();
+        if (lockingCart && lockingCart.status === "draft") {
+          return reply
+            .status(409)
+            .send({ error: "Card is locked by another cart" });
+        }
+        // Stale lock — the locking cart is abandoned/paid/missing, proceed
       }
 
       // ── Floor price / discount validation ───────────────────────────────
