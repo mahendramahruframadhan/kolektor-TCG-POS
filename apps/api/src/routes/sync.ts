@@ -15,6 +15,7 @@ import {
   holds,
 } from "@kolektapos/db/schema";
 import { requireAuth } from "../plugins/auth-guard.js";
+import { userDto } from "../utils/user-dto.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -71,7 +72,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
         )
         .all();
 
-      for (const row of userRows) changes.push({ entityType: "user", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
+      for (const row of userRows) changes.push({ entityType: "user", operation: "create", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of eventRows) changes.push({ entityType: "event", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of channelRows) changes.push({ entityType: "payment_channel", operation: "create", payload: row, serverReceivedAt: 0 });
       for (const row of settingRows) changes.push({ entityType: "setting", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
@@ -88,7 +89,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
 
       for (const row of cardChanges) changes.push({ entityType: "card", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of eventChanges) changes.push({ entityType: "event", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
-      for (const row of userChanges) changes.push({ entityType: "user", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
+      for (const row of userChanges) changes.push({ entityType: "user", operation: "update", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of cartChanges) changes.push({ entityType: "cart", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of txChanges) changes.push({ entityType: "transaction", operation: "create", payload: row, serverReceivedAt: row.createdAt });
     }
