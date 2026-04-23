@@ -2,7 +2,9 @@
 
 Private, self-hosted, single-booth POS for Pokémon TCG conventions. Local-first PWA + Fastify sync server.
 
-See [`docs/kolektapos-prd.md`](docs/kolektapos-prd.md) for the consolidated PRD and [`CLAUDE.md`](CLAUDE.md) for the architectural invariants.
+- [`docs/01-prd.md`](docs/01-prd.md) — consolidated PRD (v1.0)
+- [`docs/02-implementation-plan.md`](docs/02-implementation-plan.md) — milestone-by-milestone build plan
+- [`CLAUDE.md`](CLAUDE.md) — architectural invariants for Claude Code
 
 ## Workspace layout
 

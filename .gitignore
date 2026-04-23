@@ -21,3 +21,4 @@ storage/
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea
+.claude/

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-Pre-implementation. Only artifact is `docs/kolektapos-prd.md` (v1.0, consolidated, all open questions resolved). No code, no `package.json`, no git history yet. The PRD is the source of truth — read it before proposing structure or making scope calls.
+Monorepo scaffold only; no source code yet. The PRD (`docs/01-prd.md`, v1.0, all open questions resolved) is the source of truth for scope and architecture. The implementation plan (`docs/02-implementation-plan.md`) sequences the build into milestones — consult it before starting or re-sequencing work.
 
 ## Project summary
 
