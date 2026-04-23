@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -183,6 +183,33 @@ export function AdminPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+        {/* Navigation links */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
+            Menu Admin
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              to="/admin/users"
+              className="block text-center bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg py-2 text-sm font-semibold transition"
+            >
+              👥 Kelola Pengguna
+            </Link>
+            <Link
+              to="/admin/oversold"
+              className="block text-center bg-red-50 hover:bg-red-100 text-red-700 rounded-lg py-2 text-sm font-semibold transition"
+            >
+              🚨 Antrian Oversold
+            </Link>
+            <Link
+              to="/admin/cash-reconciliation"
+              className="block text-center bg-green-50 hover:bg-green-100 text-green-700 rounded-lg py-2 text-sm font-semibold transition"
+            >
+              💰 Rekonsiliasi Kas
+            </Link>
+          </div>
+        </div>
+
         {/* Editable settings */}
         <div className="bg-white rounded-xl shadow-sm p-4">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">
