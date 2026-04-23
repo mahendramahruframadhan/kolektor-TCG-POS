@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^10",
+    "@fastify/helmet": "^12",
+    "@fastify/rate-limit": "^10",
     "@fastify/session": "^11.0.1",
     "@kolektapos/db": "workspace:*",
     "@kolektapos/types": "workspace:*",

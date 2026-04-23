@@ -2,6 +2,9 @@ import { config as dotenvConfig } from "dotenv";
 import { fileURLToPath } from "url";
 import { resolve, dirname } from "path";
 import Fastify from "fastify";
+import helmet from "@fastify/helmet";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenvConfig({ path: resolve(__dirname, "../../../.env") });
@@ -35,6 +38,24 @@ async function build() {
   // DB
   const { db } = await runMigrations(DB_PATH);
   await seed(db);
+
+  // Perimeter security — §H4/H10 of MVP hardening
+  await app.register(helmet, {
+    // PWA lives on the same domain as the API (PRD §10); no CSP wiring here.
+    contentSecurityPolicy: false,
+  });
+
+  const allowedOrigin = process.env.DOMAIN
+    ? `https://${process.env.DOMAIN}`
+    : true; // dev: reflect origin
+  await app.register(cors, {
+    origin: allowedOrigin,
+    credentials: true,
+  });
+
+  await app.register(rateLimit, {
+    global: false, // only routes that opt in via {config:{rateLimit:...}} are throttled
+  });
 
   // Plugins
   await sessionPlugin(app);

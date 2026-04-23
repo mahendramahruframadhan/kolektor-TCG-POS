@@ -13,7 +13,9 @@ type Db = BetterSQLite3Database<typeof dbSchema>;
 export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
-  app.post("/auth/login", async (request, reply) => {
+  app.post("/auth/login", {
+    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+  }, async (request, reply) => {
     const body = LoginSchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: body.error.flatten() });
@@ -61,7 +63,10 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     return reply.send({ ok: true });
   });
 
-  app.post("/auth/change-password", { preHandler: requireAuth }, async (request, reply) => {
+  app.post("/auth/change-password", {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+  }, async (request, reply) => {
     const body = z.object({
       currentPassword: z.string().min(1),
       newPassword: z.string().min(8),
