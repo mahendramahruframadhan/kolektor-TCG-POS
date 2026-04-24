@@ -33,10 +33,11 @@ export async function seed(db: ReturnType<typeof drizzle>) {
   }
 
   // ── default settings (§5.1 F35) ──────────────────────────────────────
-  const defaults = [
+  const defaults: { key: string; value: number | string }[] = [
     { key: "max_line_discount_pct_fixed", value: 20 },
     { key: "max_transaction_discount_pct", value: 30 },
     { key: "cart_idle_ttl_minutes", value: 30 },
+    { key: "default_landing_page", value: "pos" },
   ];
 
   for (const { key, value } of defaults) {
