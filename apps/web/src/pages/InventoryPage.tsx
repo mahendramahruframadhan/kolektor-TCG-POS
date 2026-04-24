@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Search, Camera, Award, Pencil, RotateCcw } from "lucide-react";
 import { idb } from "../lib/db.js";
@@ -315,7 +315,7 @@ export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedCard, setSelectedCard] = useState<IdbCard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(50);
+  const [extraPages, setExtraPages] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -332,18 +332,32 @@ export function InventoryPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  useEffect(() => {
-    setVisibleCount(50);
-  }, [searchText, statusFilter]);
+  // Reset pagination whenever filters change — tracked as a page count so the
+  // reset happens in the same render pass that sees new filter values, avoiding
+  // the extra render cycle a useEffect reset would cause.
+  const [prevSearch, setPrevSearch] = useState(searchText);
+  const [prevStatus, setPrevStatus] = useState(statusFilter);
+  let currentExtraPages = extraPages;
+  if (searchText !== prevSearch || statusFilter !== prevStatus) {
+    currentExtraPages = 0;
+    setPrevSearch(searchText);
+    setPrevStatus(statusFilter);
+    setExtraPages(0);
+  }
 
-  const filteredCards = allCards.filter((card) => {
-    const matchesSearch =
-      !searchText ||
-      card.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      card.shortId.toLowerCase().includes(searchText.toLowerCase());
-    const matchesStatus = statusFilter === "all" || card.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const visibleCount = 50 + currentExtraPages * 50;
+
+  const filteredCards = useMemo(() => {
+    const lc = searchText.toLowerCase();
+    return allCards.filter((card) => {
+      const matchesSearch =
+        !searchText ||
+        card.title.toLowerCase().includes(lc) ||
+        card.shortId.toLowerCase().includes(lc);
+      const matchesStatus = statusFilter === "all" || card.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [allCards, searchText, statusFilter]);
 
   const visibleCards = filteredCards.slice(0, visibleCount);
   const hasMore = filteredCards.length > visibleCount;
@@ -444,7 +458,7 @@ export function InventoryPage() {
 
         {!loading && hasMore && (
           <button
-            onClick={() => setVisibleCount((n) => n + 50)}
+            onClick={() => setExtraPages((n) => n + 1)}
             className="w-full h-11 border border-border rounded-2xl text-sm font-bold text-muted-fg hover:bg-muted transition"
           >
             Muat {Math.min(50, filteredCards.length - visibleCount)} kartu lagi
