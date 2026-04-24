@@ -463,11 +463,15 @@ Cart locking (F34) and settings (F35) are MVP because they are foundational — 
 
 ### Phase 2 — v1 (after first event shakedown)
 
-**Features:** F12, F16, F19, F21, F23, F26, F30
+**Features:** F12, F16, F19, F23, F26, F30
 
 ### Phase 3 — v1.5 and later
 
 F22 (bundles), F33 (parallel events), buylist mode, store credit, low-stock alerts, booth fee model, event expense tracking, tax export.
+
+### Dropped — indefinitely deferred
+
+**F21 — End-of-day cash reconciliation.** Dropped: the marginal value over a manual count is low for an 11-person single-booth setup, and the feature adds a dedicated screen, route, and table with no other dependencies. If ever needed, requirements are fully specified in §5 (F21 row) and the `cash_reconciliations` schema is in §6. The DB table is retained in migrations as a no-op tombstone; the API endpoints have been removed. Re-enable by: restoring POST/GET `/cash-reconciliations` routes in `settlement.ts`, adding UI to the admin section.
 
 ---
 
