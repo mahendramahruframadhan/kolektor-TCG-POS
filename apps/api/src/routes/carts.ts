@@ -186,7 +186,9 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         }
       } else if (card.pricingMode === "negotiable") {
         const bottomPrice = card.bottomPriceIdr ?? 0;
-        if (bottomPrice > 0 && body.data.intendedPriceIdr < bottomPrice && !requiresAdminOverride) {
+        // effectiveSoldPrice = intendedPriceIdr − lineDiscountIdr (the actual amount the customer pays)
+        const effectiveSoldPrice = body.data.intendedPriceIdr - body.data.lineDiscountIdr;
+        if (bottomPrice > 0 && effectiveSoldPrice < bottomPrice && !requiresAdminOverride) {
           return reply.status(422).send({
             error: "Di bawah harga minimum (bottom price)",
             bottomPriceIdr: bottomPrice,

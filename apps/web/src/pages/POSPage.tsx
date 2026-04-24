@@ -64,7 +64,7 @@ function StatusBadge({
 // ── Bottom price tap-and-hold reveal ───────────────────────────────────────
 
 function BottomPriceReveal({ amount }: { amount: number | undefined }) {
-  const { revealed, startReveal, endReveal } = useTapHoldReveal(5000);
+  const { revealed, startReveal, endReveal } = useTapHoldReveal(2000);
 
   // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
   // Space/Enter pressed → start the hold timer; released → cancel the
@@ -98,7 +98,7 @@ function BottomPriceReveal({ amount }: { amount: number | undefined }) {
         onKeyUp={handleKeyUp}
         onBlur={endReveal}
         className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
-        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 5 detik untuk melihat harga minimum"
+        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 2 detik untuk melihat harga minimum"
         aria-pressed={revealed}
       >
         {revealed ? (
@@ -670,7 +670,9 @@ export function POSPage() {
           }
           requiresAdminOverride = true;
         }
-        intendedPriceIdr = finalPrice;
+        // intendedPriceIdr is the listed/asking price; lineDiscountIdr is the reduction.
+        // soldPriceIdr = intendedPriceIdr − lineDiscountIdr = finalPrice (what customer pays).
+        intendedPriceIdr = listed;
         lineDiscountIdr = Math.max(0, listed - finalPrice);
         lineDiscountPct = listed > 0 ? Math.round(((listed - finalPrice) / listed) * 100) : 0;
       } else {
@@ -771,7 +773,7 @@ export function POSPage() {
       )
     );
     setShowPayModal(false);
-    setReceipt({ transactionId: txId, totalIdr, itemCount: cartItems.length });
+    setReceipt({ transactionId: txId, totalIdr: Math.max(0, totalIdr - discountIdr), itemCount: cartItems.length });
   }
 
   function handleReceiptDone() {
