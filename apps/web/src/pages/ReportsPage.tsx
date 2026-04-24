@@ -7,7 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { MaskedScopeProvider, useMaskedScope } from "../hooks/useMaskedScope.js";
-import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel } from "../lib/db.js";
+import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel, IdbCard } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -561,8 +561,30 @@ function InventoryTab({ events }: { events: IdbEvent[] }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.reports.inventoryValue(selectedEventId) as InventoryReport;
-      setReport(data);
+      // Cards registered when no event was active have eventId = undefined (orphaned).
+      // Include them under whichever event is currently selected so they are not invisible.
+      const eventCards = await idb.cards
+        .filter((c) => !c.eventId || c.eventId === selectedEventId)
+        .toArray();
+
+      const available = eventCards.filter((c) => c.status === "available");
+      const held = eventCards.filter((c) => c.status === "held");
+      const sold = eventCards.filter((c) => c.status === "sold");
+
+      const sumPrice = (list: IdbCard[]) =>
+        list.reduce((s, c) => s + (c.listedPriceIdr ?? c.priceIdr ?? 0), 0);
+
+      setReport({
+        eventId: selectedEventId,
+        totalCards: eventCards.length,
+        availableCount: available.length,
+        heldCount: held.length,
+        soldCount: sold.length,
+        availableValueIdr: sumPrice(available),
+        heldValueIdr: sumPrice(held),
+        soldValueIdr: sumPrice(sold),
+        totalListedValueIdr: sumPrice(eventCards),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat inventori.");
     } finally {
