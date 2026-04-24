@@ -70,7 +70,7 @@ beforeAll(async () => {
   fixedCardId = crypto.randomUUID();
   sqlite
     .prepare(
-      "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, intaken_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, stock_received_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       fixedCardId,

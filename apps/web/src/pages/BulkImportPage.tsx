@@ -113,7 +113,7 @@ function validateRow(
     clientId,
     shortId,
     ownerUserId: matchedUser?.id ?? "",
-    intakenByUserId: currentUserId,
+    stockReceivedByUserId: currentUserId,
     eventId: activeEventId,
     title,
     setName: (rawRow["setname"] ?? "").trim(),
@@ -223,7 +223,7 @@ export function BulkImportPage() {
           clientId: row.cardBody!.clientId as string,
           shortId: row.cardBody!.shortId as string,
           ownerUserId: row.cardBody!.ownerUserId as string,
-          intakenByUserId: user!.id,
+          stockReceivedByUserId: user!.id,
           eventId: activeEvent?.id,
           title: row.cardBody!.title as string,
           setName: row.cardBody!.setName as string ?? "",
@@ -287,7 +287,7 @@ export function BulkImportPage() {
 
   return (
     <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
-      <MobileAppBar title="Bulk Import Kartu" back onBack={() => navigate("/intake")} />
+      <MobileAppBar title="Bulk Import Kartu" back onBack={() => navigate("/stock-receive")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {/* Instructions */}

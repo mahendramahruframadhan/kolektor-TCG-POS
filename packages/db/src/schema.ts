@@ -73,7 +73,7 @@ export const cards = sqliteTable(
     ownerUserId: text("owner_user_id")
       .notNull()
       .references(() => users.id),
-    intakenByUserId: text("intaken_by_user_id")
+    stockReceivedByUserId: text("stock_received_by_user_id")
       .notNull()
       .references(() => users.id),
     eventId: text("event_id").references(() => events.id),

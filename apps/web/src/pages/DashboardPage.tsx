@@ -63,7 +63,7 @@ export function DashboardPage() {
   const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
     { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
     { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
-    { to: "/intake",    Icon: Plus,         label: "Intake Kartu",primary: false },
+    { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", primary: false },
     { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 

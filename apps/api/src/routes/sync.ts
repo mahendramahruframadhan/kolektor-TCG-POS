@@ -31,7 +31,7 @@ const CreateCardPushPayloadSchema = z
   .object({
     shortId: z.string().regex(/^[A-Z0-9]-[A-Z0-9]{5}$/),
     ownerUserId: z.string().uuid(),
-    intakenByUserId: z.string().uuid(),
+    stockReceivedByUserId: z.string().uuid(),
     eventId: z.string().uuid().optional(),
     title: z.string().min(1),
     setName: z.string().default(""),

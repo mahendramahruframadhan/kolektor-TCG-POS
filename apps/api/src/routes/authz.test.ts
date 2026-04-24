@@ -43,7 +43,7 @@ beforeAll(async () => {
 
   // Seed a card for PATCH target.
   sqlite.prepare(
-    "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, intaken_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, stock_received_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).run("card-1", "ccli-1", "R-00001", "Charizard", "fixed", 50000, "available", "u-admin", "u-admin");
 
   // Seed an event (transactions.event_id is NOT NULL).
@@ -125,7 +125,7 @@ describe("cart add-item requiresAdminOverride gate", () => {
     const cardUuid = crypto.randomUUID();
     const eventUuid = crypto.randomUUID();
     sqlite.prepare(
-      "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, listed_price_idr, bottom_price_idr, status, owner_user_id, intaken_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, listed_price_idr, bottom_price_idr, status, owner_user_id, stock_received_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).run(cardUuid, crypto.randomUUID(), "R-NEG01", "Neg Card", "negotiable", 30_000, bottomPriceIdr, "available", "u-admin", "u-admin");
 
     // Need an active event for carts; use the one seeded earlier by the first block

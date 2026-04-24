@@ -46,7 +46,7 @@ const SECTIONS: Section[] = [
           { step: "2", text: "Di halaman Dashboard, kamu bisa melihat event aktif dan statistik penjualan hari ini." },
           { step: "3", text: "Tap 'Mulai Kasir' untuk memulai sesi kasir. Scan barcode kartu atau ketik ID kartu." },
           { step: "4", text: "Kartu yang discan akan masuk ke keranjang. Pilih kanal pembayaran dan selesaikan transaksi." },
-          { step: "5", text: "Gunakan 'Intake Kartu' untuk mendaftarkan kartu baru ke sistem dan cetak label QR." },
+          { step: "5", text: "Gunakan 'Stock Receive' untuk mendaftarkan kartu baru ke sistem dan cetak label QR." },
         ].map(({ step, text }) => (
           <li key={step} className="flex gap-3 items-start">
             <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-xs font-extrabold text-primary-fg shrink-0 mt-0.5">

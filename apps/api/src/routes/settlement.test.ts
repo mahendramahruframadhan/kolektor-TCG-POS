@@ -31,7 +31,7 @@ beforeAll(async () => {
 
   // Seed card referenced by transaction_items (FK).
   sqlite.prepare(
-    "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, intaken_by_user_id, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO cards (id, client_id, short_id, title, pricing_mode, price_idr, status, owner_user_id, stock_received_by_user_id, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).run("card-1", "cli-card-1", "A-00001", "Test Card", "fixed", 1000, "sold", "owner-A", "owner-A", "ev-1");
 
   // One sale for owner-A @ 1000

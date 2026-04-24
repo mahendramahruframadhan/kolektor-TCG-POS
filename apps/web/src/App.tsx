@@ -6,7 +6,7 @@ import { useAuthStore } from "./store/auth.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { POSPage } from "./pages/POSPage.js";
-import { IntakePage } from "./pages/IntakePage.js";
+import { StockReceivePage } from "./pages/StockReceivePage.js";
 import { InventoryPage } from "./pages/InventoryPage.js";
 import { ReportsPage } from "./pages/ReportsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
@@ -69,10 +69,10 @@ export function App() {
             }
           />
           <Route
-            path="/intake"
+            path="/stock-receive"
             element={
               <RequireAuth>
-                <IntakePage />
+                <StockReceivePage />
               </RequireAuth>
             }
           />
@@ -149,7 +149,7 @@ export function App() {
             }
           />
           <Route
-            path="/intake/bulk"
+            path="/stock-receive/bulk"
             element={
               <RequireAuth>
                 <BulkImportPage />

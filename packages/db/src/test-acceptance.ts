@@ -101,7 +101,7 @@ const ownerId = adminUser!.id;
 const cardId = crypto.randomUUID();
 sqlite.prepare(
   `INSERT INTO cards
-   (id,client_id,short_id,owner_user_id,intaken_by_user_id,title,pricing_mode,
+   (id,client_id,short_id,owner_user_id,stock_received_by_user_id,title,pricing_mode,
     price_idr,status,created_at,updated_at,version)
    VALUES (?,?,?,?,?,?,?,?,?,strftime('%s','now'),strftime('%s','now'),1)`
 ).run(cardId, crypto.randomUUID(), "B-AAAAA", ownerId, cashierId, "Pikachu EX", "fixed", 50000, "sold");

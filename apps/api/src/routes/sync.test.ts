@@ -100,7 +100,7 @@ describe("/sync/push validation", () => {
             payload: {
               shortId: "R-ABCDE",
               ownerUserId: crypto.randomUUID(),
-              intakenByUserId: "u1",
+              stockReceivedByUserId: "u1",
               title: "Test Card",
               pricingMode: "fixed",
               priceIdr: 1000,
