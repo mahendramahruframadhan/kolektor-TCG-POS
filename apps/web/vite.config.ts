@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      devOptions: {
+        enabled: true,
+      },
       includeAssets: ["favicon.png", "hero.webp"],
       manifest: {
         name: "KolektaPOS",
