@@ -110,9 +110,19 @@ export function DashboardPage() {
 
         {/* Today's stats */}
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-            Hari Ini
-          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+              Hari Ini
+            </p>
+            <p className="text-xs font-semibold text-muted-fg">
+              {new Date().toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
           <StatRow
             label="Total Penjualan"
             value={<MaskedAmount amount={stats?.gross} className="text-lg font-extrabold text-fg" />}
@@ -147,16 +157,6 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Admin shortcut */}
-        {user?.role === "admin" && (
-          <Link
-            to="/admin"
-            className="flex items-center gap-3 px-4 py-3 bg-card rounded-2xl border border-border text-sm font-bold text-fg hover:bg-muted transition active:scale-[0.98]"
-          >
-            <span className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Admin Panel</span>
-            <span className="ml-auto text-muted-fg">→</span>
-          </Link>
-        )}
       </main>
     </div>
   );
