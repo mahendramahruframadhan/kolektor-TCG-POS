@@ -7,7 +7,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import { api } from "../lib/api.js";
-import type { IdbCard } from "../lib/db.js";
+import type { IdbCard, IdbEvent } from "../lib/db.js";
 
 // ── Bottom price tap-and-hold reveal (2 s) ────────────────────────────────
 
@@ -311,8 +311,12 @@ export function InventoryPage() {
 
   const [allCards, setAllCards] = useState<IdbCard[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string }[]>([]);
+  const [allEvents, setAllEvents] = useState<IdbEvent[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
   const [selectedCard, setSelectedCard] = useState<IdbCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [extraPages, setExtraPages] = useState(0);
@@ -320,11 +324,17 @@ export function InventoryPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cards, users] = await Promise.all([idb.cards.toArray(), idb.users.toArray()]);
+      const [cards, users, events] = await Promise.all([
+        idb.cards.toArray(),
+        idb.users.toArray(),
+        idb.events.toArray(),
+      ]);
       setAllCards(cards);
-      const map: Record<string, string> = {};
-      for (const u of users) map[u.id] = u.displayName;
-      setUserMap(map);
+      const uMap: Record<string, string> = {};
+      for (const u of users) uMap[u.id] = u.displayName;
+      setUserMap(uMap);
+      setAllUsers(users.map((u) => ({ id: u.id, name: u.displayName })));
+      setAllEvents(events);
     } finally {
       setLoading(false);
     }
@@ -337,11 +347,20 @@ export function InventoryPage() {
   // the extra render cycle a useEffect reset would cause.
   const [prevSearch, setPrevSearch] = useState(searchText);
   const [prevStatus, setPrevStatus] = useState(statusFilter);
+  const [prevOwner, setPrevOwner] = useState(ownerFilter);
+  const [prevEvent, setPrevEvent] = useState(eventFilter);
   let currentExtraPages = extraPages;
-  if (searchText !== prevSearch || statusFilter !== prevStatus) {
+  if (
+    searchText !== prevSearch ||
+    statusFilter !== prevStatus ||
+    ownerFilter !== prevOwner ||
+    eventFilter !== prevEvent
+  ) {
     currentExtraPages = 0;
     setPrevSearch(searchText);
     setPrevStatus(statusFilter);
+    setPrevOwner(ownerFilter);
+    setPrevEvent(eventFilter);
     setExtraPages(0);
   }
 
@@ -355,9 +374,11 @@ export function InventoryPage() {
         card.title.toLowerCase().includes(lc) ||
         card.shortId.toLowerCase().includes(lc);
       const matchesStatus = statusFilter === "all" || card.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesOwner = ownerFilter === "all" || card.ownerUserId === ownerFilter;
+      const matchesEvent = eventFilter === "all" || card.eventId === eventFilter;
+      return matchesSearch && matchesStatus && matchesOwner && matchesEvent;
     });
-  }, [allCards, searchText, statusFilter]);
+  }, [allCards, searchText, statusFilter, ownerFilter, eventFilter]);
 
   const visibleCards = filteredCards.slice(0, visibleCount);
   const hasMore = filteredCards.length > visibleCount;
@@ -387,6 +408,30 @@ export function InventoryPage() {
               className="w-full h-10 border border-border rounded-xl pl-9 pr-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+          {/* Owner + Event selects */}
+          <div className="flex gap-2">
+            <select
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Semua pemilik</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            <select
+              value={eventFilter}
+              onChange={(e) => setEventFilter(e.target.value)}
+              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Semua event</option>
+              {allEvents.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.name}</option>
+              ))}
+            </select>
+          </div>
+          {/* Status chips */}
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FILTERS.map((f) => (
               <button
