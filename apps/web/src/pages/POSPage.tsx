@@ -830,6 +830,8 @@ export function POSPage() {
               {scanError}
             </div>
           )}
+
+          <ProductSearch onPick={(shortId) => handleScan(shortId)} />
         </div>
 
         {/* ── Scanned card review ── */}
@@ -1061,6 +1063,81 @@ export function POSPage() {
           itemCount={receipt.itemCount}
           onDone={handleReceiptDone}
         />
+      )}
+    </div>
+  );
+}
+
+// ── Product search ─────────────────────────────────────────────────────────
+// Free-text search over local IDB for cashiers who want to find a card by
+// name when a scan isn't convenient. Min 3 characters; matches shortId OR
+// title (case-insensitive, contains). Sold/retired/held cards are excluded.
+function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<IdbCard[]>([]);
+  const trimmed = query.trim();
+  const enabled = trimmed.length >= 3;
+
+  useEffect(() => {
+    if (!enabled) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    const q = trimmed.toLowerCase();
+    (async () => {
+      const matches = await idb.cards
+        .filter(
+          (c) =>
+            c.status === "available" &&
+            (c.shortId?.toLowerCase().includes(q) ||
+              c.title?.toLowerCase().includes(q))
+        )
+        .limit(10)
+        .toArray();
+      if (!cancelled) setResults(matches);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmed, enabled]);
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cari produk (min. 3 karakter, kode atau nama)"
+        autoComplete="off"
+        className="w-full h-11 border border-border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted-fg"
+      />
+      {enabled && results.length === 0 && (
+        <p className="text-xs text-muted-fg italic px-1">Tidak ada kartu cocok.</p>
+      )}
+      {results.length > 0 && (
+        <ul className="border border-border rounded-xl divide-y divide-border overflow-hidden">
+          {results.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  onPick(c.shortId);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-muted transition flex items-center justify-between gap-3"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-fg truncate">{c.title}</span>
+                  <span className="block text-xs text-muted-fg truncate">
+                    {c.setName}{c.setNumber ? ` · #${c.setNumber}` : ""}
+                  </span>
+                </span>
+                <span className="font-mono text-xs font-bold text-accent shrink-0">{c.shortId}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
