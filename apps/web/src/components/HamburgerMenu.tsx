@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, LogOut,
-  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
+  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -94,15 +94,6 @@ export function HamburgerMenu() {
           <div className="border-t border-border my-2 mx-4" />
 
           <Link
-            to="/change-password"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
-          >
-            <KeyRound className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
-            Ubah Password
-          </Link>
-
-          <Link
             to="/docs"
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
@@ -112,21 +103,27 @@ export function HamburgerMenu() {
           </Link>
         </nav>
 
-        <div className="px-4 py-3 flex items-center gap-3 border-t border-border shrink-0">
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
-            <span className="text-xs font-extrabold text-primary-fg">
-              {user?.displayName?.[0]?.toUpperCase() ?? "?"}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-fg truncate">{user?.displayName}</p>
-            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-              {user?.role === "admin" ? "Admin" : "Kasir"}
-            </p>
-          </div>
+        <div className="flex items-center gap-1 border-t border-border shrink-0">
+          <Link
+            to="/profile"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0 hover:bg-muted transition"
+          >
+            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
+              <span className="text-xs font-extrabold text-primary-fg">
+                {user?.displayName?.[0]?.toUpperCase() ?? "?"}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-fg truncate">{user?.displayName}</p>
+              <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+                {user?.role === "admin" ? "Admin" : "Kasir"}
+              </p>
+            </div>
+          </Link>
           <button
             onClick={handleLogout}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-destructive hover:bg-destructive hover:bg-opacity-10 transition shrink-0"
+            className="w-12 h-12 flex items-center justify-center text-destructive hover:bg-destructive hover:bg-opacity-10 transition shrink-0 mr-1"
             aria-label="Keluar"
             title="Keluar"
           >
