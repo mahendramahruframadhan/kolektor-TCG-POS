@@ -17,7 +17,7 @@ import { AuditLogPage } from "./pages/AuditLogPage.js";
 import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
-import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
+import { ProfilePage } from "./pages/ProfilePage.js";
 import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
@@ -154,10 +154,10 @@ export function App() {
             }
           />
           <Route
-            path="/change-password"
+            path="/profile"
             element={
               <RequireAuth>
-                <ChangePasswordPage />
+                <ProfilePage />
               </RequireAuth>
             }
           />
