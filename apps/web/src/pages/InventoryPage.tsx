@@ -3,11 +3,53 @@ import { useNavigate } from "react-router-dom";
 import { X, Search, Camera, Award, Pencil, RotateCcw } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
-import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
+import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import { api } from "../lib/api.js";
 import type { IdbCard } from "../lib/db.js";
+
+// ── Bottom price tap-and-hold reveal (2 s) ────────────────────────────────
+
+function BottomPriceReveal({ amount }: { amount: number | undefined }) {
+  const { revealed, startReveal, endReveal } = useTapHoldReveal(2000);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+      e.preventDefault();
+      startReveal();
+    }
+  };
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      endReveal();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onMouseDown={startReveal}
+      onMouseUp={endReveal}
+      onMouseLeave={endReveal}
+      onTouchStart={startReveal}
+      onTouchEnd={endReveal}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onBlur={endReveal}
+      className="text-base font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
+      aria-label="Tekan dan tahan 2 detik untuk melihat harga minimum"
+      aria-pressed={revealed}
+    >
+      {revealed ? (
+        <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
+      ) : (
+        <span className="tracking-widest">••••••</span>
+      )}
+    </button>
+  );
+}
 
 // ── Status badge ───────────────────────────────────────────────────────────
 
@@ -147,17 +189,21 @@ function CardDetail({
           {card.pricingMode === "fixed" ? (
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-fg">Harga</span>
-              <MaskedAmount amount={card.priceIdr} className="text-base font-extrabold text-fg" />
+              <span className="text-base font-extrabold text-fg">
+                {card.priceIdr != null ? `Rp ${card.priceIdr.toLocaleString("id-ID")}` : "—"}
+              </span>
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-fg">Harga Tayang</span>
-                <MaskedAmount amount={card.listedPriceIdr} className="text-base font-extrabold text-fg" />
+                <span className="text-base font-extrabold text-fg">
+                  {card.listedPriceIdr != null ? `Rp ${card.listedPriceIdr.toLocaleString("id-ID")}` : "—"}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-fg">Harga Minimum</span>
-                <MaskedAmount amount={card.bottomPriceIdr} className="text-base font-bold text-warning" />
+                <BottomPriceReveal amount={card.bottomPriceIdr} />
               </div>
             </>
           )}
@@ -375,7 +421,9 @@ export function InventoryPage() {
                     {/* Status + price */}
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <StatusBadge status={card.status} />
-                      <MaskedAmount amount={displayPrice} className="text-xs font-bold text-muted-fg" />
+                      <span className="text-xs font-bold text-muted-fg">
+                        {displayPrice != null ? `Rp ${displayPrice.toLocaleString("id-ID")}` : "—"}
+                      </span>
                     </div>
                   </button>
                 </li>
