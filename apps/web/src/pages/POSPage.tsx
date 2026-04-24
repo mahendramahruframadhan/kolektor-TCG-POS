@@ -11,7 +11,6 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { usePosStore } from "../store/pos.js";
-import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
@@ -967,10 +966,11 @@ export function POSPage() {
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-fg">Harga</span>
-                <MaskedAmount
-                  amount={scannedCard.priceIdr}
-                  className="text-lg font-extrabold text-fg"
-                />
+                <span className="text-lg font-extrabold text-fg">
+                  {scannedCard.priceIdr != null
+                    ? `Rp ${scannedCard.priceIdr.toLocaleString("id-ID")}`
+                    : "—"}
+                </span>
               </div>
             )}
 
