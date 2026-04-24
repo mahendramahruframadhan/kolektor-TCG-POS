@@ -2,7 +2,16 @@
   "name": "@kolektapos/qr",
   "version": "0.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "devDependencies": { "typescript": "^5.6.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
 }

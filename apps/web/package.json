@@ -2,12 +2,15 @@
   "name": "@kolektapos/web",
   "version": "0.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@kolektapos/types": "workspace:*",

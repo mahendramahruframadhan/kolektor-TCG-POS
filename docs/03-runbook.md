@@ -71,10 +71,10 @@ file test-backup.db   # should be: SQLite 3.x database
 
 ---
 
-## 2. Card intake (T−1 day / morning of event)
+## 2. Card stock-receive (T−1 day / morning of event)
 
-### 2.1 One-by-one intake
-1. Open PWA on tablet/phone → **Intake Kartu**
+### 2.1 One-by-one stock-receive
+1. Open PWA on tablet/phone → **Stock Receive**
 2. Select owner from dropdown
 3. Enter card details; toggle "Kartu Graded" if applicable
 4. Optionally capture photo
@@ -82,12 +82,12 @@ file test-backup.db   # should be: SQLite 3.x database
 
 ### 2.2 Bulk import
 1. Fill `kolektapos-bulk-import-template.xlsx` (download from Bulk Import page)
-2. Upload on `/intake/bulk` → review validation summary
+2. Upload on `/stock-receive/bulk` → review validation summary
 3. Fix errors in the spreadsheet if any invalid rows; re-upload
 4. Tap **Import N Kartu** — progress shown; error report downloadable
 
 ### 2.3 QR / short-ID labels
-After intake, short ID is displayed on card detail. Use any label printer to print `O-XXXXX` format; stick to sleeve.
+After stock-receive, short ID is displayed on card detail. Use any label printer to print `O-XXXXX` format; stick to sleeve.
 
 ---
 
@@ -97,7 +97,7 @@ After intake, short ID is displayed on card detail. Use any label printer to pri
 - [ ] Verify all devices are charged
 - [ ] Open PWA on each device → Dashboard → confirm active event shown
 - [ ] Each device: tap any nav item to trigger initial sync pull
-- [ ] Confirm sync: Inventaris should show all intaken cards
+- [ ] Confirm sync: Inventaris should show all stock-received cards
 - [ ] Test scan one card → verify it shows in POS screen
 - [ ] Admin: verify settings are correct
 - [ ] Have backup: `curl .../api/backup -o morning-backup.db`
@@ -172,7 +172,7 @@ curl -X PUT .../api/events/<id>/status -d '{"status":"closed"}' ...
 | Browser | Chrome/Firefox latest; Safari iOS 16+ |
 | Storage quota | Allow site storage when prompted (PersistentStorage API) |
 | USB HID scanner | Plug in before opening POS; feeds `<input>` on scan screen |
-| Camera | Granted permission once on intake page |
+| Camera | Granted permission once on stock-receive page |
 
 ---
 
@@ -198,8 +198,8 @@ systemctl start kolektapos
 Transactions since the backup are lost — mitigate with frequent backups.
 
 ### Short ID collision
-If intake says "duplicate short ID":
-1. Tap **Buat Ulang** in IntakePage to regenerate
+If stock-receive says "duplicate short ID":
+1. Tap **Buat Ulang** in StockReceivePage to regenerate
 2. In bulk import: re-upload the corrected row (new short ID auto-generated per row on each parse)
 
 ---

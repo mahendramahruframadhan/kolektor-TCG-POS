@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { eq, and, lt, isNull, inArray } from "drizzle-orm";
+import type { FastifyBaseLogger } from "fastify";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards, carts, cartItems, holds, settings } from "@kolektapos/db/schema";
@@ -26,7 +27,11 @@ function getCartIdleTtlMinutes(db: Db): number {
  * Finds draft carts where last_activity_at < now - cart_idle_ttl_minutes,
  * sets them to abandoned, and releases all card locks.
  */
-export function startCartSweeper(db: Db): cron.ScheduledTask {
+export function startCartSweeper(
+  db: Db,
+  opts: { logger?: FastifyBaseLogger } = {}
+): cron.ScheduledTask {
+  const log = opts.logger;
   const task = cron.schedule("*/5 * * * *", () => {
     try {
       const ttlMinutes = getCartIdleTtlMinutes(db);
@@ -48,6 +53,7 @@ export function startCartSweeper(db: Db): cron.ScheduledTask {
       if (idleCarts.length === 0) return;
 
       const idleCartIds = idleCarts.map((c) => c.id);
+      let releasedCardCount = 0;
 
       db.transaction(() => {
         // Get all card IDs locked by these carts
@@ -58,6 +64,7 @@ export function startCartSweeper(db: Db): cron.ScheduledTask {
           .all();
 
         const lockedCardIds = lockedItems.map((i) => i.cardId);
+        releasedCardCount = lockedCardIds.length;
 
         // Release card locks
         if (lockedCardIds.length > 0) {
@@ -88,9 +95,13 @@ export function startCartSweeper(db: Db): cron.ScheduledTask {
         }
       });
 
-      console.log(
-        `[cart-sweeper] Abandoned ${idleCarts.length} idle cart(s) (TTL=${ttlMinutes}m)`
-      );
+      log?.info({
+        event: "cart_abandoned_by_sweeper",
+        count: idleCarts.length,
+        cartIds: idleCartIds,
+        releasedCardCount,
+        ttlMinutes,
+      });
 
       // ── Expire overdue holds ────────────────────────────────────────────
       try {
@@ -115,15 +126,17 @@ export function startCartSweeper(db: Db): cron.ScheduledTask {
             }
           });
 
-          console.log(
-            `[cart-sweeper] Expired ${expiredHolds.length} hold(s)`
-          );
+          log?.info({
+            event: "holds_expired",
+            count: expiredHolds.length,
+            holdIds: expiredHolds.map((h) => h.id),
+          });
         }
       } catch (holdErr) {
-        console.error("[cart-sweeper] Error expiring holds:", holdErr);
+        log?.error({ err: holdErr, event: "hold_expiry_failed" });
       }
     } catch (err) {
-      console.error("[cart-sweeper] Error during sweep:", err);
+      log?.error({ err, event: "cart_sweep_failed" });
     }
   });
 

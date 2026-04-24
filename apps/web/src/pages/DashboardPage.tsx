@@ -32,7 +32,7 @@ function useDashboardStats(eventId: string | undefined) {
         .reduce((s, t) => s + t.totalIdr, 0);
       const voids = todayTxs
         .filter((t) => t.kind === "void" || t.kind === "refund")
-        .reduce((s, t) => s + t.totalIdr, 0);
+        .reduce((s, t) => s + Math.abs(t.totalIdr), 0);
 
       return { gross, net: gross - voids, count: todayTxs.filter((t) => t.kind === "sale").length };
     },
@@ -63,12 +63,12 @@ export function DashboardPage() {
   const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
     { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
     { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
-    { to: "/intake",    Icon: Plus,         label: "Intake Kartu",primary: false },
+    { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", primary: false },
     { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="KolektaPOS"
         logo={
@@ -80,7 +80,7 @@ export function DashboardPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+      <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* User greeting */}
         <div className="flex items-center gap-3 pt-1">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -110,9 +110,19 @@ export function DashboardPage() {
 
         {/* Today's stats */}
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-            Hari Ini
-          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+              Hari Ini
+            </p>
+            <p className="text-xs font-semibold text-muted-fg">
+              {new Date().toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
           <StatRow
             label="Total Penjualan"
             value={<MaskedAmount amount={stats?.gross} className="text-lg font-extrabold text-fg" />}
@@ -135,28 +145,18 @@ export function DashboardPage() {
             <Link
               key={a.to}
               to={a.to}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl font-bold text-sm text-center transition active:scale-[0.97] ${
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl font-bold text-sm text-center transition active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                 a.primary
                   ? "bg-primary text-primary-fg hover:opacity-90"
                   : "bg-card border border-border text-fg hover:bg-muted"
               }`}
             >
-              <a.Icon className="w-6 h-6" />
+              <a.Icon className="w-6 h-6" aria-hidden="true" />
               {a.label}
             </Link>
           ))}
         </div>
 
-        {/* Admin shortcut */}
-        {user?.role === "admin" && (
-          <Link
-            to="/admin"
-            className="flex items-center gap-3 px-4 py-3 bg-card rounded-2xl border border-border text-sm font-bold text-fg hover:bg-muted transition active:scale-[0.98]"
-          >
-            <span className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">Admin Panel</span>
-            <span className="ml-auto text-muted-fg">→</span>
-          </Link>
-        )}
       </main>
     </div>
   );

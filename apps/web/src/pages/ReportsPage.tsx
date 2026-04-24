@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { Eye, EyeOff } from "lucide-react";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { MaskedScopeProvider, useMaskedScope } from "../hooks/useMaskedScope.js";
 import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -221,7 +223,7 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
       const voidRefundTxs = dayTxs.filter((t) => t.kind === "void" || t.kind === "refund");
 
       const gross = saleTxs.reduce((s, t) => s + t.totalIdr, 0);
-      const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + t.totalIdr, 0);
+      const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + Math.abs(t.totalIdr), 0);
       const net = gross - voidRefundAmount;
 
       const channels = await idb.paymentChannels.toArray();
@@ -349,6 +351,8 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
 
 function MonthlyTab() {
   const now = new Date();
+  const yearId = useId();
+  const monthId = useId();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [report, setReport] = useState<MonthlyReport | null>(null);
@@ -377,14 +381,14 @@ function MonthlyTab() {
       <SectionCard>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
-            <input type="number" value={year} min={2020} max={2099}
+            <label htmlFor={yearId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
+            <input id={yearId} type="number" value={year} min={2020} max={2099}
               onChange={(e) => setYear(parseInt(e.target.value, 10))}
               className={selectCls()} />
           </div>
           <div className="flex-1">
-            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
-            <input type="number" value={month} min={1} max={12}
+            <label htmlFor={monthId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
+            <input id={monthId} type="number" value={month} min={1} max={12}
               onChange={(e) => setMonth(parseInt(e.target.value, 10))}
               className={selectCls()} />
           </div>
@@ -624,36 +628,56 @@ export function ReportsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <MobileAppBar
-        title="Laporan"
-        back
-        onBack={() => navigate("/dashboard")}
-      />
+    <MaskedScopeProvider>
+      <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
+        <MobileAppBar
+          title="Laporan"
+          back
+          onBack={() => navigate("/dashboard")}
+          right={<ReportsMaskToggle />}
+        />
 
-      {/* Tab bar */}
-      <div className="bg-card border-b border-border flex shrink-0">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 ${
-              tab === t.id
-                ? "text-primary border-primary"
-                : "text-muted-fg border-transparent hover:text-fg"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {/* Tab bar */}
+        <div className="bg-card border-b border-border flex shrink-0">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                tab === t.id
+                  ? "text-primary border-primary"
+                  : "text-muted-fg border-transparent hover:text-fg"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
-        {tab === "daily" && <DailyTab events={events} />}
-        {tab === "monthly" && <MonthlyTab />}
-        {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
-        {tab === "inventory" && <InventoryTab events={events} />}
+        <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
+          {tab === "daily" && <DailyTab events={events} />}
+          {tab === "monthly" && <MonthlyTab />}
+          {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
+          {tab === "inventory" && <InventoryTab events={events} />}
+        </div>
       </div>
-    </div>
+    </MaskedScopeProvider>
+  );
+}
+
+function ReportsMaskToggle() {
+  const scope = useMaskedScope();
+  if (!scope) return null;
+  const { revealed, toggle } = scope;
+  return (
+    <button
+      onClick={toggle}
+      className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition"
+      aria-label={revealed ? "Sembunyikan semua nominal" : "Tampilkan semua nominal"}
+      title={revealed ? "Sembunyikan nominal" : "Tampilkan nominal"}
+    >
+      {revealed ? <Eye className="w-5 h-5 text-fg" /> : <EyeOff className="w-5 h-5 text-fg" />}
+    </button>
   );
 }

@@ -90,6 +90,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    update: (id: string, body: unknown) =>
+      request<unknown>(`/cards/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   holds: {
     create: (body: unknown) =>
@@ -101,6 +106,7 @@ export const api = {
       request<unknown>(`/holds/${id}`, { method: "DELETE" }),
   },
   transactions: {
+    get: (id: string) => request<unknown>(`/transactions/${id}`),
     void: (id: string, body: unknown) =>
       request<unknown>(`/transactions/${id}/void`, {
         method: "POST",
@@ -111,6 +117,12 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+  auditLog: {
+    list: () => request<unknown[]>("/audit-log"),
+  },
+  overrides: {
+    list: () => request<unknown[]>("/overrides"),
   },
   backup: {
     download: () => fetch("/api/backup", { credentials: "include" }),

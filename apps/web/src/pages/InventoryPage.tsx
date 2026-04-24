@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search } from "lucide-react";
+import { X, Search, Camera, Award, Pencil, RotateCcw } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { CardEditForm } from "../components/CardEditForm.js";
+import { api } from "../lib/api.js";
 import type { IdbCard } from "../lib/db.js";
 
 // ── Status badge ───────────────────────────────────────────────────────────
@@ -51,6 +53,9 @@ function CardDetail({
   ownerName: string;
   onClose: () => void;
 }) {
+  const user = useAuthStore((s) => s.user);
+  const [editing, setEditing] = useState(false);
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50">
       <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -65,16 +70,47 @@ function CardDetail({
             <p className="font-bold text-fg text-lg leading-tight">{card.title}</p>
             <p className="text-xs text-muted-fg font-mono mt-0.5">{card.shortId}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
-            aria-label="Tutup"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {user?.role === "admin" && !editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
+                aria-label="Edit kartu"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
+              aria-label="Tutup"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <StatusBadge status={card.status} />
+        {editing ? (
+          <CardEditForm
+            card={card}
+            onSaved={() => { setEditing(false); onClose(); }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <StatusBadge status={card.status} />
+
+        {/* Photo */}
+        {card.photoPath && (
+          <div className="rounded-2xl overflow-hidden border border-border bg-surface">
+            <img
+              src={card.photoPath.startsWith("/") ? card.photoPath : `/storage/photos/${card.photoPath}`}
+              alt={card.title}
+              className="w-full h-48 object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
 
         {/* Details grid */}
         <div className="space-y-2">
@@ -90,6 +126,21 @@ function CardDetail({
             value={card.pricingMode === "fixed" ? "Harga Tetap" : "Harga Negosiasi"}
           />
         </div>
+
+        {/* Graded card info */}
+        {card.isGraded && (
+          <div className="bg-warning bg-opacity-5 border border-warning border-opacity-20 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-warning" />
+              <span className="text-xs font-extrabold tracking-widest uppercase text-warning">Kartu Graded</span>
+            </div>
+            <div className="space-y-1">
+              <DetailRow label="Grading" value={card.gradingCompany ?? "—"} />
+              <DetailRow label="Grade" value={card.grade ?? "—"} />
+              {card.certNumber && <DetailRow label="Sertifikat" value={card.certNumber} />}
+            </div>
+          </div>
+        )}
 
         {/* Pricing */}
         <div className="border-t border-border pt-3 space-y-2">
@@ -117,12 +168,18 @@ function CardDetail({
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
-        >
-          Tutup
-        </button>
+        {user?.role === "admin" && card.status === "available" && (
+          <ReturnCardButton card={card} onReturned={onClose} />
+        )}
+
+            <button
+              onClick={onClose}
+              className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted text-sm transition"
+            >
+              Tutup
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -134,6 +191,65 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-sm text-muted-fg shrink-0">{label}</span>
       <span className="text-sm font-semibold text-fg text-right">{value}</span>
     </div>
+  );
+}
+
+// ── Return card button ─────────────────────────────────────────────────────
+
+function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function handleReturn() {
+    setBusy(true);
+    try {
+      await api.cards.update(card.id, {
+        status: "returned",
+        version: card.version,
+      });
+      await idb.cards.update(card.id, { status: "returned" });
+      onReturned();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Gagal mengembalikan kartu.");
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  if (confirming) {
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-muted-fg text-center">
+          Yakin ingin mengembalikan kartu ini ke pemilik?
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setConfirming(false)}
+            className="flex-1 h-10 border border-border text-fg font-bold rounded-xl hover:bg-muted text-xs transition"
+          >
+            Batal
+          </button>
+          <button
+            onClick={handleReturn}
+            disabled={busy}
+            className="flex-1 h-10 bg-primary text-primary-fg font-bold rounded-xl hover:opacity-90 text-xs transition disabled:opacity-50"
+          >
+            {busy ? "Menyimpan…" : "Kembalikan"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className="w-full h-11 border border-primary border-opacity-40 text-primary font-bold rounded-2xl hover:bg-primary hover:bg-opacity-5 text-sm transition flex items-center justify-center gap-2"
+    >
+      <RotateCcw className="w-4 h-4" />
+      Kembalikan ke Pemilik
+    </button>
   );
 }
 
@@ -183,10 +299,11 @@ export function InventoryPage() {
     { value: "available", label: "Tersedia" },
     { value: "held", label: "Ditahan" },
     { value: "sold", label: "Terjual" },
+    { value: "returned", label: "Dikembalikan" },
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar title="Inventaris" back onBack={() => navigate("/dashboard")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">

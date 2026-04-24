@@ -1,20 +1,82 @@
 import type { FastifyInstance } from "fastify";
-import { eq, gt, and, inArray } from "drizzle-orm";
+import { eq, gt, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import {
   cards,
   carts,
-  cartItems,
   transactions,
   transactionItems,
   events,
   users,
   paymentChannels,
   settings,
-  holds,
 } from "@kolektapos/db/schema";
+import { SyncPushRequestSchema } from "@kolektapos/sync";
+import {
+  CardConditionSchema,
+  CardLanguageSchema,
+  CardPricingModeSchema,
+  GradingCompanySchema,
+} from "@kolektapos/types";
+import { z } from "zod";
 import { requireAuth } from "../plugins/auth-guard.js";
+import { userDto } from "../utils/user-dto.js";
+
+// Strict whitelist of fields the client may send in a create_card push op.
+// Server derives everything else (id, createdAt, updatedAt, status, oversold, locked_*).
+// Mirrors CreateCardSchema but .strict() + inline (CreateCardSchema uses .refine() which
+// strips .strict()).
+const CreateCardPushPayloadSchema = z
+  .object({
+    shortId: z.string().regex(/^[A-Z0-9]-[A-Z0-9]{5}$/),
+    ownerUserId: z.string().uuid(),
+    stockReceivedByUserId: z.string().uuid(),
+    eventId: z.string().uuid().optional(),
+    title: z.string().min(1),
+    setName: z.string().default(""),
+    setNumber: z.string().default(""),
+    rarity: z.string().default(""),
+    language: CardLanguageSchema.default("EN"),
+    edition: z.string().default(""),
+    condition: CardConditionSchema.default("Near Mint"),
+    isGraded: z.boolean().default(false),
+    gradingCompany: GradingCompanySchema.optional(),
+    grade: z.string().optional(),
+    certNumber: z.string().optional(),
+    pricingMode: CardPricingModeSchema.default("fixed"),
+    priceIdr: z.number().int().positive().optional(),
+    listedPriceIdr: z.number().int().positive().optional(),
+    bottomPriceIdr: z.number().int().positive().optional(),
+    photoPath: z.string().optional(),
+  })
+  .strict()
+  .refine(
+    (d) =>
+      d.pricingMode === "fixed"
+        ? d.priceIdr != null
+        : d.listedPriceIdr != null && d.bottomPriceIdr != null,
+    { message: "fixed cards need priceIdr; negotiable cards need listedPriceIdr + bottomPriceIdr" }
+  );
+
+// Strict whitelist for create_transaction push op.
+// Server sets: cashierUserId (from session), createdAt (now), serverReceivedAt.
+// Push path only accepts 'sale' kind — void/refund go through the admin route.
+const CreateTransactionPushPayloadSchema = z
+  .object({
+    cartId: z.string().uuid().nullable().optional(),
+    eventId: z.string().uuid(),
+    kind: z.literal("sale"),
+    subtotalIdr: z.number().int(),
+    discountIdr: z.number().int().default(0),
+    discountReason: z.string().optional(),
+    totalIdr: z.number().int(),
+    paymentChannelId: z.string().uuid().nullable().optional(),
+    paymentNote: z.string().optional(),
+    paidAt: z.number().int(),
+    notes: z.string().optional(),
+  })
+  .strict();
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -48,11 +110,6 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
         .all();
       const channelRows = db.select().from(paymentChannels).all();
       const settingRows = db.select().from(settings).all();
-      const cardRows = db
-        .select()
-        .from(cards)
-        .where(eq(cards.status, "sold"))
-        .all(); // All non-sold + available
       const allCards = db.select().from(cards).all();
       const thirtyDaysAgo = nowSec - 30 * 24 * 60 * 60;
       const txRows = db
@@ -71,7 +128,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
         )
         .all();
 
-      for (const row of userRows) changes.push({ entityType: "user", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
+      for (const row of userRows) changes.push({ entityType: "user", operation: "create", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of eventRows) changes.push({ entityType: "event", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of channelRows) changes.push({ entityType: "payment_channel", operation: "create", payload: row, serverReceivedAt: 0 });
       for (const row of settingRows) changes.push({ entityType: "setting", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
@@ -88,7 +145,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
 
       for (const row of cardChanges) changes.push({ entityType: "card", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of eventChanges) changes.push({ entityType: "event", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
-      for (const row of userChanges) changes.push({ entityType: "user", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
+      for (const row of userChanges) changes.push({ entityType: "user", operation: "update", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of cartChanges) changes.push({ entityType: "cart", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of txChanges) changes.push({ entityType: "transaction", operation: "create", payload: row, serverReceivedAt: row.createdAt });
     }
@@ -107,13 +164,16 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
    * Server uses server_received_at (not client wall-clock) for ordering.
    */
   app.post("/sync/push", { preHandler: requireAuth }, async (request, reply) => {
-    const body = request.body as {
-      ops: Array<{ type: string; clientId: string; payload: Record<string, unknown> }>;
-    };
+    const parsed = SyncPushRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const body = parsed.data;
     const results: unknown[] = [];
     const nowSec = Math.floor(Date.now() / 1000);
+    const cashierUserId = request.session.userId!;
 
-    for (const op of body.ops ?? []) {
+    for (const op of body.ops) {
       try {
         switch (op.type) {
           case "create_card": {
@@ -126,18 +186,22 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               results.push({ clientId: op.clientId, status: "accepted", serverEntityId: existing.id });
               break;
             }
-            // Check short_id uniqueness
+            const payloadParsed = CreateCardPushPayloadSchema.safeParse(op.payload);
+            if (!payloadParsed.success) {
+              results.push({ clientId: op.clientId, status: "rejected", reason: payloadParsed.error.message });
+              break;
+            }
             const shortIdExists = db
               .select()
               .from(cards)
-              .where(eq(cards.shortId, op.payload.shortId as string))
+              .where(eq(cards.shortId, payloadParsed.data.shortId))
               .get();
             if (shortIdExists) {
               results.push({ clientId: op.clientId, status: "rejected", reason: "duplicate_short_id" });
               break;
             }
             const id = crypto.randomUUID();
-            db.insert(cards).values({ id, clientId: op.clientId, ...(op.payload as Record<string, unknown>) } as unknown as typeof cards.$inferInsert).run();
+            db.insert(cards).values({ id, clientId: op.clientId, ...payloadParsed.data }).run();
             results.push({ clientId: op.clientId, status: "accepted", serverEntityId: id });
             break;
           }
@@ -152,14 +216,26 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               results.push({ clientId: op.clientId, status: "accepted", serverEntityId: existing.id });
               break;
             }
+            const payloadParsed = CreateTransactionPushPayloadSchema.safeParse(op.payload);
+            if (!payloadParsed.success) {
+              results.push({ clientId: op.clientId, status: "rejected", reason: payloadParsed.error.message });
+              break;
+            }
             const id = crypto.randomUUID();
-            db.insert(transactions).values({ id, clientId: op.clientId, ...(op.payload as Record<string, unknown>) } as unknown as typeof transactions.$inferInsert).run();
+            db.insert(transactions)
+              .values({
+                id,
+                clientId: op.clientId,
+                cashierUserId, // from session, never client-controlled
+                ...payloadParsed.data,
+              })
+              .run();
             results.push({ clientId: op.clientId, status: "accepted", serverEntityId: id });
             break;
           }
 
           default:
-            results.push({ clientId: op.clientId, status: "rejected", reason: "unknown_op_type" });
+            results.push({ clientId: op.clientId, status: "rejected", reason: "unsupported_op_type" });
         }
       } catch (err) {
         results.push({

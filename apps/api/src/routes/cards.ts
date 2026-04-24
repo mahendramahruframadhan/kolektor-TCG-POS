@@ -4,16 +4,18 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards } from "@kolektapos/db/schema";
 import { CreateCardSchema, UpdateCardSchema } from "@kolektapos/types";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
+import { parsePagination } from "../utils/pagination.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
 export async function cardRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
-  // GET /cards — list all cards
-  app.get("/cards", { preHandler: requireAuth }, async (_request, reply) => {
-    const rows = db.select().from(cards).all();
+  // GET /cards?limit=&offset= — paginated list (defaults to 1000)
+  app.get("/cards", { preHandler: requireAuth }, async (request, reply) => {
+    const { limit, offset } = parsePagination(request.query);
+    const rows = db.select().from(cards).limit(limit).offset(offset).all();
     return reply.send(rows);
   });
 
@@ -64,7 +66,7 @@ export async function cardRoutes(app: FastifyInstance, opts: { db: Db }) {
   // PATCH /cards/:id — update card (optimistic concurrency via version)
   app.patch(
     "/cards/:id",
-    { preHandler: requireAuth },
+    { preHandler: requireAdmin },
     async (request, reply) => {
       const { id } = request.params as { id: string };
       const body = UpdateCardSchema.safeParse(request.body);

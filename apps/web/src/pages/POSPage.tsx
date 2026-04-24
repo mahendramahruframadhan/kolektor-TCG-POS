@@ -4,7 +4,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, Printer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
@@ -14,7 +14,10 @@ import { usePosStore } from "../store/pos.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
+import { Dialog } from "../components/Dialog.js";
+import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
+import { nowSec } from "../lib/time.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -55,6 +58,56 @@ function StatusBadge({
     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
       Tersedia
     </span>
+  );
+}
+
+// ── Bottom price tap-and-hold reveal ───────────────────────────────────────
+
+function BottomPriceReveal({ amount }: { amount: number | undefined }) {
+  const { revealed, startReveal, endReveal } = useTapHoldReveal(5000);
+
+  // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
+  // Space/Enter pressed → start the hold timer; released → cancel the
+  // pending reveal (matches useTapHoldReveal's pointer-up semantics).
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === " " || e.key === "Enter") {
+      if (!e.repeat) {
+        e.preventDefault();
+        startReveal();
+      }
+    }
+  };
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      endReveal();
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-muted-fg">Harga Minimum</span>
+      <button
+        type="button"
+        onMouseDown={startReveal}
+        onMouseUp={endReveal}
+        onMouseLeave={endReveal}
+        onTouchStart={startReveal}
+        onTouchEnd={endReveal}
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={endReveal}
+        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
+        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 5 detik untuk melihat harga minimum"
+        aria-pressed={revealed}
+      >
+        {revealed ? (
+          <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
+        ) : (
+          <span className="tracking-widest">••••••</span>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -138,16 +191,20 @@ function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
-      <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-        {/* Handle */}
-        <div className="flex justify-center -mb-1">
-          <div className="w-9 h-1 rounded-full bg-border" />
-        </div>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      title="Pembayaran"
+      panelClassName="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+      disableEscape={paying}
+      disableBackdropClose={paying}
+    >
+      {/* Handle — decorative drag affordance */}
+      <div className="flex justify-center -mb-1" aria-hidden="true">
+        <div className="w-9 h-1 rounded-full bg-border" />
+      </div>
 
-        <h2 className="text-base font-bold text-fg">Pembayaran</h2>
-
-        {/* Totals */}
+      {/* Totals */}
         <div className="space-y-1.5 border-b border-border pb-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-fg">Subtotal</span>
@@ -301,8 +358,7 @@ function PaymentModal({
             {paying ? "Memproses…" : "Bayar"}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -316,17 +372,60 @@ interface ReceiptModalProps {
 }
 
 function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptModalProps) {
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (!printWindow) return;
+    const now = new Date().toLocaleString("id-ID");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Struk KolektaPOS</title>
+          <style>
+            body { font-family: monospace; padding: 24px; max-width: 320px; margin: 0 auto; color: #000; }
+            .center { text-align: center; }
+            .header { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+            .sub { font-size: 12px; color: #555; margin-bottom: 16px; }
+            .line { display: flex; justify-content: space-between; font-size: 14px; margin: 8px 0; }
+            .divider { border-top: 1px dashed #999; margin: 12px 0; }
+            .total { font-size: 16px; font-weight: bold; }
+            .footer { font-size: 11px; color: #777; margin-top: 24px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            <div class="header">KolektaPOS</div>
+            <div class="sub">Booth Pokemon TCG</div>
+          </div>
+          <div class="divider"></div>
+          <div class="line"><span>ID Transaksi</span><span>#${transactionId.slice(0, 8).toUpperCase()}</span></div>
+          <div class="line"><span>Tanggal</span><span>${now}</span></div>
+          <div class="line"><span>Jumlah Kartu</span><span>${itemCount}</span></div>
+          <div class="divider"></div>
+          <div class="line total"><span>Total</span><span>Rp ${totalIdr.toLocaleString("id-ID")}</span></div>
+          <div class="divider"></div>
+          <div class="footer">Terima kasih!</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
-        <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
+    <Dialog
+      open={true}
+      onClose={onDone}
+      title="Pembayaran Berhasil"
+      description={`#${transactionId.slice(0, 8).toUpperCase()}`}
+      panelClassName="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center"
+    >
+      <div id="receipt-modal-content" className="space-y-5">
+        <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto" aria-hidden="true">
           <Check className="w-8 h-8 text-success" />
-        </div>
-        <div>
-          <h2 className="text-xl font-extrabold text-fg">Pembayaran Berhasil</h2>
-          <p className="text-sm text-muted-fg font-mono mt-1">
-            #{transactionId.slice(0, 8).toUpperCase()}
-          </p>
         </div>
         <div className="bg-surface rounded-2xl p-4 space-y-2 text-left border border-border">
           <div className="flex justify-between text-sm">
@@ -338,14 +437,23 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
             <span className="font-extrabold text-primary">Rp {totalIdr.toLocaleString("id-ID")}</span>
           </div>
         </div>
-        <button
-          onClick={onDone}
-          className="w-full h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
-        >
-          Transaksi Baru
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handlePrint}
+            className="w-full h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted transition flex items-center justify-center gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            Cetak Struk
+          </button>
+          <button
+            onClick={onDone}
+            className="w-full h-14 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
+          >
+            Transaksi Baru
+          </button>
+        </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -526,7 +634,7 @@ export function POSPage() {
       cashierUserId: user!.id,
       eventId: activeEvent.id,
       status: "draft",
-      lastActivityAt: Date.now(),
+      lastActivityAt: nowSec(),
       version: 1,
     });
     setActiveCartId(cartId);
@@ -582,7 +690,7 @@ export function POSPage() {
 
       await idb.cartItems.put(newItem);
       await idb.cards.update(scannedCard.id, {
-        lockedByCartId: cartId, lockedByUserId: user!.id, lockedAt: Date.now(),
+        lockedByCartId: cartId, lockedByUserId: user!.id, lockedAt: nowSec(),
       });
 
       setCartItems((prev) => [...prev, newItem]);
@@ -655,11 +763,13 @@ export function POSPage() {
 
     const txId = response.transaction.id;
     await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
-    for (const item of cartItems) {
-      await idb.cards.update(item.cardId, {
-        status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
-      });
-    }
+    await Promise.all(
+      cartItems.map((item) =>
+        idb.cards.update(item.cardId, {
+          status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
+        })
+      )
+    );
     setShowPayModal(false);
     setReceipt({ transactionId: txId, totalIdr, itemCount: cartItems.length });
   }
@@ -686,11 +796,13 @@ export function POSPage() {
       // Best effort — tetap lanjutkan cleanup lokal walau server gagal
     }
     try {
-      for (const item of cartItems) {
-        await idb.cards.update(item.cardId, {
-          lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
-        });
-      }
+      await Promise.all(
+        cartItems.map((item) =>
+          idb.cards.update(item.cardId, {
+            lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
+          })
+        )
+      );
     } catch {
       // Best effort
     }
@@ -710,7 +822,7 @@ export function POSPage() {
     cartItems.some((i) => i.cardId === scannedCard?.id);
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Kasir POS"
         back
@@ -737,14 +849,20 @@ export function POSPage() {
             spellCheck={false}
             className="w-full h-14 border-2 border-accent rounded-2xl px-4 text-2xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border placeholder:text-sm"
           />
-          {scanning && (
-            <p className="text-sm text-muted-fg text-center">Mencari…</p>
-          )}
+          <p
+            role="status"
+            aria-live="polite"
+            className={scanning ? "text-sm text-muted-fg text-center" : "sr-only"}
+          >
+            {scanning ? "Mencari kartu…" : ""}
+          </p>
           {scanError && (
             <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
               {scanError}
             </div>
           )}
+
+          <ProductSearch onPick={(shortId) => handleScan(shortId)} />
         </div>
 
         {/* ── Scanned card review ── */}
@@ -778,13 +896,7 @@ export function POSPage() {
                     Rp {scannedCard.listedPriceIdr?.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-fg">Harga Minimum</span>
-                  <MaskedAmount
-                    amount={scannedCard.bottomPriceIdr}
-                    className="text-sm font-bold text-fg"
-                  />
-                </div>
+                <BottomPriceReveal amount={scannedCard.bottomPriceIdr} />
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
                     Harga Final (IDR)
@@ -982,6 +1094,81 @@ export function POSPage() {
           itemCount={receipt.itemCount}
           onDone={handleReceiptDone}
         />
+      )}
+    </div>
+  );
+}
+
+// ── Product search ─────────────────────────────────────────────────────────
+// Free-text search over local IDB for cashiers who want to find a card by
+// name when a scan isn't convenient. Min 3 characters; matches shortId OR
+// title (case-insensitive, contains). Sold/retired/held cards are excluded.
+function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<IdbCard[]>([]);
+  const trimmed = query.trim();
+  const enabled = trimmed.length >= 3;
+
+  useEffect(() => {
+    if (!enabled) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    const q = trimmed.toLowerCase();
+    (async () => {
+      const matches = await idb.cards
+        .filter(
+          (c) =>
+            c.status === "available" &&
+            (c.shortId?.toLowerCase().includes(q) ||
+              c.title?.toLowerCase().includes(q))
+        )
+        .limit(10)
+        .toArray();
+      if (!cancelled) setResults(matches);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmed, enabled]);
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cari produk (min. 3 karakter, kode atau nama)"
+        autoComplete="off"
+        className="w-full h-11 border border-border rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted-fg"
+      />
+      {enabled && results.length === 0 && (
+        <p className="text-xs text-muted-fg italic px-1">Tidak ada kartu cocok.</p>
+      )}
+      {results.length > 0 && (
+        <ul className="border border-border rounded-xl divide-y divide-border overflow-hidden">
+          {results.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  onPick(c.shortId);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-muted transition flex items-center justify-between gap-3"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-fg truncate">{c.title}</span>
+                  <span className="block text-xs text-muted-fg truncate">
+                    {c.setName}{c.setNumber ? ` · #${c.setNumber}` : ""}
+                  </span>
+                </span>
+                <span className="font-mono text-xs font-bold text-accent shrink-0">{c.shortId}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

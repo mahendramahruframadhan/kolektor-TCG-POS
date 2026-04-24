@@ -1,5 +1,6 @@
 import { idb } from "./db.js";
 import { api } from "./api.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import type {
   IdbCard,
   IdbEvent,
@@ -122,10 +123,20 @@ let syncInterval: ReturnType<typeof setInterval> | null = null;
 export function startBackgroundSync() {
   if (syncInterval) return;
   syncInterval = setInterval(() => {
-    if (!navigator.onLine) return;
-    deltaSyncPull().catch((err) => {
-      console.warn("[sync] Background sync failed:", err);
-    });
+    if (!navigator.onLine) {
+      useSyncStateStore.getState().setState("offline");
+      return;
+    }
+    useSyncStateStore.getState().setState("syncing");
+    deltaSyncPull()
+      .then(() => useSyncStateStore.getState().markSuccess())
+      .catch((err) => {
+        console.warn("[sync] Background sync failed:", err);
+        useSyncStateStore.getState().setState(
+          "error",
+          err instanceof Error ? err.message : "Sinkronisasi gagal"
+        );
+      });
   }, 60 * 1000);
 }
 
@@ -138,8 +149,19 @@ export function stopBackgroundSync() {
 
 /** Trigger an opportunistic sync immediately (call after cashier actions). */
 export function opportunisticSync() {
-  if (!navigator.onLine) return;
-  deltaSyncPull().catch(() => null);
+  if (!navigator.onLine) {
+    useSyncStateStore.getState().setState("offline");
+    return;
+  }
+  useSyncStateStore.getState().setState("syncing");
+  deltaSyncPull()
+    .then(() => useSyncStateStore.getState().markSuccess())
+    .catch((err) => {
+      useSyncStateStore.getState().setState(
+        "error",
+        err instanceof Error ? err.message : "Sinkronisasi gagal"
+      );
+    });
 }
 
 /** Persistent device UUID for sync cursors. */

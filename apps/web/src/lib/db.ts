@@ -51,7 +51,7 @@ export interface IdbCard {
   clientId: string;
   shortId: string;
   ownerUserId: string;
-  intakenByUserId: string;
+  stockReceivedByUserId: string;
   eventId?: string;
   title: string;
   setName: string;

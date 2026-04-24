@@ -172,7 +172,7 @@ export function QRLabelPage() {
   const allSelected = filtered.length > 0 && selected.size === filtered.length;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Cetak Label QR"
         back

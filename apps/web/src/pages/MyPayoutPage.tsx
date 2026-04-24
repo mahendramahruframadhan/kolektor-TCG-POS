@@ -180,7 +180,7 @@ export function MyPayoutPage() {
     events.find((e) => e.id === id)?.name ?? id.slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Payout Saya"
         back

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -35,6 +35,12 @@ function StatusBadge({ status }: { status: string }) {
 export function EventsAdminPage() {
   const navigate = useNavigate();
   const me = useAuthStore((s) => s.user);
+
+  const nameId = useId();
+  const venueId = useId();
+  const startId = useId();
+  const endId = useId();
+  const statusId = useId();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +112,7 @@ export function EventsAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Kelola Event"
         back
@@ -139,28 +145,28 @@ export function EventsAdminPage() {
 
             <form onSubmit={handleSave} className="space-y-3">
               <div>
-                <label className={labelCls}>Nama Event <span className="text-destructive">*</span></label>
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+                <label htmlFor={nameId} className={labelCls}>Nama Event <span className="text-destructive">*</span></label>
+                <input id={nameId} type="text" required value={name} onChange={(e) => setName(e.target.value)}
                   className={inputCls} placeholder="Contoh: Pop Con 2026" />
               </div>
               <div>
-                <label className={labelCls}>Venue</label>
-                <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)}
+                <label htmlFor={venueId} className={labelCls}>Venue</label>
+                <input id={venueId} type="text" value={venue} onChange={(e) => setVenue(e.target.value)}
                   className={inputCls} placeholder="Jakarta Convention Center" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Tanggal Mulai <span className="text-destructive">*</span></label>
-                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                  <label htmlFor={startId} className={labelCls}>Tanggal Mulai <span className="text-destructive">*</span></label>
+                  <input id={startId} type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Tanggal Selesai <span className="text-destructive">*</span></label>
-                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+                  <label htmlFor={endId} className={labelCls}>Tanggal Selesai <span className="text-destructive">*</span></label>
+                  <input id={endId} type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active" | "closed")} className={inputCls}>
+                <label htmlFor={statusId} className={labelCls}>Status</label>
+                <select id={statusId} value={status} onChange={(e) => setStatus(e.target.value as "draft" | "active" | "closed")} className={inputCls}>
                   <option value="draft">Draft</option>
                   <option value="active">Aktif</option>
                   <option value="closed">Ditutup</option>

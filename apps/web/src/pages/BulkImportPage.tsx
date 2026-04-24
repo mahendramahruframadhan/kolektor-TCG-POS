@@ -2,7 +2,14 @@ import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import * as XLSX from "xlsx";
+// `xlsx` is ~2 MB; dynamic-import it inside the two handlers that actually
+// need it so the main PWA bundle stays lean. See docs/reviews/code/2026-04-24-merged.md L8.
+type XlsxModule = typeof import("xlsx");
+let xlsxPromise: Promise<XlsxModule> | null = null;
+function loadXlsx(): Promise<XlsxModule> {
+  xlsxPromise ??= import("xlsx");
+  return xlsxPromise;
+}
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -19,6 +26,15 @@ const VALID_CONDITIONS = new Set([
 ]);
 const VALID_LANGUAGES = new Set(["EN", "JP", "ID", "KR", "CN", "Other"]);
 const VALID_PRICING_MODES = new Set(["fixed", "negotiable"]);
+
+/** Placeholder owner used in the downloadable template. Rows with this
+ *  owner are silently skipped at import so operators can leave the
+ *  example rows in place. */
+const SPECIMEN_OWNER = "ownner specimen";
+
+function isSpecimenRow(rawRow: Record<string, string>): boolean {
+  return (rawRow["owner"] ?? "").toLowerCase().trim() === SPECIMEN_OWNER;
+}
 
 interface ImportRow {
   rowNum: number;
@@ -113,7 +129,7 @@ function validateRow(
     clientId,
     shortId,
     ownerUserId: matchedUser?.id ?? "",
-    intakenByUserId: currentUserId,
+    stockReceivedByUserId: currentUserId,
     eventId: activeEventId,
     title,
     setName: (rawRow["setname"] ?? "").trim(),
@@ -165,6 +181,7 @@ export function BulkImportPage() {
     setImportErrors([]);
 
     try {
+      const XLSX = await loadXlsx();
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]!];
@@ -190,7 +207,11 @@ export function BulkImportPage() {
 
       const importUsers: ImportUser[] = users.map((u) => ({ id: u.id, displayName: u.displayName }));
 
-      const parsed = normalized.map((row, idx) =>
+      // Template-example rows carry a placeholder owner — silently drop them
+      // so the UI only shows real rows.
+      const withoutSpecimens = normalized.filter((row) => !isSpecimenRow(row));
+
+      const parsed = withoutSpecimens.map((row, idx) =>
         validateRow(row, idx + 2, importUsers, user!.id, activeEvent?.id)
       );
 
@@ -223,7 +244,7 @@ export function BulkImportPage() {
           clientId: row.cardBody!.clientId as string,
           shortId: row.cardBody!.shortId as string,
           ownerUserId: row.cardBody!.ownerUserId as string,
-          intakenByUserId: user!.id,
+          stockReceivedByUserId: user!.id,
           eventId: activeEvent?.id,
           title: row.cardBody!.title as string,
           setName: row.cardBody!.setName as string ?? "",
@@ -268,26 +289,52 @@ export function BulkImportPage() {
     URL.revokeObjectURL(url);
   }
 
-  function downloadTemplate() {
+  async function downloadTemplate() {
+    const XLSX = await loadXlsx();
     const headers = [
       "owner", "title", "setName", "setNumber", "rarity", "language", "condition", "edition",
       "pricingMode", "priceIdr", "listedPriceIdr", "bottomPriceIdr",
       "isGraded", "gradingCompany", "grade", "certNumber",
     ];
-    const example = [
-      "Revota", "Charizard VSTAR", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "",
-      "fixed", "500000", "", "",
-      "false", "", "", "",
+    // Placeholder owner — all template rows are skipped at import time
+    // (see SPECIMEN_OWNER below), so operators can keep the examples in place
+    // and layer their real rows on top.
+    const O = "Ownner Specimen";
+    const examples: (string | number)[][] = [
+      // Graded + fixed (5)
+      [O, "Charizard VSTAR", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 2500000, "", "", "true", "PSA", "10", "12345678"],
+      [O, "Pikachu VMAX", "Vivid Voltage", "044/185", "Secret Rare", "JP", "Near Mint", "", "fixed", 1800000, "", "", "true", "BGS", "9.5", "87654321"],
+      [O, "Blastoise ex", "151", "009/165", "Double Rare", "EN", "Near Mint", "", "fixed", 1200000, "", "", "true", "CGC", "9", "11223344"],
+      [O, "Mewtwo V", "Pokemon GO", "030/078", "Ultra Rare", "EN", "Near Mint", "", "fixed", 750000, "", "", "true", "SGC", "8.5", "55667788"],
+      [O, "Eevee VMAX Rainbow", "Evolving Skies", "215/203", "Rainbow Rare", "KR", "Near Mint", "", "fixed", 3500000, "", "", "true", "Other", "10", "99887766"],
+      // Graded + negotiable (5)
+      [O, "Charizard 1st Edition", "Base Set", "004/102", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 50000000, 45000000, "true", "PSA", "10", "10101010"],
+      [O, "Lugia 1st Edition", "Neo Genesis", "009/111", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 15000000, 12000000, "true", "BGS", "9", "20202020"],
+      [O, "Ho-oh Gold Star", "EX Dragon Frontiers", "102/101", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 22000000, 19000000, "true", "CGC", "9.5", "30303030"],
+      [O, "Rayquaza EX", "EX Deoxys", "097/107", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 8500000, 7000000, "true", "PSA", "9", "40404040"],
+      [O, "Umbreon Gold Star", "POP Series 5", "017/017", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 35000000, 30000000, "true", "BGS", "8", "50505050"],
+      // Not graded + fixed (5)
+      [O, "Arceus VSTAR", "Brilliant Stars", "124/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 350000, "", "", "false", "", "", ""],
+      [O, "Gardevoir ex", "Scarlet & Violet", "086/198", "Double Rare", "EN", "Mint", "", "fixed", 180000, "", "", "false", "", "", ""],
+      [O, "Mimikyu V", "Vivid Voltage", "099/185", "Ultra Rare", "JP", "Near Mint", "", "fixed", 85000, "", "", "false", "", "", ""],
+      [O, "Sylveon V", "Evolving Skies", "074/203", "Ultra Rare", "EN", "Near Mint", "", "fixed", 120000, "", "", "false", "", "", ""],
+      [O, "Lucario V", "Vivid Voltage", "094/185", "Ultra Rare", "ID", "Lightly Played", "", "fixed", 60000, "", "", "false", "", "", ""],
+      // Not graded + negotiable (5)
+      [O, "Charizard V", "Shining Fates", "019/073", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 650000, 550000, "false", "", "", ""],
+      [O, "Pikachu V-Union", "Celebrations", "054/025", "Full Art", "EN", "Mint", "", "negotiable", "", 450000, 350000, "false", "", "", ""],
+      [O, "Machamp V", "Vivid Voltage", "080/185", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 95000, 75000, "false", "", "", ""],
+      [O, "Eevee V", "Evolving Skies", "148/203", "Ultra Rare", "CN", "Near Mint", "", "negotiable", "", 75000, 60000, "false", "", "", ""],
+      [O, "Mew V", "Fusion Strike", "113/264", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 130000, 105000, "false", "", "", ""],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "kolektapos-bulk-import-template.xlsx");
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <MobileAppBar title="Bulk Import Kartu" back onBack={() => navigate("/intake")} />
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
+      <MobileAppBar title="Bulk Import Kartu" back onBack={() => navigate("/stock-receive")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {/* Instructions */}

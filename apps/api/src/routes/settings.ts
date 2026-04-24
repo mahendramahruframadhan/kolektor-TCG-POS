@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { settings } from "@kolektapos/db/schema";
-import { UpdateSettingSchema } from "@kolektapos/types";
+import { UpdateSettingSchema, validateSetting } from "@kolektapos/types";
 import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
@@ -15,15 +15,33 @@ export async function settingsRoutes(app: FastifyInstance, opts: { db: Db }) {
     const rows = db.select().from(settings).all();
     const out: Record<string, unknown> = {};
     for (const row of rows) {
-      out[row.key] = JSON.parse(row.valueJson);
+      try {
+        out[row.key] = JSON.parse(row.valueJson);
+      } catch {
+        // Skip malformed rows rather than 500 the whole response.
+        // Log at route level so operators can investigate.
+        (_request as unknown as { log?: { warn: (o: unknown, m?: string) => void } }).log?.warn(
+          { key: row.key, rawValue: row.valueJson },
+          "[settings] malformed valueJson; skipped"
+        );
+      }
     }
     return reply.send(out);
   });
 
   app.put("/settings/:key", { preHandler: requireAdmin }, async (request, reply) => {
     const { key } = request.params as { key: string };
-    const body = UpdateSettingSchema.safeParse(request.body);
-    if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
+    const envelope = UpdateSettingSchema.safeParse(request.body);
+    if (!envelope.success) {
+      return reply.status(400).send({ error: envelope.error.flatten() });
+    }
+
+    // Per-key schema check: rejects unknown keys + malformed values
+    // (previously z.unknown() accepted anything).
+    const validated = validateSetting(key, envelope.data.value);
+    if (!validated.ok) {
+      return reply.status(422).send({ error: validated.error });
+    }
 
     const existing = db.select().from(settings).where(eq(settings.key, key)).get();
     const userId = request.session.userId;
@@ -31,7 +49,7 @@ export async function settingsRoutes(app: FastifyInstance, opts: { db: Db }) {
     if (existing) {
       db.update(settings)
         .set({
-          valueJson: JSON.stringify(body.data.value),
+          valueJson: JSON.stringify(validated.value),
           updatedByUserId: userId,
           updatedAt: Math.floor(Date.now() / 1000),
         })
@@ -42,12 +60,12 @@ export async function settingsRoutes(app: FastifyInstance, opts: { db: Db }) {
         .values({
           id: crypto.randomUUID(),
           key,
-          valueJson: JSON.stringify(body.data.value),
+          valueJson: JSON.stringify(validated.value),
           updatedByUserId: userId,
         })
         .run();
     }
 
-    return reply.send({ key, value: body.data.value });
+    return reply.send({ key, value: validated.value });
   });
 }

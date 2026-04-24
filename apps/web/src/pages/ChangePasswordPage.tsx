@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { KeyRound, CheckCircle } from "lucide-react";
 import { MobileAppBar } from "../components/MobileAppBar.js";
@@ -9,6 +9,10 @@ const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase tex
 
 export function ChangePasswordPage() {
   const navigate = useNavigate();
+  const currentId = useId();
+  const newId = useId();
+  const confirmId = useId();
+  const errorId = useId();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,14 +48,14 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Ubah Password"
         back
         onBack={() => navigate(-1)}
       />
 
-      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+      <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         <div className="flex items-center gap-3 pt-1">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
             <KeyRound className="w-5 h-5 text-primary-fg" />
@@ -71,15 +75,20 @@ export function ChangePasswordPage() {
           )}
 
           {error && (
-            <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
+            <div
+              id={errorId}
+              role="alert"
+              className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium"
+            >
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className={labelCls}>Password Saat Ini</label>
+              <label htmlFor={currentId} className={labelCls}>Password Saat Ini</label>
               <input
+                id={currentId}
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -87,12 +96,15 @@ export function ChangePasswordPage() {
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
               />
             </div>
 
             <div>
-              <label className={labelCls}>Password Baru</label>
+              <label htmlFor={newId} className={labelCls}>Password Baru</label>
               <input
+                id={newId}
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -100,12 +112,16 @@ export function ChangePasswordPage() {
                 required
                 autoComplete="new-password"
                 placeholder="Minimal 8 karakter"
+                minLength={8}
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
               />
             </div>
 
             <div>
-              <label className={labelCls}>Konfirmasi Password Baru</label>
+              <label htmlFor={confirmId} className={labelCls}>Konfirmasi Password Baru</label>
               <input
+                id={confirmId}
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -113,6 +129,8 @@ export function ChangePasswordPage() {
                 required
                 autoComplete="new-password"
                 placeholder="Ulangi password baru"
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
               />
             </div>
 

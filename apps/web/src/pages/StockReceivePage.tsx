@@ -5,6 +5,7 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { Toast } from "../components/Toast.js";
 import type { IdbUser } from "../lib/db.js";
 
 // ── Short ID generator ─────────────────────────────────────────────────────
@@ -116,7 +117,7 @@ function inputCls(error?: string) {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function IntakePage() {
+export function StockReceivePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
@@ -206,7 +207,7 @@ export function IntakePage() {
       const body = {
         clientId, shortId,
         ownerUserId: form.ownerUserId,
-        intakenByUserId: user!.id,
+        stockReceivedByUserId: user!.id,
         eventId: activeEvent?.id,
         title: form.title.trim(),
         setName: form.setName.trim(),
@@ -235,7 +236,7 @@ export function IntakePage() {
       await idb.cards.put({
         id: created.id, clientId, shortId,
         ownerUserId: form.ownerUserId,
-        intakenByUserId: user!.id,
+        stockReceivedByUserId: user!.id,
         eventId: activeEvent?.id,
         title: form.title.trim(),
         setName: form.setName.trim(),
@@ -298,14 +299,14 @@ export function IntakePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
-        title="Intake Kartu"
+        title="Stock Receive"
         back
         onBack={() => navigate("/dashboard")}
         right={
           <Link
-            to="/intake/bulk"
+            to="/stock-receive/bulk"
             className="text-xs font-bold text-accent border border-accent border-opacity-40 rounded-lg px-2.5 py-1 hover:bg-accent hover:bg-opacity-10 transition"
           >
             Bulk
@@ -313,12 +314,15 @@ export function IntakePage() {
         }
       />
 
+      {successMessage && (
+        <Toast
+          message={successMessage}
+          variant="success"
+          onDismiss={() => setSuccessMessage(null)}
+        />
+      )}
+
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
-        {successMessage && (
-          <div className="mb-4 bg-success bg-opacity-10 border border-success border-opacity-30 text-success rounded-2xl px-4 py-3 text-sm font-bold">
-            {successMessage}
-          </div>
-        )}
         {submitError && (
           <div className="mb-4 bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-2xl px-4 py-3 text-sm font-medium">
             {submitError}

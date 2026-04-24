@@ -2,6 +2,7 @@
   "name": "@kolektapos/db",
   "version": "0.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -13,13 +14,17 @@
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.7.0",
     "drizzle-orm": "^0.38.4"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.12",
     "drizzle-kit": "^0.30.4",
     "tsx": "^4.19.2",

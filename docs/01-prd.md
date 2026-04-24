@@ -51,7 +51,7 @@ All reads and writes hit local IndexedDB. Service worker handles offline shell. 
 
 ### R2 — Ownership tracking [RESOLVED]
 
-Every card has a single `owner_user_id`. Separate `intaken_by_user_id` — anyone can intake on behalf of any owner. Settlement uses the snapshot of `owner_user_id` taken at sale time, stored on the transaction line item.
+Every card has a single `owner_user_id`. Separate `stock_received_by_user_id` — anyone can stock-receive on behalf of any owner. Settlement uses the snapshot of `owner_user_id` taken at sale time, stored on the transaction line item.
 
 ### R3 — Bottom price leakage at the booth [STANDING]
 
@@ -76,7 +76,7 @@ Cart locking (F34) prevents the majority of oversell situations by marking a car
 | Role    | Count      | Capabilities |
 |---------|------------|--------------|
 | Admin   | 1 (Revota)  | Everything. User management, event creation, override any guardrail (below-bottom, discount-over-max), void/refund transactions, close event, resolve oversold conflicts, edit settings, download backups. |
-| Cashier | 10         | Intake any card (for any owner), sell any card, accept payments, discount within configured max, view own payout. Hard-blocked by UI and server from selling below bottom or discounting over max — admin-only override. |
+| Cashier | 10         | Stock-receive any card (for any owner), sell any card, accept payments, discount within configured max, view own payout. Hard-blocked by UI and server from selling below bottom or discounting over max — admin-only override. |
 
 All users are known and trusted. Email + password, long-lived sessions. No 2FA, no SSO.
 
@@ -88,9 +88,9 @@ All users are known and trusted. Email + password, long-lived sessions. No 2FA, 
 
 | #   | Feature                                | Notes |
 |-----|----------------------------------------|-------|
-| F1  | Fixed-price cards                      | Intake with single `price_idr`. Line-level discount allowed within `max_line_discount_pct_fixed` setting, always requires reason note. Beyond max → admin override with reason. |
-| F2  | Negotiable cards                       | Intake with `bottom_price_idr` and `listed_price_idr`. Cashier enters final price; discount auto-derived as `(listed − final) / listed`. Hard floor: `final ≥ bottom`. Below bottom → admin override with reason. |
-| F3  | Event tagging                          | Every sale and intake scoped to active event. Single active event at a time. |
+| F1  | Fixed-price cards                      | Stock-receive with single `price_idr`. Line-level discount allowed within `max_line_discount_pct_fixed` setting, always requires reason note. Beyond max → admin override with reason. |
+| F2  | Negotiable cards                       | Stock-receive with `bottom_price_idr` and `listed_price_idr`. Cashier enters final price; discount auto-derived as `(listed − final) / listed`. Hard floor: `final ≥ bottom`. Below bottom → admin override with reason. |
+| F3  | Event tagging                          | Every sale and stock-receive scoped to active event. Single active event at a time. |
 | F4  | QR / barcode scan at checkout          | Camera-based (mobile) + USB HID scanner (desktop). Both feed the same input field. |
 | F5  | QR / barcode printing per card         | Client-rendered PDF + browser print dialog. Target sticker size: 50×25mm (thermal label-friendly). |
 | F6  | Short unique card ID                   | Format `O-XXXXX`, see §8. |
@@ -100,13 +100,13 @@ All users are known and trusted. Email + password, long-lived sessions. No 2FA, 
 | F10 | Masked numbers with eye-icon reveal    | Dashboard totals, per-card prices, owner payouts, bottom prices on checkout — all default hidden. |
 | F11 | Daily report                           | §7. |
 | F12 | Monthly report                         | §7. |
-| F13 | Ownership field per card               | Separate `owner_user_id` and `intaken_by_user_id`. |
+| F13 | Ownership field per card               | Separate `owner_user_id` and `stock_received_by_user_id`. |
 | F14 | Condition grade                        | Enum: Mint, Near Mint, Lightly Played, Moderately Played, Heavily Played, Damaged. |
 | F15 | Set + card number + rarity + language + edition | Freeform text for set/number; enums for rarity, language (EN/JP/ID/KR/CN/Other), edition. |
 | F16 | Graded card support                    | `is_graded`, `grading_company` (PSA/BGS/CGC/SGC/Other), `grade`, `cert_number`. |
 | F17 | Per-event owner payout report          | Per-owner gross/net IDR, exportable CSV. |
 | F18 | Hold / reserve                         | User-set expiry duration at time of hold. Auto-releases on expiry. Distinct from cart lock (F34). |
-| F19 | Photo per card at intake               | Phone camera snap. Stored as IndexedDB blob until sync, then uploaded. |
+| F19 | Photo per card at stock-receive        | Phone camera snap. Stored as IndexedDB blob until sync, then uploaded. |
 | F20 | Void / refund — NEVER delete           | Append-only transactions. Void/refund creates new compensating record with `parent_transaction_id`. |
 | F21 | End-of-day cash reconciliation         | Expected vs counted cash IDR, variance + notes captured. Virtual tracking. |
 | F23 | Transaction-level discount             | Percentage or fixed IDR off transaction total. Capped at `max_transaction_discount_pct` setting. Always reason note. Beyond max → admin override. |
@@ -158,7 +158,7 @@ settings
   --   cart_idle_ttl_minutes            (int, default 30)
 
 cards
-  id, short_id, owner_user_id, intaken_by_user_id,
+  id, short_id, owner_user_id, stock_received_by_user_id,
   title, set_name, set_number, rarity, language, edition, condition,
   is_graded, grading_company, grade, cert_number,
   photo_path,
@@ -299,7 +299,7 @@ Total: 7 chars (6 payload). Uppercase only. Fits QR Version 1 with error correct
 
 ### 8.2 Collision handling
 
-On intake, generate random 5-char, check local uniqueness, retry on collision (budget 5 attempts). Server validates global uniqueness on sync — collision → server rejects, client regenerates + reprints label.
+On stock-receive, generate random 5-char, check local uniqueness, retry on collision (budget 5 attempts). Server validates global uniqueness on sync — collision → server rejects, client regenerates + reprints label.
 
 ### 8.3 Label contents (50×25mm)
 
@@ -376,7 +376,7 @@ When scanning any card, the result screen shows one of:
 2. **Dashboard** — current event, today's masked totals, quick-scan button, quick "New Sale"
 3. **POS / Checkout** — scan viewfinder + cart (primary screen, open all day)
 4. **Inventory** — tabbed list + search + filters (owner, price type, condition, bottom-price range), print-label action
-5. **Intake** — new card form with camera photo
+5. **Stock Receive** — new card form with camera photo
 6. **Events** — list, create, close, settle
 7. **Reports** — Daily, Monthly, Per-event settlement, Inventory value
 8. **Admin** — users, payment channels, settings, override queue, oversold resolution, backup
@@ -389,7 +389,7 @@ When scanning any card, the result screen shows one of:
 - Email + password, bcrypt
 - Session cookies, 30-day rolling, HttpOnly + Secure, SameSite=Lax
 - `audit_log` append-only, admin-only visibility
-- Logged actions: login, card intake, card edit, card price change, cart create/abandon, sale, void, refund, admin override, event create/close, settlement close, settings change, user create, backup download
+- Logged actions: login, card stock-receive, card edit, card price change, cart create/abandon, sale, void, refund, admin override, event create/close, settlement close, settings change, user create, backup download
 
 ---
 
@@ -484,7 +484,7 @@ F22 (bundles), F33 (parallel events), buylist mode, store credit, low-stock aler
 | 7 | Cash drawer | Virtual only |
 | 8 | Label printer | Browser PDF + print dialog (50×25mm target) |
 | 9 | Event expenses | Deferred |
-| 10 | Intake-on-behalf | Allowed: anyone for any owner |
+| 10 | Stock-receive-on-behalf | Allowed: anyone for any owner |
 | 11 | Fixed-card discount | Allowed, reason always required, max via settings, admin override above max |
 | 12 | Oversold scenario | Preempted via cart-locking entity (F34); residual offline-conflict surfaces in admin queue |
 
@@ -521,7 +521,7 @@ Push/pull with server-authoritative cursor:
 
 | Scenario | Resolution |
 |----------|------------|
-| Two devices intake a card with same `short_id` | Server accepts first-write, rejects second. Client regenerates + reprints. |
+| Two devices stock-receive a card with same `short_id` | Server accepts first-write, rejects second. Client regenerates + reprints. |
 | Two devices edit same card metadata | Optimistic concurrency: higher-version write wins. Lower-version client pulls, re-surfaces pending edit. |
 | Two devices both online, one locks card X in cart | No conflict: second device sees lock on next sync (within 60s); `add_cart_item` is rejected. |
 | Two devices both offline, both add card X to separate carts, both sync | Server accepts first cart_item by `server_received_at`, rejects second. Second cashier sees "Kartu sudah di keranjang [Name] — item dihapus dari keranjang Anda." |
@@ -535,7 +535,7 @@ Do not trust client wall-clock for ordering. Every record carries `created_at` (
 
 ### 16.5 Photo sync
 
-Intake photo compressed to JPEG max 1024px (~150KB), stored as IndexedDB blob under `pending_photos`. On sync: multipart POST to `/sync/photo/:card_client_id`. Server stores at `/storage/photos/` and returns canonical URL. Thumbnail (256px) stays in IDB; full-res server-only.
+Stock-receive photo compressed to JPEG max 1024px (~150KB), stored as IndexedDB blob under `pending_photos`. On sync: multipart POST to `/sync/photo/:card_client_id`. Server stores at `/storage/photos/` and returns canonical URL. Thumbnail (256px) stays in IDB; full-res server-only.
 
 ### 16.6 Initial install
 

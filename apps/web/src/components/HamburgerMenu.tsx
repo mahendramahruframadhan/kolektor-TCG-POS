@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Menu, X, ShoppingCart, Package, Plus, BarChart2,
+  Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, DollarSign, LogOut,
-  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, type LucideIcon,
+  KeyRound, BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -16,9 +16,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
   { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
   { to: "/inventory", Icon: Package,      label: "Inventaris" },
-  { to: "/intake",    Icon: Plus,         label: "Intake Kartu" },
+  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive" },
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
@@ -27,6 +28,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/admin/events",              Icon: Calendar,     label: "Kelola Event",      adminOnly: true },
   { to: "/admin/oversold",            Icon: AlertTriangle,label: "Antrian Oversold",  adminOnly: true },
   { to: "/admin/cash-reconciliation", Icon: DollarSign,   label: "Rekonsiliasi Kas",  adminOnly: true },
+  { to: "/admin/overrides",           Icon: ShieldAlert,  label: "Riwayat Override",  adminOnly: true },
+  { to: "/admin/audit-log",           Icon: ClipboardList,label: "Audit Log",         adminOnly: true },
 ];
 
 export function HamburgerMenu() {
@@ -76,20 +79,6 @@ export function HamburgerMenu() {
           </button>
         </div>
 
-        <div className="px-4 py-3 flex items-center gap-3 border-b border-border shrink-0">
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
-            <span className="text-xs font-extrabold text-primary-fg">
-              {user?.displayName?.[0]?.toUpperCase() ?? "?"}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-fg truncate">{user?.displayName}</p>
-            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-              {user?.role === "admin" ? "Admin" : "Kasir"}
-            </p>
-          </div>
-        </div>
-
         <nav className="flex-1 overflow-y-auto py-2">
           {visibleItems.map((item) => (
             <Link
@@ -98,7 +87,7 @@ export function HamburgerMenu() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition active:bg-muted"
             >
-              <item.Icon className="w-5 h-5 text-muted-fg shrink-0" />
+              <item.Icon className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
               {item.label}
             </Link>
           ))}
@@ -110,7 +99,7 @@ export function HamburgerMenu() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
           >
-            <KeyRound className="w-5 h-5 text-muted-fg shrink-0" />
+            <KeyRound className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
             Ubah Password
           </Link>
 
@@ -119,18 +108,30 @@ export function HamburgerMenu() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
           >
-            <BookOpen className="w-5 h-5 text-muted-fg shrink-0" />
+            <BookOpen className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
             Bantuan &amp; Docs
           </Link>
         </nav>
 
-        <div className="px-4 py-4 border-t border-border shrink-0">
+        <div className="px-4 py-3 flex items-center gap-3 border-t border-border shrink-0">
+          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
+            <span className="text-xs font-extrabold text-primary-fg">
+              {user?.displayName?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-fg truncate">{user?.displayName}</p>
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+              {user?.role === "admin" ? "Admin" : "Kasir"}
+            </p>
+          </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-destructive rounded-xl hover:bg-destructive hover:bg-opacity-10 transition"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-destructive hover:bg-destructive hover:bg-opacity-10 transition shrink-0"
+            aria-label="Keluar"
+            title="Keluar"
           >
-            <LogOut className="w-5 h-5 shrink-0" />
-            Keluar
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>

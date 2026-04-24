@@ -13,7 +13,9 @@ type Db = BetterSQLite3Database<typeof dbSchema>;
 export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
-  app.post("/auth/login", async (request, reply) => {
+  app.post("/auth/login", {
+    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+  }, async (request, reply) => {
     const body = LoginSchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: body.error.flatten() });
@@ -29,18 +31,7 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
       return reply.status(401).send({ error: "Invalid credentials" });
     }
 
-    const passwordHash = user.passwordHash;
-    let valid: boolean;
-
-    // Support sha256: prefix from seed (dev only) + bcrypt for production
-    if (passwordHash.startsWith("sha256:")) {
-      const { createHash } = await import("crypto");
-      const hash = "sha256:" + createHash("sha256").update(body.data.password).digest("hex");
-      valid = hash === passwordHash;
-    } else {
-      valid = await bcrypt.compare(body.data.password, passwordHash);
-    }
-
+    const valid = await bcrypt.compare(body.data.password, user.passwordHash);
     if (!valid) {
       return reply.status(401).send({ error: "Invalid credentials" });
     }
@@ -61,7 +52,10 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     return reply.send({ ok: true });
   });
 
-  app.post("/auth/change-password", { preHandler: requireAuth }, async (request, reply) => {
+  app.post("/auth/change-password", {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+  }, async (request, reply) => {
     const body = z.object({
       currentPassword: z.string().min(1),
       newPassword: z.string().min(8),
@@ -74,15 +68,7 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     const user = db.select().from(users).where(eq(users.id, request.session.userId!)).get();
     if (!user) return reply.status(404).send({ error: "User not found" });
 
-    let valid: boolean;
-    if (user.passwordHash.startsWith("sha256:")) {
-      const { createHash } = await import("crypto");
-      const hash = "sha256:" + createHash("sha256").update(body.data.currentPassword).digest("hex");
-      valid = hash === user.passwordHash;
-    } else {
-      valid = await bcrypt.compare(body.data.currentPassword, user.passwordHash);
-    }
-
+    const valid = await bcrypt.compare(body.data.currentPassword, user.passwordHash);
     if (!valid) {
       return reply.status(401).send({ error: "Password saat ini tidak valid." });
     }

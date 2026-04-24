@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useId, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -25,6 +25,12 @@ const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase tex
 export function CashReconciliationPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+
+  const expectedId = useId();
+  const countedId = useId();
+  const notesId = useId();
+  const eventSelectId = useId();
+  const dateId = useId();
 
   const [events, setEvents] = useState<IdbEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
@@ -127,20 +133,22 @@ export function CashReconciliationPage() {
       : null;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar title="Rekonsiliasi Kas" back onBack={() => navigate("/admin")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {/* Filters */}
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
           <p className={`${labelCls}`}>Filter</p>
-          <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={inputCls}>
+          <label htmlFor={eventSelectId} className="sr-only">Pilih event</label>
+          <select id={eventSelectId} value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={inputCls}>
             <option value="">-- Pilih Event --</option>
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>{ev.name}{ev.status === "active" ? " (aktif)" : ""}</option>
             ))}
           </select>
-          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={inputCls} />
+          <label htmlFor={dateId} className="sr-only">Pilih tanggal</label>
+          <input id={dateId} type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={inputCls} />
         </div>
 
         {/* New reconciliation form */}
@@ -155,14 +163,14 @@ export function CashReconciliationPage() {
             )}
 
             <div>
-              <label className={labelCls}>Ekspektasi Kas (IDR)</label>
-              <input type="number" value={expectedCash}
+              <label htmlFor={expectedId} className={labelCls}>Ekspektasi Kas (IDR)</label>
+              <input id={expectedId} type="number" value={expectedCash}
                 onChange={(e) => setExpectedCash(e.target.value)}
                 placeholder="0" min={0} step={1000} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Kas Terhitung (IDR)</label>
-              <input type="number" value={countedCash}
+              <label htmlFor={countedId} className={labelCls}>Kas Terhitung (IDR)</label>
+              <input id={countedId} type="number" value={countedCash}
                 onChange={(e) => setCountedCash(e.target.value)}
                 placeholder="0" min={0} step={1000} className={inputCls} />
             </div>
@@ -178,10 +186,10 @@ export function CashReconciliationPage() {
             )}
 
             <div>
-              <label className={labelCls}>Catatan</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+              <label htmlFor={notesId} className={labelCls}>Catatan</label>
+              <textarea id={notesId} value={notes} onChange={(e) => setNotes(e.target.value)}
                 rows={2} placeholder="Keterangan tambahan…"
-                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none" />
+                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none" />
             </div>
 
             {error && (

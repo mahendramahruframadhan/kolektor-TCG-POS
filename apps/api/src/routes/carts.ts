@@ -15,7 +15,7 @@ import {
   AddCartItemSchema,
   PayCartSchema,
 } from "@kolektapos/types";
-import { requireAuth } from "../plugins/auth-guard.js";
+import { requireAuth, makeRequireCartOwnerOrAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -36,6 +36,7 @@ function getCartIdleTtl(db: Db): number {
 
 export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
+  const requireCartOwnerOrAdmin = makeRequireCartOwnerOrAdmin(db);
 
   // POST /carts — create a new cart
   app.post("/carts", { preHandler: requireAuth }, async (request, reply) => {
@@ -92,7 +93,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/items — add card to cart
   app.post(
     "/carts/:id/items",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
       const body = AddCartItemSchema.safeParse(request.body);
@@ -100,8 +101,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         return reply.status(400).send({ error: body.error.flatten() });
       }
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -139,6 +139,12 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
       // ── Floor price / discount validation ───────────────────────────────
       const requiresAdminOverride = body.data.requiresAdminOverride ?? false;
 
+      if (requiresAdminOverride && request.session.userRole !== "admin") {
+        return reply.status(403).send({
+          error: "Only admin sessions may set requiresAdminOverride.",
+        });
+      }
+
       if (card.pricingMode === "fixed") {
         // Compute line discount % from intended vs listed/fixed price
         const listedPrice = card.priceIdr ?? 0;
@@ -167,6 +173,14 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
             return reply.status(422).send({
               error: "Diskon melebihi batas",
               maxPct,
+            });
+          }
+
+          // Hard floor: intendedPriceIdr must be >= listed price unless admin override.
+          if (body.data.intendedPriceIdr < listedPrice && !requiresAdminOverride) {
+            return reply.status(422).send({
+              error: "Di bawah harga tetap (fixed price)",
+              fixedPriceIdr: listedPrice,
             });
           }
         }
@@ -234,15 +248,14 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // DELETE /carts/:id/items/:cardId — remove card from cart and release lock
   app.delete(
     "/carts/:id/items/:cardId",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId, cardId } = request.params as {
         id: string;
         cardId: string;
       };
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -291,7 +304,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/pay — complete cart and create transaction
   app.post(
     "/carts/:id/pay",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
       const body = PayCartSchema.safeParse(request.body);
@@ -299,8 +312,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         return reply.status(400).send({ error: body.error.flatten() });
       }
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -451,6 +463,29 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         .where(eq(transactionItems.transactionId, txId))
         .all();
 
+      // Structured business events (SC 4.1.3 adjacent; operational visibility).
+      const oversoldCardIds = cardIds.filter((id) => cardMap.get(id)?.status === "sold");
+      request.log.info({
+        event: "sale_completed",
+        transactionId: txId,
+        cartId,
+        eventId: cart.eventId,
+        cashierUserId,
+        itemCount: items.length,
+        totalIdr,
+        paymentChannelId: body.data.paymentChannelId,
+        oversoldCardCount: oversoldCardIds.length,
+      });
+      if (oversoldCardIds.length > 0) {
+        request.log.warn({
+          event: "oversold_detected",
+          transactionId: txId,
+          cartId,
+          cardIds: oversoldCardIds,
+          cashierUserId,
+        });
+      }
+
       return reply.status(201).send({ transaction: tx, receipt });
     }
   );
@@ -458,12 +493,11 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   // POST /carts/:id/abandon — abandon cart and release all locks
   app.post(
     "/carts/:id/abandon",
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, requireCartOwnerOrAdmin] },
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)

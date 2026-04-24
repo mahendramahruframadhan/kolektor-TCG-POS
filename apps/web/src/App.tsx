@@ -6,13 +6,16 @@ import { useAuthStore } from "./store/auth.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { POSPage } from "./pages/POSPage.js";
-import { IntakePage } from "./pages/IntakePage.js";
+import { StockReceivePage } from "./pages/StockReceivePage.js";
 import { InventoryPage } from "./pages/InventoryPage.js";
 import { ReportsPage } from "./pages/ReportsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
 import { UsersAdminPage } from "./pages/UsersAdminPage.js";
 import { EventsAdminPage } from "./pages/EventsAdminPage.js";
 import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
+import { AuditLogPage } from "./pages/AuditLogPage.js";
+import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
+import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
 import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
@@ -38,6 +41,12 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-fg focus:px-4 focus:py-2 focus:rounded-xl focus:font-bold focus:shadow-lg focus:ring-2 focus:ring-accent"
+        >
+          Lewati ke konten utama
+        </a>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -66,10 +75,10 @@ export function App() {
             }
           />
           <Route
-            path="/intake"
+            path="/stock-receive"
             element={
               <RequireAuth>
-                <IntakePage />
+                <StockReceivePage />
               </RequireAuth>
             }
           />
@@ -114,6 +123,30 @@ export function App() {
             }
           />
           <Route
+            path="/admin/audit-log"
+            element={
+              <RequireAdmin>
+                <AuditLogPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/overrides"
+            element={
+              <RequireAdmin>
+                <OverrideHistoryPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/transactions/:id"
+            element={
+              <RequireAuth>
+                <TransactionDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/admin/cash-reconciliation"
             element={
               <RequireAdmin>
@@ -122,7 +155,7 @@ export function App() {
             }
           />
           <Route
-            path="/intake/bulk"
+            path="/stock-receive/bulk"
             element={
               <RequireAuth>
                 <BulkImportPage />

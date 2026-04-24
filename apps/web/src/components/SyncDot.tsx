@@ -1,32 +1,64 @@
 import React from "react";
-
-type SyncState = "online" | "syncing" | "offline";
+import { Check, RefreshCw, WifiOff, AlertCircle, type LucideIcon } from "lucide-react";
+import { useSyncStateStore, type SyncState } from "../store/sync-state.js";
 
 const COLORS: Record<SyncState, string> = {
-  online:  "hsl(152,60%,40%)",
-  syncing: "hsl(38,92%,50%)",
+  online:  "hsl(152,60%,29%)",
+  syncing: "hsl(38,92%,33%)",
   offline: "hsl(0,72%,51%)",
+  error:   "hsl(0,72%,51%)",
 };
 
 const LABELS: Record<SyncState, string> = {
   online:  "Tersinkron",
   syncing: "Menyinkron…",
   offline: "Offline",
+  error:   "Gagal sync",
 };
 
-export function SyncDot({ state = "online" }: { state?: SyncState }) {
-  const color = COLORS[state];
+// Shape distinction so state is readable without colour (SC 1.4.1 Use of Color).
+const ICONS: Record<SyncState, LucideIcon> = {
+  online:  Check,
+  syncing: RefreshCw,
+  offline: WifiOff,
+  error:   AlertCircle,
+};
+
+interface Props {
+  /** Optional override. Defaults to the global sync-state store. */
+  state?: SyncState;
+}
+
+export function SyncDot({ state }: Props) {
+  const storeState = useSyncStateStore((s) => s.state);
+  const storeError = useSyncStateStore((s) => s.lastError);
+  const effective = state ?? storeState;
+  const color = COLORS[effective];
+  const Icon = ICONS[effective];
+  const label = LABELS[effective];
+  const titleText = effective === "error" && storeError
+    ? `${label}: ${storeError}`
+    : label;
+
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-label={`Status sinkronisasi: ${titleText}`}
+      title={titleText}
       className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
       style={{ background: `${color}18`, border: `1px solid ${color}40` }}
     >
-      <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+      <Icon
+        className={effective === "syncing" ? "w-3 h-3 animate-spin" : "w-3 h-3"}
+        style={{ color }}
+        aria-hidden="true"
+      />
       <span
-        className="text-[10px] font-extrabold tracking-widest uppercase"
+        className="text-[11px] font-extrabold tracking-widest uppercase"
         style={{ color }}
       >
-        {LABELS[state]}
+        {label}
       </span>
     </div>
   );
