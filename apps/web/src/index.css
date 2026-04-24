@@ -15,3 +15,14 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+@layer utilities {
+  /* Subtle dotted pattern overlay — pairs with `bg-surface` on page roots.
+     bg-surface sets the base color; this class only adds the dot grid. */
+  .bg-dotted-overlay {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1.5px);
+    background-size: 18px 18px;
+    background-position: 0 0;
+    background-attachment: fixed;
+  }
+}

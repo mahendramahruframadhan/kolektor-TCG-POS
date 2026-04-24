@@ -127,7 +127,7 @@ export function CashReconciliationPage() {
       : null;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar title="Rekonsiliasi Kas" back onBack={() => navigate("/admin")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">

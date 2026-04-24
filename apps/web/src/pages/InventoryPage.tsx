@@ -303,7 +303,7 @@ export function InventoryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar title="Inventaris" back onBack={() => navigate("/dashboard")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">

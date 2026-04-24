@@ -795,7 +795,7 @@ export function POSPage() {
     cartItems.some((i) => i.cardId === scannedCard?.id);
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title="Kasir POS"
         back
