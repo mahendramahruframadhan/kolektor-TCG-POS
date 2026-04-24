@@ -14,6 +14,7 @@ import { usePosStore } from "../store/pos.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
+import { Dialog } from "../components/Dialog.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
@@ -190,16 +191,20 @@ function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
-      <div className="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-        {/* Handle */}
-        <div className="flex justify-center -mb-1">
-          <div className="w-9 h-1 rounded-full bg-border" />
-        </div>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      title="Pembayaran"
+      panelClassName="w-full max-w-md bg-card rounded-t-3xl shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+      disableEscape={paying}
+      disableBackdropClose={paying}
+    >
+      {/* Handle — decorative drag affordance */}
+      <div className="flex justify-center -mb-1" aria-hidden="true">
+        <div className="w-9 h-1 rounded-full bg-border" />
+      </div>
 
-        <h2 className="text-base font-bold text-fg">Pembayaran</h2>
-
-        {/* Totals */}
+      {/* Totals */}
         <div className="space-y-1.5 border-b border-border pb-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-fg">Subtotal</span>
@@ -353,8 +358,7 @@ function PaymentModal({
             {paying ? "Memproses…" : "Bayar"}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -412,16 +416,16 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div id="receipt-modal-content" className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center">
-        <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto">
+    <Dialog
+      open={true}
+      onClose={onDone}
+      title="Pembayaran Berhasil"
+      description={`#${transactionId.slice(0, 8).toUpperCase()}`}
+      panelClassName="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center"
+    >
+      <div id="receipt-modal-content" className="space-y-5">
+        <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto" aria-hidden="true">
           <Check className="w-8 h-8 text-success" />
-        </div>
-        <div>
-          <h2 className="text-xl font-extrabold text-fg">Pembayaran Berhasil</h2>
-          <p className="text-sm text-muted-fg font-mono mt-1">
-            #{transactionId.slice(0, 8).toUpperCase()}
-          </p>
         </div>
         <div className="bg-surface rounded-2xl p-4 space-y-2 text-left border border-border">
           <div className="flex justify-between text-sm">
@@ -449,7 +453,7 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
