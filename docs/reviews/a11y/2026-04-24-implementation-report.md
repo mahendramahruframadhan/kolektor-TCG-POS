@@ -1,6 +1,6 @@
 # Accessibility Implementation Report
 
-**Audit source:** [`docs/WCAG-review-claude-opus-4-7-20260424-081500.md`](WCAG-review-claude-opus-4-7-20260424-081500.md)
+**Audit source:** [`docs/reviews/a11y/2026-04-24-wcag-aa-audit.md`](2026-04-24-wcag-aa-audit.md)
 **Branch:** `feat/complete-mvp`
 **Commits shipped:** `6a415ae` · `5d8bd0d` · `beca76d` · `9e3f4da` · `4cb5c26`
 **Date:** 2026-04-24

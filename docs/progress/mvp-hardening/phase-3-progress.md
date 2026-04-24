@@ -3,7 +3,7 @@
 **Status:** Complete
 **Date:** 2026-04-24
 **Branch:** `feat/complete-mvp`
-**Plan:** [`docs/plans/2026-04-24-mvp-hardening-phase-1.md`](plans/2026-04-24-mvp-hardening-phase-1.md)
+**Plan:** [`docs/plans/2026-04-24-mvp-hardening-phase-1.md`](../../plans/2026-04-24-mvp-hardening-phase-1.md)
 
 ## Findings Closed
 

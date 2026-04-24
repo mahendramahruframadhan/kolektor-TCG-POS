@@ -2,9 +2,11 @@
 
 Private, self-hosted, single-booth POS for TCG Sales conventions. Local-first PWA + Fastify sync server.
 
-- [`docs/01-prd.md`](docs/01-prd.md) — consolidated PRD (v1.0)
-- [`docs/02-implementation-plan.md`](docs/02-implementation-plan.md) — milestone-by-milestone build plan
-- [`CLAUDE.md`](CLAUDE.md) — architectural invariants for Claude Code
+- [`docs/INDEX.md`](docs/INDEX.md) — **start here.** Agent-facing map of every document with a recommended default per topic.
+- [`docs/01-prd.md`](docs/01-prd.md) — consolidated PRD (v1.0).
+- [`docs/02-implementation-plan.md`](docs/02-implementation-plan.md) — milestone-by-milestone build plan.
+- [`docs/03-runbook.md`](docs/03-runbook.md) — operational runbook for the first event.
+- [`CLAUDE.md`](CLAUDE.md) — architectural invariants for Claude Code.
 
 ## Workspace layout
 

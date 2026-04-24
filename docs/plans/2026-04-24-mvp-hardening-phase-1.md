@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close every Critical finding (and a handful of tightly-coupled Highs) from the merged code review at `docs/dev-notes/20260424-033000-CODE_REVIEW_REPORT-MERGE.md`, so the codebase is safe to run its first live event.
+**Goal:** Close every Critical finding (and a handful of tightly-coupled Highs) from the merged code review at `docs/reviews/code/2026-04-24-merged.md`, so the codebase is safe to run its first live event.
 
 **Architecture:** Fix in place — no new subsystems, no migrations, no refactors beyond what each finding requires. Every change is either an added guard (authz, validation, rate-limit, perimeter headers), a corrected calculation (settlement sign, net math, timestamps), or a targeted bug fix (oversold void target, tap-and-hold inversion, backup snapshot).
 
@@ -26,7 +26,7 @@
 
 ## Phase Map (Progress-Report Boundaries)
 
-This plan is broken into 5 phases. After each phase completes, a progress report must be written to `docs/phase-N-mvp-hardening-progress.md` (format identical to the existing `docs/m1-progress.md` through `docs/m9-progress.md`).
+This plan is broken into 5 phases. After each phase completes, a progress report must be written to `docs/progress/mvp-hardening/phase-N-progress.md` (format identical to the existing `docs/progress/milestones/m1-progress.md` through `docs/progress/milestones/m9-progress.md`).
 
 | Phase | Theme | Tasks | Risk |
 |-------|-------|-------|------|
@@ -49,7 +49,7 @@ Each phase ends with `pnpm typecheck && pnpm test && pnpm build` green.
 - `apps/api/src/routes/sync.test.ts` — integration tests for `/sync/push` validation and `/sync/pull` redaction (T6, T15).
 - `apps/api/src/routes/backup.test.ts` — integration test for backup snapshot (T16).
 - `apps/web/src/pages/OversoldQueuePage.test.tsx` — component test for correct transaction-id lookup (T9) — **or** inline in `OversoldQueuePage.tsx` if testing framework already exists.
-- `docs/phase-1-mvp-hardening-progress.md` through `docs/phase-5-mvp-hardening-progress.md` — phase progress reports.
+- `docs/progress/mvp-hardening/phase-1-progress.md` through `docs/progress/mvp-hardening/phase-5-progress.md` — phase progress reports.
 
 **Files modified:**
 - `.env.example` — document new vars if needed (T1, T5).
@@ -2270,7 +2270,7 @@ Create `docs/phase-N-mvp-hardening-progress.md` (N = 1..5) using the same struct
 - [ ] **Gate 5: Commit the progress report**
 
 ```bash
-git add docs/phase-N-mvp-hardening-progress.md
+git add docs/progress/mvp-hardening/phase-N-progress.md
 git commit -m "📊 Phase N progress report — <theme>"
 ```
 

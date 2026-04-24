@@ -3,8 +3,8 @@
 **Status:** Complete
 **Date:** 2026-04-24
 **Branch:** `feat/complete-mvp`
-**Plan:** [`docs/plans/2026-04-24-mvp-hardening-phase-1.md`](plans/2026-04-24-mvp-hardening-phase-1.md)
-**Merged review:** [`docs/dev-notes/20260424-033000-CODE_REVIEW_REPORT-MERGE.md`](dev-notes/20260424-033000-CODE_REVIEW_REPORT-MERGE.md)
+**Plan:** [`docs/plans/2026-04-24-mvp-hardening-phase-1.md`](../../plans/2026-04-24-mvp-hardening-phase-1.md)
+**Merged review:** [`docs/reviews/code/2026-04-24-merged.md`](../../reviews/code/2026-04-24-merged.md)
 
 ## Findings Closed
 
