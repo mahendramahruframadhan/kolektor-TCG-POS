@@ -1,7 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import Fastify from "fastify";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
@@ -13,6 +10,7 @@ process.env.SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
 import { authRoutes } from "./auth.js";
 import { syncRoutes } from "./sync.js";
 import { sessionPlugin } from "../plugins/session.js";
+import { applyDrizzleMigrations } from "../test-migrations.js";
 
 let app: ReturnType<typeof Fastify>;
 let sqlite: Database.Database;
@@ -20,22 +18,8 @@ let cookie: string;
 
 beforeAll(async () => {
   sqlite = new Database(":memory:");
+  applyDrizzleMigrations(sqlite);
   const db = drizzle(sqlite, { schema });
-
-  // Load the full schema from the drizzle migration so every column
-  // selected by /sync/pull resolves correctly.
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const migrationsDir = resolve(
-    __dirname,
-    "../../../../packages/db/drizzle"
-  );
-  for (const file of ["0000_faulty_cerebro.sql", "0001_good_talos.sql"]) {
-    const sql = readFileSync(resolve(migrationsDir, file), "utf8").replace(
-      /-->\s*statement-breakpoint/g,
-      ""
-    );
-    sqlite.exec(sql);
-  }
 
   const hash = await bcrypt.hash("pw-secret-12345", 10);
   sqlite

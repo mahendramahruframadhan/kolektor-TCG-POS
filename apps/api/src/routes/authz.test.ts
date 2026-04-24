@@ -3,9 +3,6 @@ import Fastify from "fastify";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import bcrypt from "bcryptjs";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { resolve, dirname } from "path";
 import * as schema from "@kolektapos/db/schema";
 
 process.env.SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
@@ -16,26 +13,12 @@ import { cartRoutes } from "./carts.js";
 import { transactionRoutes } from "./transactions.js";
 import { holdRoutes } from "./holds.js";
 import { sessionPlugin } from "../plugins/session.js";
+import { applyDrizzleMigrations } from "../test-migrations.js";
 
 let app: ReturnType<typeof Fastify>;
 let sqlite: Database.Database;
 let cashierCookie: string;
 let adminCookie: string;
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function applyMigrations(s: Database.Database) {
-  // Apply the same migrations the production DB uses so Drizzle's full
-  // column projections succeed.
-  const migrationsDir = resolve(__dirname, "../../../../packages/db/drizzle");
-  const files = ["0000_faulty_cerebro.sql", "0001_good_talos.sql"];
-  for (const f of files) {
-    const sql = readFileSync(resolve(migrationsDir, f), "utf-8");
-    // Drizzle emits --> statement-breakpoint separators; strip them.
-    const cleaned = sql.replace(/--> statement-breakpoint/g, "");
-    s.exec(cleaned);
-  }
-}
 
 async function login(email: string, password: string) {
   const res = await app.inject({
@@ -48,7 +31,7 @@ async function login(email: string, password: string) {
 
 beforeAll(async () => {
   sqlite = new Database(":memory:");
-  applyMigrations(sqlite);
+  applyDrizzleMigrations(sqlite);
   const db = drizzle(sqlite, { schema });
 
   const cashierHash = await bcrypt.hash("pw-cashier-12345", 10);
