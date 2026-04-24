@@ -5,6 +5,8 @@ import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenvConfig({ path: resolve(__dirname, "../../../.env") });
@@ -55,6 +57,46 @@ async function build() {
 
   await app.register(rateLimit, {
     global: false, // only routes that opt in via {config:{rateLimit:...}} are throttled
+  });
+
+  // OpenAPI — auto-generates from route schemas (route-level JSON schemas
+  // are added progressively). Swagger-UI mounted at /docs/api for operator
+  // inspection. Keep disabled in production deploys behind DOMAIN if needed.
+  await app.register(swagger, {
+    openapi: {
+      openapi: "3.0.0",
+      info: {
+        title: "KolektaPOS API",
+        description:
+          "Single-booth TCG POS sync + admin API. Local-first; session-cookie auth; append-only transactions. See docs/01-prd.md.",
+        version: "0.1.0",
+      },
+      servers: [{ url: `http://localhost:${PORT}` }],
+      tags: [
+        { name: "auth", description: "Login, logout, change password, /me" },
+        { name: "cards", description: "Card CRUD + stock-receive" },
+        { name: "carts", description: "Cart mutations + pay + abandon" },
+        { name: "transactions", description: "Transaction read + void/refund" },
+        { name: "sync", description: "PWA push/pull protocol" },
+        { name: "settlement", description: "Per-event + monthly payout reports" },
+        { name: "admin", description: "Settings, users, audit log, backup" },
+      ],
+      components: {
+        securitySchemes: {
+          sessionCookie: {
+            type: "apiKey",
+            in: "cookie",
+            name: "sessionId",
+            description:
+              "Fastify session cookie (sameSite=strict). Obtain via POST /auth/login.",
+          },
+        },
+      },
+    },
+  });
+  await app.register(swaggerUi, {
+    routePrefix: "/docs/api",
+    uiConfig: { docExpansion: "list", deepLinking: false },
   });
 
   // Plugins
