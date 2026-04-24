@@ -25,3 +25,5 @@ scratch/
 !.vscode/extensions.json
 .idea
 .claude/
+
+.worktrees/
