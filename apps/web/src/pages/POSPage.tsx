@@ -64,6 +64,25 @@ function StatusBadge({
 
 function BottomPriceReveal({ amount }: { amount: number | undefined }) {
   const { revealed, startReveal, endReveal } = useTapHoldReveal(5000);
+
+  // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
+  // Space/Enter pressed → start the hold timer; released → cancel the
+  // pending reveal (matches useTapHoldReveal's pointer-up semantics).
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === " " || e.key === "Enter") {
+      if (!e.repeat) {
+        e.preventDefault();
+        startReveal();
+      }
+    }
+  };
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      endReveal();
+    }
+  };
+
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-muted-fg">Harga Minimum</span>
@@ -74,8 +93,12 @@ function BottomPriceReveal({ amount }: { amount: number | undefined }) {
         onMouseLeave={endReveal}
         onTouchStart={startReveal}
         onTouchEnd={endReveal}
-        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none"
-        aria-label="Tap dan tahan untuk melihat harga minimum"
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={endReveal}
+        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
+        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 5 detik untuk melihat harga minimum"
+        aria-pressed={revealed}
       >
         {revealed ? (
           <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
