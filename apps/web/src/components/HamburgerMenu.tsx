@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Menu, X, ShoppingCart, Package, Plus, BarChart2,
+  Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, DollarSign, LogOut,
   KeyRound, BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
@@ -16,6 +16,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
   { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
   { to: "/inventory", Icon: Package,      label: "Inventaris" },
   { to: "/intake",    Icon: Plus,         label: "Intake Kartu" },
