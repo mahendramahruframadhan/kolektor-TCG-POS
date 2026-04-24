@@ -8,7 +8,7 @@ import {
   transactionItems,
   users,
   cards,
-  cashReconciliations,
+  paymentChannels,
 } from "@kolektapos/db/schema";
 import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
 
@@ -76,12 +76,13 @@ export async function settlementRoutes(
         itemsSold: ownerItemCount[ownerId] ?? 0,
       }));
 
-      const grandTotalSales = allTxs
-        .filter((t) => t.kind === "sale")
-        .reduce((s, t) => s + t.totalIdr, 0);
+      const saleTxs = allTxs.filter((t) => t.kind === "sale");
+      const grandTotalSales = saleTxs.reduce((s, t) => s + t.totalIdr, 0);
       const grandTotalVoids = allTxs
         .filter((t) => t.kind === "void" || t.kind === "refund")
         .reduce((s, t) => s + Math.abs(t.totalIdr), 0);
+
+      const channelBreakdown = buildChannelBreakdown(db, saleTxs);
 
       return reply.send({
         eventId,
@@ -92,6 +93,7 @@ export async function settlementRoutes(
         grandTotalVoidsIdr: grandTotalVoids,
         netIdr: grandTotalSales - grandTotalVoids,
         breakdown,
+        channelBreakdown,
       });
     }
   );
@@ -213,6 +215,8 @@ export async function settlementRoutes(
         .map(([date, v]) => ({ date, ...v }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
+      const channelBreakdown = buildChannelBreakdown(db, saleTxs);
+
       return reply.send({
         year: y,
         month: m,
@@ -221,69 +225,33 @@ export async function settlementRoutes(
         netIdr,
         transactionCount: saleTxs.length,
         dailyBreakdown,
+        channelBreakdown,
       });
     }
   );
+}
 
-  // POST /cash-reconciliations
-  app.post(
-    "/cash-reconciliations",
-    { preHandler: requireAdmin },
-    async (request, reply) => {
-      const body = request.body as {
-        eventId: string;
-        date: string;
-        expectedCashIdr: number;
-        countedCashIdr: number;
-        notes?: string;
-      };
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-      if (!body.eventId || !body.date) {
-        return reply.status(400).send({ error: "eventId and date are required" });
-      }
-
-      const event = db.select().from(events).where(eq(events.id, body.eventId)).get();
-      if (!event) return reply.status(404).send({ error: "Event not found" });
-
-      const nowSec = Math.floor(Date.now() / 1000);
-      const varianceIdr = body.countedCashIdr - body.expectedCashIdr;
-
-      const id = crypto.randomUUID();
-      db.insert(cashReconciliations)
-        .values({
-          id,
-          eventId: body.eventId,
-          date: body.date,
-          expectedCashIdr: body.expectedCashIdr,
-          countedCashIdr: body.countedCashIdr,
-          varianceIdr,
-          notes: body.notes ?? "",
-          closedByUserId: request.session.userId!,
-          closedAt: nowSec,
-        })
-        .run();
-
-      const row = db
-        .select()
-        .from(cashReconciliations)
-        .where(eq(cashReconciliations.id, id))
-        .get();
-      return reply.status(201).send(row);
+function buildChannelBreakdown(
+  db: Db,
+  saleTxs: { paymentChannelId: string | null; totalIdr: number }[]
+) {
+  const channelIds = [
+    ...new Set(saleTxs.flatMap((t) => (t.paymentChannelId ? [t.paymentChannelId] : []))),
+  ];
+  const nameMap: Record<string, string> = {};
+  if (channelIds.length > 0) {
+    for (const ch of db.select().from(paymentChannels).where(inArray(paymentChannels.id, channelIds)).all()) {
+      nameMap[ch.id] = ch.name;
     }
-  );
-
-  // GET /cash-reconciliations?eventId=&date=
-  app.get(
-    "/cash-reconciliations",
-    { preHandler: requireAuth },
-    async (request, reply) => {
-      const { eventId, date } = request.query as { eventId?: string; date?: string };
-
-      let rows = db.select().from(cashReconciliations).all();
-      if (eventId) rows = rows.filter((r) => r.eventId === eventId);
-      if (date) rows = rows.filter((r) => r.date === date);
-
-      return reply.send(rows);
-    }
-  );
+  }
+  const acc: Record<string, { channelName: string; count: number; gross: number }> = {};
+  for (const tx of saleTxs) {
+    const chId = tx.paymentChannelId ?? "unknown";
+    if (!acc[chId]) acc[chId] = { channelName: nameMap[chId] ?? chId, count: 0, gross: 0 };
+    acc[chId]!.count += 1;
+    acc[chId]!.gross += tx.totalIdr;
+  }
+  return Object.entries(acc).map(([channelId, v]) => ({ channelId, ...v }));
 }
