@@ -11,6 +11,8 @@ import swaggerUi from "@fastify/swagger-ui";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenvConfig({ path: resolve(__dirname, "../../../.env") });
 dotenvConfig({ path: resolve(__dirname, "../../.env") });
+
+import { loadConfig } from "./config.js";
 import { runMigrations, seed } from "@kolektapos/db";
 import { sessionPlugin } from "./plugins/session.js";
 import { auditPlugin } from "./plugins/audit.js";
@@ -32,15 +34,16 @@ import { healthRoutes } from "./routes/health.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 import { startAuditPruner } from "./jobs/audit-pruner.js";
 
-const PORT = parseInt(process.env.PORT ?? "3001", 10);
-const HOST = process.env.HOST ?? "0.0.0.0";
-const DB_PATH = process.env.DATABASE_PATH ?? "kolektapos.db";
+// Fail-fast env validation. Any misconfiguration (placeholder SESSION_SECRET,
+// missing DOMAIN in production, partially-set admin seed vars, malformed PORT,
+// etc.) surfaces as a clear error at boot instead of subtly at request time.
+const cfg = loadConfig();
 
 async function build() {
   const app = Fastify({ logger: true });
 
   // DB
-  const { db } = await runMigrations(DB_PATH);
+  const { db } = await runMigrations(cfg.DATABASE_PATH);
   await seed(db);
 
   // Perimeter security — §H4/H10 of MVP hardening
@@ -49,9 +52,11 @@ async function build() {
     contentSecurityPolicy: false,
   });
 
-  const allowedOrigin = process.env.DOMAIN
-    ? `https://${process.env.DOMAIN}`
-    : true; // dev: reflect origin
+  // CORS: explicit dev allowlist (localhost vite origins) or production
+  // HTTPS host. DOMAIN is required in production (enforced by loadConfig).
+  const allowedOrigin: string | string[] = cfg.DOMAIN
+    ? `https://${cfg.DOMAIN}`
+    : ["http://localhost:5173", "http://127.0.0.1:5173"];
   await app.register(cors, {
     origin: allowedOrigin,
     credentials: true,
@@ -73,7 +78,7 @@ async function build() {
           "Single-booth TCG POS sync + admin API. Local-first; session-cookie auth; append-only transactions. See docs/01-prd.md.",
         version: "0.1.0",
       },
-      servers: [{ url: `http://localhost:${PORT}` }],
+      servers: [{ url: `http://localhost:${cfg.PORT}` }],
       tags: [
         { name: "auth", description: "Login, logout, change password, /me" },
         { name: "cards", description: "Card CRUD + stock-receive" },
@@ -115,7 +120,7 @@ async function build() {
   await cartRoutes(app, { db });
   await holdRoutes(app, { db });
   await transactionRoutes(app, { db });
-  await backupRoute(app, { dbPath: DB_PATH, photoStoragePath: process.env.PHOTO_STORAGE_PATH });
+  await backupRoute(app, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
   await syncRoutes(app, { db });
   await settlementRoutes(app, { db });
   await auditLogRoutes(app, { db });
@@ -131,4 +136,4 @@ async function build() {
 
 // Bootstrap
 const app = await build();
-await app.listen({ port: PORT, host: HOST });
+await app.listen({ port: cfg.PORT, host: cfg.HOST });
