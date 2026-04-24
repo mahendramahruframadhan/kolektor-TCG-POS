@@ -315,6 +315,7 @@ export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedCard, setSelectedCard] = useState<IdbCard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -331,6 +332,10 @@ export function InventoryPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [searchText, statusFilter]);
+
   const filteredCards = allCards.filter((card) => {
     const matchesSearch =
       !searchText ||
@@ -339,6 +344,9 @@ export function InventoryPage() {
     const matchesStatus = statusFilter === "all" || card.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const visibleCards = filteredCards.slice(0, visibleCount);
+  const hasMore = filteredCards.length > visibleCount;
 
   const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "Semua" },
@@ -384,7 +392,9 @@ export function InventoryPage() {
 
         {/* Count */}
         <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg px-1">
-          {filteredCards.length} kartu ditemukan
+          {hasMore
+            ? `Menampilkan ${visibleCount} dari ${filteredCards.length} kartu`
+            : `${filteredCards.length} kartu ditemukan`}
         </p>
 
         {/* Card list */}
@@ -396,7 +406,7 @@ export function InventoryPage() {
           </p>
         ) : (
           <ul className="space-y-2">
-            {filteredCards.map((card) => {
+            {visibleCards.map((card) => {
               const displayPrice =
                 card.pricingMode === "fixed" ? card.priceIdr : card.listedPriceIdr;
               return (
@@ -430,6 +440,15 @@ export function InventoryPage() {
               );
             })}
           </ul>
+        )}
+
+        {!loading && hasMore && (
+          <button
+            onClick={() => setVisibleCount((n) => n + 50)}
+            className="w-full h-11 border border-border rounded-2xl text-sm font-bold text-muted-fg hover:bg-muted transition"
+          >
+            Muat {Math.min(50, filteredCards.length - visibleCount)} kartu lagi
+          </button>
         )}
       </div>
 
