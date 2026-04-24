@@ -68,6 +68,7 @@ interface SettlementReport {
   grandTotalVoidsIdr: number;
   netIdr: number;
   breakdown: OwnerPayout[];
+  channelBreakdown: ChannelBreakdown[];
 }
 
 interface MonthlyReport {
@@ -78,6 +79,7 @@ interface MonthlyReport {
   netIdr: number;
   transactionCount: number;
   dailyBreakdown: { date: string; grossIdr: number; netIdr: number; count: number }[];
+  channelBreakdown: ChannelBreakdown[];
 }
 
 interface InventoryReport {
@@ -127,6 +129,11 @@ function buildSettlementCsv(report: SettlementReport): string {
   lines.push(``);
   lines.push(`"Owner","Items Sold","Payout IDR"`);
   for (const row of report.breakdown) lines.push(`"${row.ownerName}","${row.itemsSold}","${row.totalPayoutIdr}"`);
+  if (report.channelBreakdown.length > 0) {
+    lines.push(``);
+    lines.push(`"Channel","Jumlah","Total (IDR)"`);
+    for (const b of report.channelBreakdown) lines.push(`"${b.channelName}","${b.count}","${b.gross}"`);
+  }
   return lines.join("\n");
 }
 
@@ -143,6 +150,11 @@ function buildMonthlyCsv(report: MonthlyReport): string {
   lines.push(``);
   lines.push(`"Tanggal","Gross IDR","Net IDR","Transaksi"`);
   for (const day of report.dailyBreakdown) lines.push(`"${day.date}","${day.grossIdr}","${day.netIdr}","${day.count}"`);
+  if (report.channelBreakdown.length > 0) {
+    lines.push(``);
+    lines.push(`"Channel","Jumlah","Total (IDR)"`);
+    for (const b of report.channelBreakdown) lines.push(`"${b.channelName}","${b.count}","${b.gross}"`);
+  }
   return lines.join("\n");
 }
 
@@ -195,6 +207,24 @@ function CsvButton({ onClick }: { onClick: () => void }) {
 
 function selectCls() {
   return "w-full h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary";
+}
+
+function ChannelBreakdownCard({ breakdown }: { breakdown: ChannelBreakdown[] }) {
+  if (breakdown.length === 0) return null;
+  return (
+    <SectionCard>
+      <SectionLabel>Rincian per Metode Pembayaran</SectionLabel>
+      {breakdown.map((b) => (
+        <div key={b.channelId} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
+          <div>
+            <p className="text-sm font-bold text-fg">{b.channelName}</p>
+            <p className="text-xs text-muted-fg">{b.count} transaksi</p>
+          </div>
+          <MaskedAmount amount={b.gross} className="text-sm font-bold text-fg" />
+        </div>
+      ))}
+    </SectionCard>
+  );
 }
 
 // ── Sub-page: Daily ────────────────────────────────────────────────────────
@@ -303,21 +333,6 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
             <ReportRow label="Jumlah Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
           </SectionCard>
 
-          {report.channelBreakdown.length > 0 && (
-            <SectionCard>
-              <SectionLabel>Rincian Pembayaran</SectionLabel>
-              {report.channelBreakdown.map((b) => (
-                <div key={b.channelId} className="flex justify-between items-center py-1.5 border-b border-border last:border-0">
-                  <div>
-                    <p className="text-sm font-bold text-fg">{b.channelName}</p>
-                    <p className="text-xs text-muted-fg">{b.count} transaksi</p>
-                  </div>
-                  <MaskedAmount amount={b.gross} className="text-sm font-bold text-fg" />
-                </div>
-              ))}
-            </SectionCard>
-          )}
-
           {report.topItems.length > 0 && (
             <SectionCard>
               <SectionLabel>Top 5 Penjualan</SectionLabel>
@@ -337,6 +352,8 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
               </ol>
             </SectionCard>
           )}
+
+          <ChannelBreakdownCard breakdown={report.channelBreakdown} />
 
           {report.transactionCount === 0 && (
             <p className="text-sm text-muted-fg text-center italic py-4">Tidak ada transaksi pada tanggal ini.</p>
@@ -424,6 +441,8 @@ function MonthlyTab() {
               ))}
             </SectionCard>
           )}
+
+          <ChannelBreakdownCard breakdown={report.channelBreakdown ?? []} />
         </>
       )}
     </div>
@@ -535,6 +554,8 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
               ))}
             </SectionCard>
           )}
+
+          <ChannelBreakdownCard breakdown={report.channelBreakdown ?? []} />
         </>
       )}
     </div>
