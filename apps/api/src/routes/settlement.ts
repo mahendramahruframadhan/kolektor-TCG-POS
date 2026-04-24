@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, gte, lt, isNotNull } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import {
@@ -172,10 +172,18 @@ export async function settlementRoutes(
       const startTs = Math.floor(startDate.getTime() / 1000);
       const endTs = Math.floor(endDate.getTime() / 1000);
 
-      const allTxs = db.select().from(transactions).all();
-      const monthTxs = allTxs.filter(
-        (t) => t.paidAt !== null && t.paidAt! >= startTs && t.paidAt! < endTs
-      );
+      // Filter at SQL level — was: load-all + JS filter (O(n) memory).
+      const monthTxs = db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            isNotNull(transactions.paidAt),
+            gte(transactions.paidAt, startTs),
+            lt(transactions.paidAt, endTs)
+          )
+        )
+        .all();
 
       const saleTxs = monthTxs.filter((t) => t.kind === "sale");
       const voidRefundTxs = monthTxs.filter((t) => t.kind === "void" || t.kind === "refund");

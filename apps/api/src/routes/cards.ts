@@ -5,15 +5,17 @@ import type * as dbSchema from "@kolektapos/db/schema";
 import { cards } from "@kolektapos/db/schema";
 import { CreateCardSchema, UpdateCardSchema } from "@kolektapos/types";
 import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
+import { parsePagination } from "../utils/pagination.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
 export async function cardRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
-  // GET /cards — list all cards
-  app.get("/cards", { preHandler: requireAuth }, async (_request, reply) => {
-    const rows = db.select().from(cards).all();
+  // GET /cards?limit=&offset= — paginated list (defaults to 1000)
+  app.get("/cards", { preHandler: requireAuth }, async (request, reply) => {
+    const { limit, offset } = parsePagination(request.query);
+    const rows = db.select().from(cards).limit(limit).offset(offset).all();
     return reply.send(rows);
   });
 

@@ -2,7 +2,14 @@ import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import * as XLSX from "xlsx";
+// `xlsx` is ~2 MB; dynamic-import it inside the two handlers that actually
+// need it so the main PWA bundle stays lean. See docs/reviews/code/2026-04-24-merged.md L8.
+type XlsxModule = typeof import("xlsx");
+let xlsxPromise: Promise<XlsxModule> | null = null;
+function loadXlsx(): Promise<XlsxModule> {
+  xlsxPromise ??= import("xlsx");
+  return xlsxPromise;
+}
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -174,6 +181,7 @@ export function BulkImportPage() {
     setImportErrors([]);
 
     try {
+      const XLSX = await loadXlsx();
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]!];
@@ -281,7 +289,8 @@ export function BulkImportPage() {
     URL.revokeObjectURL(url);
   }
 
-  function downloadTemplate() {
+  async function downloadTemplate() {
+    const XLSX = await loadXlsx();
     const headers = [
       "owner", "title", "setName", "setNumber", "rarity", "language", "condition", "edition",
       "pricingMode", "priceIdr", "listedPriceIdr", "bottomPriceIdr",

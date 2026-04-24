@@ -4,6 +4,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards, transactions, transactionItems } from "@kolektapos/db/schema";
 import { requireAuth, requireAdmin } from "../plugins/auth-guard.js";
+import { parsePagination } from "../utils/pagination.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -19,17 +20,12 @@ export async function transactionRoutes(
     { preHandler: requireAuth },
     async (request, reply) => {
       const query = request.query as { eventId?: string };
+      const { limit, offset } = parsePagination(query);
 
-      let rows;
-      if (query.eventId) {
-        rows = db
-          .select()
-          .from(transactions)
-          .where(eq(transactions.eventId, query.eventId))
-          .all();
-      } else {
-        rows = db.select().from(transactions).all();
-      }
+      const base = db.select().from(transactions);
+      const rows = query.eventId
+        ? base.where(eq(transactions.eventId, query.eventId)).limit(limit).offset(offset).all()
+        : base.limit(limit).offset(offset).all();
 
       return reply.send(rows);
     }
