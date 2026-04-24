@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search, Camera, Award, Pencil, RotateCcw } from "lucide-react";
+import { X, Search, Award, Pencil, RotateCcw } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
@@ -427,28 +427,35 @@ export function InventoryPage() {
                 <li key={card.id}>
                   <button
                     onClick={() => setSelectedCard(card)}
-                    className="w-full bg-card rounded-2xl border border-border px-4 py-3 flex items-center gap-3 hover:bg-muted transition text-left active:scale-[0.98]"
+                    className={`w-full bg-card rounded-2xl border border-border px-4 py-3 flex flex-col gap-1 hover:bg-muted transition text-left active:scale-[0.98] ${card.status === "sold" ? "opacity-50" : ""}`}
                   >
-                    {/* Short ID badge */}
-                    <span className="font-mono text-xs font-extrabold bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-lg shrink-0">
-                      {card.shortId}
-                    </span>
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-fg truncate">{card.title}</p>
-                      <p className="text-xs text-muted-fg truncate">
-                        {card.condition}
-                        {card.setName ? ` · ${card.setName}` : ""}
-                        {card.language ? ` · ${card.language}` : ""}
-                      </p>
+                    {/* Row 1: short ID + nego tag (left) · status + price (right) */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-xs font-extrabold bg-primary bg-opacity-10 text-primary px-2 py-0.5 rounded-lg shrink-0">
+                          {card.shortId}
+                        </span>
+                        {card.pricingMode === "negotiable" && (
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest bg-warning bg-opacity-15 text-warning px-2 py-0.5 rounded-full shrink-0">
+                            Nego
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge status={card.status} />
+                        <span className="text-xs font-bold text-muted-fg">
+                          {displayPrice != null ? `Rp ${displayPrice.toLocaleString("id-ID")}` : "—"}
+                        </span>
+                      </div>
                     </div>
-                    {/* Status + price */}
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <StatusBadge status={card.status} />
-                      <span className="text-xs font-bold text-muted-fg">
-                        {displayPrice != null ? `Rp ${displayPrice.toLocaleString("id-ID")}` : "—"}
-                      </span>
-                    </div>
+                    {/* Row 2: title */}
+                    <p className="text-sm font-bold text-fg truncate">{card.title}</p>
+                    {/* Row 3: details */}
+                    <p className="text-xs text-muted-fg truncate">
+                      {card.condition}
+                      {card.setName ? ` · ${card.setName}` : ""}
+                      {card.language ? ` · ${card.language}` : ""}
+                    </p>
                   </button>
                 </li>
               );
