@@ -29,6 +29,7 @@ import { settlementRoutes } from "./routes/settlement.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
 import { overrideRoutes } from "./routes/overrides.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
+import { startAuditPruner } from "./jobs/audit-pruner.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -121,6 +122,7 @@ async function build() {
 
   // Start background jobs
   startCartSweeper(db);
+  startAuditPruner(db, { logger: app.log });
 
   return app;
 }

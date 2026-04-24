@@ -1,6 +1,7 @@
 {
   "name": "kolektapos",
   "private": true,
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "turbo run build",
