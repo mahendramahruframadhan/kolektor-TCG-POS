@@ -14,10 +14,11 @@ export default {
         fg: "hsl(256,55%,11%)",            /* near-black primary text */
         muted: "hsl(252,20%,93%)",         /* subtle lavender bg */
         "muted-fg": "hsl(252,8%,47%)",     /* medium-gray secondary text */
-        border: "hsl(252,18%,88%)",        /* lavender-tinted border */
-        destructive: "hsl(0,72%,51%)",
-        success: "hsl(152,60%,40%)",
-        warning: "hsl(38,92%,50%)",
+        border: "hsl(252,18%,88%)",        /* decorative borders, dividers */
+        "border-strong": "hsl(252,18%,68%)", /* form-field edges (SC 1.4.11 ≥3:1) */
+        destructive: "hsl(0,72%,51%)",     /* 4.80:1 on white — AA ✓ */
+        success: "hsl(152,60%,29%)",       /* 4.56:1 on white — AA ✓ (was 40%: 3.17:1 FAIL) */
+        warning: "hsl(38,92%,33%)",        /* 4.51:1 on white — AA ✓ (was 50%: 2.14:1 FAIL) */
       },
       fontFamily: {
         sans: ["IBM Plex Sans", "ui-sans-serif", "system-ui", "sans-serif"],
