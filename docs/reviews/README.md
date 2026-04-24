@@ -3,8 +3,9 @@
 Code-review and accessibility-audit artefacts. Frozen once produced.
 
 - [`code/`](code/) — code reviews.
-  - [`2026-04-24-merged.md`](code/2026-04-24-merged.md) — authoritative merged review consolidating four AI reviewers. Default reference when asked about "the code review".
-  - [`2026-04-24-inputs/`](code/2026-04-24-inputs/) — raw inputs that fed the merge (kimi, glm, claude, codex). Historical; the merged file supersedes them.
+  - [`2026-04-24-follow-up.md`](code/2026-04-24-follow-up.md) — **most recent** full review (post-improvement sprint). Reflects the `3aff406` branch state; score average 7.8 / 10. Default reference when asked about "the latest code review".
+  - [`2026-04-24-merged.md`](code/2026-04-24-merged.md) — original merged review consolidating four AI reviewers (score average 5.0 / 10). Historical baseline that the follow-up supersedes.
+  - [`2026-04-24-inputs/`](code/2026-04-24-inputs/) — raw inputs that fed the merge (kimi, glm, claude, codex). Historical.
 - [`a11y/`](a11y/) — accessibility reviews.
   - [`2026-04-24-wcag-aa-audit.md`](a11y/2026-04-24-wcag-aa-audit.md) — WCAG 2.2 Level AA audit.
   - [`2026-04-24-implementation-report.md`](a11y/2026-04-24-implementation-report.md) — fixes shipped against that audit.

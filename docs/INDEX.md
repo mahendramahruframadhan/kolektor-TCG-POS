@@ -29,7 +29,7 @@ Code-review and accessibility-audit artefacts. Reviews are frozen once produced;
 
 | Folder | Contents |
 |--------|----------|
-| [`reviews/code/`](reviews/code/) | `2026-04-24-merged.md` (authoritative merged review), with raw agent inputs in `2026-04-24-inputs/` (`kimi.md`, `glm.md`, `claude.md`, `codex.md`). |
+| [`reviews/code/`](reviews/code/) | `2026-04-24-follow-up.md` (most recent, post-improvement; default reference). `2026-04-24-merged.md` (original authoritative merged review). Raw agent inputs in `2026-04-24-inputs/` (`kimi.md`, `glm.md`, `claude.md`, `codex.md`). |
 | [`reviews/a11y/`](reviews/a11y/) | `2026-04-24-wcag-aa-audit.md` (WCAG 2.2 AA audit) + `2026-04-24-implementation-report.md` (fixes shipped). |
 
 ## Conventions
