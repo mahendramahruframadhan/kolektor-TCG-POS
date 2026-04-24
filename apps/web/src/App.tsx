@@ -16,7 +16,6 @@ import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { AuditLogPage } from "./pages/AuditLogPage.js";
 import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
-import { CashReconciliationPage } from "./pages/CashReconciliationPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage.js";
 import { DocsPage } from "./pages/DocsPage.js";
@@ -91,7 +90,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin"
+            path="/settings"
             element={
               <RequireAdmin>
                 <AdminPage />
@@ -99,7 +98,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin/users"
+            path="/settings/users"
             element={
               <RequireAdmin>
                 <UsersAdminPage />
@@ -107,7 +106,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin/events"
+            path="/settings/events"
             element={
               <RequireAdmin>
                 <EventsAdminPage />
@@ -115,7 +114,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin/oversold"
+            path="/settings/oversold"
             element={
               <RequireAdmin>
                 <OversoldQueuePage />
@@ -123,7 +122,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin/audit-log"
+            path="/settings/audit-log"
             element={
               <RequireAdmin>
                 <AuditLogPage />
@@ -131,7 +130,7 @@ export function App() {
             }
           />
           <Route
-            path="/admin/overrides"
+            path="/settings/overrides"
             element={
               <RequireAdmin>
                 <OverrideHistoryPage />
@@ -144,14 +143,6 @@ export function App() {
               <RequireAuth>
                 <TransactionDetailPage />
               </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/cash-reconciliation"
-            element={
-              <RequireAdmin>
-                <CashReconciliationPage />
-              </RequireAdmin>
             }
           />
           <Route

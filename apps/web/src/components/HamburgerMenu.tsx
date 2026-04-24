@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
-  Settings, Users, Calendar, DollarSign, LogOut,
+  Settings, Users, Calendar, LogOut,
   KeyRound, BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
@@ -23,13 +23,12 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
-  { to: "/admin",                     Icon: Settings,     label: "Admin",             adminOnly: true },
-  { to: "/admin/users",               Icon: Users,        label: "Kelola Pengguna",   adminOnly: true },
-  { to: "/admin/events",              Icon: Calendar,     label: "Kelola Event",      adminOnly: true },
-  { to: "/admin/oversold",            Icon: AlertTriangle,label: "Antrian Oversold",  adminOnly: true },
-  { to: "/admin/cash-reconciliation", Icon: DollarSign,   label: "Rekonsiliasi Kas",  adminOnly: true },
-  { to: "/admin/overrides",           Icon: ShieldAlert,  label: "Riwayat Override",  adminOnly: true },
-  { to: "/admin/audit-log",           Icon: ClipboardList,label: "Audit Log",         adminOnly: true },
+  { to: "/settings",          Icon: Settings,     label: "Konfigurasi",      adminOnly: true },
+  { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
+  { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
+  { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
+  { to: "/settings/overrides",Icon: ShieldAlert,  label: "Riwayat Override", adminOnly: true },
+  { to: "/settings/audit-log",Icon: ClipboardList,label: "Audit Log",        adminOnly: true },
 ];
 
 export function HamburgerMenu() {

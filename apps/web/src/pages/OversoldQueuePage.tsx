@@ -61,7 +61,7 @@ export function OversoldQueuePage() {
       <MobileAppBar
         title="Antrian Oversold"
         back
-        onBack={() => navigate("/admin")}
+        onBack={() => navigate("/settings")}
       />
 
       <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">

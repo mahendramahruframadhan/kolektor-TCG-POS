@@ -116,7 +116,7 @@ export function EventsAdminPage() {
       <MobileAppBar
         title="Kelola Event"
         back
-        onBack={() => navigate("/admin")}
+        onBack={() => navigate("/settings")}
         right={
           !isEditing ? (
             <button
