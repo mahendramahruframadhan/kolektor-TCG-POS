@@ -1,4 +1,5 @@
 import { config as dotenvConfig } from "dotenv";
+import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "url";
 import { resolve, dirname } from "path";
 import Fastify from "fastify";
@@ -38,6 +39,11 @@ import { startAuditPruner } from "./jobs/audit-pruner.js";
 // missing DOMAIN in production, partially-set admin seed vars, malformed PORT,
 // etc.) surfaces as a clear error at boot instead of subtly at request time.
 const cfg = loadConfig();
+
+// Ensure storage dirs exist so photo upload and audit archiving never crash on
+// a fresh VPS deploy where the operator hasn't run mkdir manually.
+mkdirSync(resolve(cfg.PHOTO_STORAGE_PATH), { recursive: true });
+mkdirSync(resolve("storage/audit-archive"), { recursive: true });
 
 async function build() {
   const app = Fastify({ logger: true });
