@@ -1,18 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import { eq, gt, and, inArray } from "drizzle-orm";
+import { eq, gt, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import {
   cards,
   carts,
-  cartItems,
   transactions,
   transactionItems,
   events,
   users,
   paymentChannels,
   settings,
-  holds,
 } from "@kolektapos/db/schema";
 import { SyncPushRequestSchema } from "@kolektapos/sync";
 import {
@@ -112,11 +110,6 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
         .all();
       const channelRows = db.select().from(paymentChannels).all();
       const settingRows = db.select().from(settings).all();
-      const cardRows = db
-        .select()
-        .from(cards)
-        .where(eq(cards.status, "sold"))
-        .all(); // All non-sold + available
       const allCards = db.select().from(cards).all();
       const thirtyDaysAgo = nowSec - 30 * 24 * 60 * 60;
       const txRows = db
