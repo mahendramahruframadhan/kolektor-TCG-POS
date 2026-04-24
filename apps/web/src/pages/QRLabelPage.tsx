@@ -177,17 +177,6 @@ export function QRLabelPage() {
         title="Cetak Label QR"
         back
         onBack={() => navigate(-1)}
-        right={
-          selected.size > 0 ? (
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 text-xs font-bold text-accent border border-accent border-opacity-40 rounded-lg px-3 py-1 hover:bg-accent hover:bg-opacity-10 transition"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              Cetak ({selected.size})
-            </button>
-          ) : undefined
-        }
       />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
@@ -266,17 +255,22 @@ export function QRLabelPage() {
           </ul>
         )}
 
-        {/* Bottom print button */}
-        {selected.size > 0 && (
-          <button
-            onClick={handlePrint}
-            className="w-full h-12 bg-primary text-primary-fg font-bold rounded-2xl flex items-center justify-center gap-2 hover:opacity-90 transition"
-          >
-            <Printer className="w-5 h-5" />
-            Cetak {selected.size} Label
-          </button>
-        )}
       </div>
+
+      {/* Floating print FAB */}
+      <button
+        onClick={handlePrint}
+        disabled={selected.size === 0}
+        aria-label={selected.size > 0 ? `Cetak ${selected.size} label` : "Pilih kartu untuk mencetak"}
+        className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Printer className="w-5 h-5 text-primary-fg" />
+        {selected.size > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-accent text-primary-fg text-[10px] font-extrabold flex items-center justify-center px-1">
+            {selected.size}
+          </span>
+        )}
+      </button>
 
       {/* Hidden print area — rendered off-screen but visible to print CSS */}
       <div

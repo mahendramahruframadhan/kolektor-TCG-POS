@@ -16,7 +16,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
-import type { IdbCard, IdbCartItem, IdbPaymentChannel } from "../lib/db.js";
+import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -481,6 +481,7 @@ export function POSPage() {
 
   const [finalPriceInput, setFinalPriceInput] = useState("");
   const [belowBottomError, setBelowBottomError] = useState(false);
+  const [activeEvent, setActiveEvent] = useState<IdbEvent | null | undefined>(undefined);
 
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -495,6 +496,7 @@ export function POSPage() {
     idb.settings.get("max_transaction_discount_pct").then((s) => {
       if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
     });
+    idb.events.filter((ev) => ev.status === "active").first().then((ev) => setActiveEvent(ev ?? null));
   }, []);
 
   useEffect(() => {
@@ -834,37 +836,55 @@ export function POSPage() {
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
         {/* ── Scanner section ── */}
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
-            Scan / Ketik ID Kartu
-          </p>
-          <CameraScanner onScan={(text) => handleScan(text)} />
-          <input
-            ref={scanRef}
-            type="text"
-            value={scanInput}
-            onChange={(e) => setScanInput(e.target.value.toUpperCase())}
-            onKeyDown={handleScanKeyDown}
-            placeholder="O-XXXXX  atau  scan USB"
-            autoFocus
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            className="w-full h-14 border-2 border-accent rounded-2xl px-4 text-2xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border placeholder:text-sm"
-          />
-          <p
-            role="status"
-            aria-live="polite"
-            className={scanning ? "text-sm text-muted-fg text-center" : "sr-only"}
-          >
-            {scanning ? "Mencari kartu…" : ""}
-          </p>
-          {scanError && (
-            <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
-              {scanError}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
+              Scan / Ketik ID Kartu
+            </p>
+            {activeEvent && (
+              <span className="text-[10px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full bg-success bg-opacity-15 text-success shrink-0">
+                {activeEvent.name}
+              </span>
+            )}
+          </div>
+
+          {activeEvent === null && (
+            <div className="bg-warning bg-opacity-10 border border-warning border-opacity-30 text-warning rounded-xl px-3 py-2 text-sm font-medium">
+              Tidak ada event aktif. Hubungi admin untuk mengaktifkan event.
             </div>
           )}
 
-          <ProductSearch onPick={(shortId) => handleScan(shortId)} />
+          {activeEvent !== null && (
+            <>
+              <CameraScanner onScan={(text) => handleScan(text)} />
+              <input
+                ref={scanRef}
+                type="text"
+                value={scanInput}
+                onChange={(e) => setScanInput(e.target.value.toUpperCase())}
+                onKeyDown={handleScanKeyDown}
+                placeholder="O-XXXXX  atau  scan USB"
+                autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                disabled={!activeEvent}
+                className="w-full h-14 border-2 border-accent rounded-2xl px-4 text-2xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border placeholder:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <p
+                role="status"
+                aria-live="polite"
+                className={scanning ? "text-sm text-muted-fg text-center" : "sr-only"}
+              >
+                {scanning ? "Mencari kartu…" : ""}
+              </p>
+              {scanError && (
+                <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
+                  {scanError}
+                </div>
+              )}
+              <ProductSearch onPick={(shortId) => handleScan(shortId)} />
+            </>
+          )}
         </div>
 
         {/* ── Scanned card review ── */}
