@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -68,6 +68,8 @@ function SettingSelectRow({
   currentValue: unknown;
   onSaved: (key: string, newValue: string) => void;
 }) {
+  const selectId = useId();
+  const errorId = useId();
   const initial = typeof currentValue === "string" && currentValue ? currentValue : def.defaultValue;
   const [value, setValue] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -97,12 +99,15 @@ function SettingSelectRow({
   return (
     <div className="py-4 border-b border-border last:border-0 space-y-2">
       <div>
-        <p className="text-sm font-bold text-fg">{def.labelId}</p>
+        <label htmlFor={selectId} className="text-sm font-bold text-fg block">{def.labelId}</label>
         <p className="text-xs text-muted-fg">{def.labelEn}</p>
-        <p className="text-xs text-muted-fg mt-0.5">{def.description}</p>
+        <p id={`${selectId}-desc`} className="text-xs text-muted-fg mt-0.5">{def.description}</p>
       </div>
       <div className="flex items-center gap-2">
         <select
+          id={selectId}
+          aria-describedby={`${selectId}-desc${error ? ` ${errorId}` : ""}`}
+          aria-invalid={!!error}
           value={value}
           disabled={saving}
           onChange={(e) => handleChange(e.target.value)}
@@ -112,10 +117,13 @@ function SettingSelectRow({
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        {saving && <span className="text-xs text-muted-fg">Menyimpan…</span>}
-        {saved && !saving && <span className="text-xs text-success font-bold">Tersimpan ✓</span>}
+        <span role="status" aria-live="polite" className="sr-only">
+          {saving ? "Menyimpan pengaturan" : saved ? "Pengaturan tersimpan" : ""}
+        </span>
+        {saving && <span className="text-xs text-muted-fg" aria-hidden="true">Menyimpan…</span>}
+        {saved && !saving && <span className="text-xs text-success font-bold" aria-hidden="true">Tersimpan ✓</span>}
       </div>
-      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+      {error && <p id={errorId} role="alert" className="text-xs text-destructive font-medium">{error}</p>}
     </div>
   );
 }
@@ -132,6 +140,8 @@ function SettingRow({
   max?: number;
   onSaved: (key: string, newValue: number) => void;
 }) {
+  const inputId = useId();
+  const errorId = useId();
   const [inputValue, setInputValue] = useState(String(currentValue ?? ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,12 +179,15 @@ function SettingRow({
   return (
     <div className="py-4 border-b border-border last:border-0 space-y-2">
       <div>
-        <p className="text-sm font-bold text-fg">{labelId}</p>
+        <label htmlFor={inputId} className="text-sm font-bold text-fg block">{labelId}</label>
         <p className="text-xs text-muted-fg">{labelEn}</p>
-        <p className="text-xs text-muted-fg mt-0.5">{description}</p>
+        <p id={`${inputId}-desc`} className="text-xs text-muted-fg mt-0.5">{description}</p>
       </div>
       <div className="flex items-center gap-2">
         <input
+          id={inputId}
+          aria-describedby={`${inputId}-desc${error ? ` ${errorId}` : ""}`}
+          aria-invalid={!!error}
           type="number"
           min={min}
           max={max}
@@ -191,7 +204,7 @@ function SettingRow({
           {saving ? "Menyimpan…" : saved ? "Tersimpan ✓" : "Simpan"}
         </button>
       </div>
-      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+      {error && <p id={errorId} role="alert" className="text-xs text-destructive font-medium">{error}</p>}
     </div>
   );
 }

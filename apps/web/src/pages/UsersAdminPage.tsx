@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -20,6 +20,11 @@ const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase tex
 export function UsersAdminPage() {
   const navigate = useNavigate();
   const me = useAuthStore((s) => s.user);
+
+  const emailId = useId();
+  const displayNameId = useId();
+  const roleId = useId();
+  const passwordId = useId();
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,28 +133,31 @@ export function UsersAdminPage() {
 
             <form onSubmit={handleSave} className="space-y-3">
               <div>
-                <label className={labelCls}>Email</label>
-                <input type="email" required={!editId} disabled={!!editId}
+                <label htmlFor={emailId} className={labelCls}>Email</label>
+                <input id={emailId} type="email" required={!editId} disabled={!!editId}
+                  autoComplete="email"
                   value={email} onChange={(e) => setEmail(e.target.value)}
                   className={inputCls()} placeholder="email@kolekta.id" />
               </div>
               <div>
-                <label className={labelCls}>Nama Tampilan</label>
-                <input type="text" required value={displayName}
+                <label htmlFor={displayNameId} className={labelCls}>Nama Tampilan</label>
+                <input id={displayNameId} type="text" required value={displayName}
+                  autoComplete="name"
                   onChange={(e) => setDisplayName(e.target.value)}
                   className={inputCls()} placeholder="Nama pengguna" />
               </div>
               <div>
-                <label className={labelCls}>Peran</label>
-                <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "cashier")}
+                <label htmlFor={roleId} className={labelCls}>Peran</label>
+                <select id={roleId} value={role} onChange={(e) => setRole(e.target.value as "admin" | "cashier")}
                   className={inputCls()}>
                   <option value="cashier">Kasir</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Password {editId && "(kosongkan jika tidak diubah)"}</label>
-                <input type="password" required={!editId} value={password}
+                <label htmlFor={passwordId} className={labelCls}>Password {editId && "(kosongkan jika tidak diubah)"}</label>
+                <input id={passwordId} type="password" required={!editId} value={password}
+                  autoComplete="new-password"
                   onChange={(e) => setPassword(e.target.value)}
                   className={inputCls()} placeholder={editId ? "••••••••" : "Minimal 8 karakter"} />
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
@@ -24,6 +24,8 @@ async function resolveLandingPath(): Promise<string> {
 export function LoginPage() {
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
+  const emailId = useId();
+  const passwordId = useId();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -84,10 +86,11 @@ export function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-fg">
-              Email address
+            <label htmlFor={emailId} className="block text-sm font-semibold text-fg">
+              Alamat Email
             </label>
             <input
+              id={emailId}
               type="email"
               required
               autoComplete="email"
@@ -99,10 +102,11 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-fg">
+            <label htmlFor={passwordId} className="block text-sm font-semibold text-fg">
               Password
             </label>
             <input
+              id={passwordId}
               type="password"
               required
               autoComplete="current-password"

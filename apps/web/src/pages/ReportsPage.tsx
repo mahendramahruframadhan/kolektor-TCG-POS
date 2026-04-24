@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -351,6 +351,8 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
 
 function MonthlyTab() {
   const now = new Date();
+  const yearId = useId();
+  const monthId = useId();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [report, setReport] = useState<MonthlyReport | null>(null);
@@ -379,14 +381,14 @@ function MonthlyTab() {
       <SectionCard>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
-            <input type="number" value={year} min={2020} max={2099}
+            <label htmlFor={yearId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
+            <input id={yearId} type="number" value={year} min={2020} max={2099}
               onChange={(e) => setYear(parseInt(e.target.value, 10))}
               className={selectCls()} />
           </div>
           <div className="flex-1">
-            <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
-            <input type="number" value={month} min={1} max={12}
+            <label htmlFor={monthId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
+            <input id={monthId} type="number" value={month} min={1} max={12}
               onChange={(e) => setMonth(parseInt(e.target.value, 10))}
               className={selectCls()} />
           </div>
