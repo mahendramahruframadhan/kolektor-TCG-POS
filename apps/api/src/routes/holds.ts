@@ -70,9 +70,7 @@ export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
     { preHandler: [requireAuth, requireHoldOwnerOrAdmin] },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-
-      const hold = db.select().from(holds).where(eq(holds.id, id)).get();
-      if (!hold) return reply.status(404).send({ error: "Hold not found" });
+      const hold = request.hold!;
       if (hold.releasedAt !== null) {
         return reply.status(409).send({ error: "Hold already released" });
       }

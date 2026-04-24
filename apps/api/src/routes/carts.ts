@@ -101,8 +101,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         return reply.status(400).send({ error: body.error.flatten() });
       }
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -256,8 +255,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         cardId: string;
       };
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -314,8 +312,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         return reply.status(400).send({ error: body.error.flatten() });
       }
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
@@ -477,8 +474,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
     async (request, reply) => {
       const { id: cartId } = request.params as { id: string };
 
-      const cart = db.select().from(carts).where(eq(carts.id, cartId)).get();
-      if (!cart) return reply.status(404).send({ error: "Cart not found" });
+      const cart = request.cart!;
       if (cart.status !== "draft") {
         return reply
           .status(409)
