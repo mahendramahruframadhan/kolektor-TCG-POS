@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { Eye, EyeOff } from "lucide-react";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { MaskedScopeProvider, useMaskedScope } from "../hooks/useMaskedScope.js";
 import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -624,36 +626,55 @@ export function ReportsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
-      <MobileAppBar
-        title="Laporan"
-        back
-        onBack={() => navigate("/dashboard")}
-      />
+    <MaskedScopeProvider>
+      <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
+        <MobileAppBar
+          title="Laporan"
+          back
+          onBack={() => navigate("/dashboard")}
+          right={<ReportsMaskToggle />}
+        />
 
-      {/* Tab bar */}
-      <div className="bg-card border-b border-border flex shrink-0">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 ${
-              tab === t.id
-                ? "text-primary border-primary"
-                : "text-muted-fg border-transparent hover:text-fg"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {/* Tab bar */}
+        <div className="bg-card border-b border-border flex shrink-0">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 ${
+                tab === t.id
+                  ? "text-primary border-primary"
+                  : "text-muted-fg border-transparent hover:text-fg"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
-        {tab === "daily" && <DailyTab events={events} />}
-        {tab === "monthly" && <MonthlyTab />}
-        {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
-        {tab === "inventory" && <InventoryTab events={events} />}
+        <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
+          {tab === "daily" && <DailyTab events={events} />}
+          {tab === "monthly" && <MonthlyTab />}
+          {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
+          {tab === "inventory" && <InventoryTab events={events} />}
+        </div>
       </div>
-    </div>
+    </MaskedScopeProvider>
+  );
+}
+
+function ReportsMaskToggle() {
+  const scope = useMaskedScope();
+  if (!scope) return null;
+  const { revealed, toggle } = scope;
+  return (
+    <button
+      onClick={toggle}
+      className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition"
+      aria-label={revealed ? "Sembunyikan semua nominal" : "Tampilkan semua nominal"}
+      title={revealed ? "Sembunyikan nominal" : "Tampilkan nominal"}
+    >
+      {revealed ? <Eye className="w-5 h-5 text-fg" /> : <EyeOff className="w-5 h-5 text-fg" />}
+    </button>
   );
 }
