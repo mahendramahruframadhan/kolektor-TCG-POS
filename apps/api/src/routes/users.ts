@@ -12,8 +12,8 @@ type Db = BetterSQLite3Database<typeof dbSchema>;
 export async function userRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
-  // List all users (admin only)
-  app.get("/users", { preHandler: requireAdmin }, async (_request, reply) => {
+  // List all users (any authenticated user — cashiers need this for stock-receive owner dropdown)
+  app.get("/users", { preHandler: requireAuth }, async (_request, reply) => {
     const rows = db
       .select({
         id: users.id,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { liveQuery } from "dexie";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -134,7 +135,10 @@ export function StockReceivePage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    idb.users.toArray().then((list) => setUsers(list));
+    const sub = liveQuery(() => idb.users.toArray()).subscribe({
+      next: (list) => setUsers(list),
+    });
+    return () => sub.unsubscribe();
   }, []);
 
   useEffect(() => {
