@@ -463,6 +463,29 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
         .where(eq(transactionItems.transactionId, txId))
         .all();
 
+      // Structured business events (SC 4.1.3 adjacent; operational visibility).
+      const oversoldCardIds = cardIds.filter((id) => cardMap.get(id)?.status === "sold");
+      request.log.info({
+        event: "sale_completed",
+        transactionId: txId,
+        cartId,
+        eventId: cart.eventId,
+        cashierUserId,
+        itemCount: items.length,
+        totalIdr,
+        paymentChannelId: body.data.paymentChannelId,
+        oversoldCardCount: oversoldCardIds.length,
+      });
+      if (oversoldCardIds.length > 0) {
+        request.log.warn({
+          event: "oversold_detected",
+          transactionId: txId,
+          cartId,
+          cardIds: oversoldCardIds,
+          cashierUserId,
+        });
+      }
+
       return reply.status(201).send({ transaction: tx, receipt });
     }
   );

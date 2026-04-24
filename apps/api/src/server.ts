@@ -28,6 +28,7 @@ import { syncRoutes } from "./routes/sync.js";
 import { settlementRoutes } from "./routes/settlement.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
 import { overrideRoutes } from "./routes/overrides.js";
+import { healthRoutes } from "./routes/health.js";
 import { startCartSweeper } from "./jobs/cart-sweeper.js";
 import { startAuditPruner } from "./jobs/audit-pruner.js";
 
@@ -119,9 +120,10 @@ async function build() {
   await settlementRoutes(app, { db });
   await auditLogRoutes(app, { db });
   await overrideRoutes(app, { db });
+  await healthRoutes(app, { db });
 
   // Start background jobs
-  startCartSweeper(db);
+  startCartSweeper(db, { logger: app.log });
   startAuditPruner(db, { logger: app.log });
 
   return app;

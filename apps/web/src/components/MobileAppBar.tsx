@@ -9,7 +9,6 @@ interface MobileAppBarProps {
   back?: boolean;
   onBack?: () => void;
   right?: React.ReactNode;
-  syncState?: "online" | "syncing" | "offline";
   showMenu?: boolean;
 }
 
@@ -19,7 +18,6 @@ export function MobileAppBar({
   back,
   onBack,
   right,
-  syncState = "online",
   showMenu = true,
 }: MobileAppBarProps) {
   return (
@@ -43,7 +41,7 @@ export function MobileAppBar({
         )}
       </div>
       <div className="flex items-center gap-2 ml-2 shrink-0">
-        <SyncDot state={syncState} />
+        <SyncDot />
         {right}
         {showMenu && <HamburgerMenu />}
       </div>
