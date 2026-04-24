@@ -106,16 +106,18 @@ function useProfileStats(userId: string) {
         (item) => txById.get(item.transactionId)?.kind === "sale"
       );
 
-      const today = new Date().toLocaleDateString("id-ID");
-      const nowYear = new Date().getFullYear();
-      const nowMonth = new Date().getMonth();
+      const now = new Date();
+      const todayY = now.getFullYear();
+      const todayM = now.getMonth();
+      const todayD = now.getDate();
+      const nowYear = todayY;
+      const nowMonth = todayM;
 
       const todayItems = saleItems.filter((item) => {
         const tx = txById.get(item.transactionId);
         if (!tx) return false;
-        return (
-          new Date(tx.createdAt * 1000).toLocaleDateString("id-ID") === today
-        );
+        const d = new Date(tx.createdAt * 1000);
+        return d.getFullYear() === todayY && d.getMonth() === todayM && d.getDate() === todayD;
       });
 
       const monthItems = saleItems.filter((item) => {
