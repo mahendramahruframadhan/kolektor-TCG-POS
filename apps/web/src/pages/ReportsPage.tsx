@@ -1,18 +1,38 @@
-import React, { useId, useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
-import { Eye, EyeOff } from "lucide-react";
-import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import { MaskedScopeProvider, useMaskedScope } from "../hooks/useMaskedScope.js";
-import type { IdbEvent, IdbTransaction, IdbTransactionItem, IdbPaymentChannel, IdbCard } from "../lib/db.js";
+import type { IdbEvent, IdbTransactionItem, IdbCard } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function toIsoDate(ts: number): string {
   return new Date(ts * 1000).toISOString().slice(0, 10);
+}
+
+function fmtRp(amount: number): string {
+  return `Rp ${amount.toLocaleString("id-ID")}`;
+}
+
+function fmtMonth(year: number, month: number): string {
+  return new Date(year, month - 1, 1).toLocaleDateString("id-ID", { year: "numeric", month: "long" });
+}
+
+function shiftDay(dateStr: string, delta: number): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  let m = month + delta;
+  let y = year;
+  if (m > 12) { y += 1; m = 1; }
+  if (m < 1) { y -= 1; m = 12; }
+  return { year: y, month: m };
 }
 
 function downloadCsv(content: string, filename: string) {
@@ -24,6 +44,37 @@ function downloadCsv(content: string, filename: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── Report registry ────────────────────────────────────────────────────────
+
+const REPORT_META = [
+  {
+    code: "R01",
+    id: "daily" as const,
+    name: "Laporan Harian",
+    description: "Ringkasan penjualan per hari berdasarkan event: gross, void/refund, net, top 5 kartu, dan rincian metode pembayaran.",
+  },
+  {
+    code: "R02",
+    id: "monthly" as const,
+    name: "Laporan Bulanan",
+    description: "Agregat penjualan dalam satu bulan: gross, net, rincian per hari, dan rincian metode pembayaran.",
+  },
+  {
+    code: "R03",
+    id: "settlement" as const,
+    name: "Settlement Event",
+    description: "Perhitungan payout per pemilik kartu berdasarkan event. Dapat dikunci permanen oleh admin setelah event selesai.",
+  },
+  {
+    code: "R04",
+    id: "inventory" as const,
+    name: "Nilai Inventori",
+    description: "Nilai stok kartu aktif: tersedia, ditahan, dan terjual berdasarkan harga tayang.",
+  },
+] as const;
+
+type ReportId = typeof REPORT_META[number]["id"];
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -205,6 +256,18 @@ function CsvButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function NavButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-9 h-9 flex items-center justify-center rounded-xl border border-border bg-surface hover:bg-muted transition shrink-0"
+    >
+      {children}
+    </button>
+  );
+}
+
 function selectCls() {
   return "w-full h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary";
 }
@@ -220,16 +283,41 @@ function ChannelBreakdownCard({ breakdown }: { breakdown: ChannelBreakdown[] }) 
             <p className="text-sm font-bold text-fg">{b.channelName}</p>
             <p className="text-xs text-muted-fg">{b.count} transaksi</p>
           </div>
-          <MaskedAmount amount={b.gross} className="text-sm font-bold text-fg" />
+          <span className="text-sm font-bold text-fg">{fmtRp(b.gross)}</span>
         </div>
       ))}
     </SectionCard>
   );
 }
 
-// ── Sub-page: Daily ────────────────────────────────────────────────────────
+// ── Master list ────────────────────────────────────────────────────────────
 
-function DailyTab({ events }: { events: IdbEvent[] }) {
+function ReportListPage({ onSelect }: { onSelect: (id: ReportId) => void }) {
+  return (
+    <div className="space-y-3">
+      {REPORT_META.map((r) => (
+        <button
+          key={r.id}
+          onClick={() => onSelect(r.id)}
+          className="w-full text-left bg-card rounded-2xl border border-border p-4 hover:border-primary hover:bg-primary hover:bg-opacity-5 transition group"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg mb-1">{r.code}</p>
+              <p className="text-base font-bold text-fg group-hover:text-primary transition">{r.name}</p>
+              <p className="text-sm text-muted-fg mt-1 leading-snug">{r.description}</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-fg group-hover:text-primary transition shrink-0 mt-1" />
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Detail: Daily ──────────────────────────────────────────────────────────
+
+function DailyDetail({ events }: { events: IdbEvent[] }) {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [report, setReport] = useState<DailyReport | null>(null);
@@ -254,16 +342,15 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
 
       const gross = saleTxs.reduce((s, t) => s + t.totalIdr, 0);
       const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + Math.abs(t.totalIdr), 0);
-      const net = gross - voidRefundAmount;
 
       const channels = await idb.paymentChannels.toArray();
-      const channelMap: Record<string, IdbPaymentChannel> = {};
-      for (const ch of channels) channelMap[ch.id] = ch;
+      const channelMap: Record<string, string> = {};
+      for (const ch of channels) channelMap[ch.id] = ch.name;
 
       const breakdownMap: Record<string, { channelName: string; count: number; gross: number }> = {};
       for (const tx of saleTxs) {
         const chId = tx.paymentChannelId ?? "unknown";
-        const chName = channelMap[chId]?.name ?? chId;
+        const chName = channelMap[chId] ?? chId;
         if (!breakdownMap[chId]) breakdownMap[chId] = { channelName: chName, count: 0, gross: 0 };
         breakdownMap[chId]!.count += 1;
         breakdownMap[chId]!.gross += tx.totalIdr;
@@ -289,7 +376,7 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
       setReport({
         date: new Date(selectedDate).toLocaleDateString("id-ID", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
         eventName: event?.name ?? selectedEventId,
-        gross, voidRefundAmount, net,
+        gross, voidRefundAmount, net: gross - voidRefundAmount,
         transactionCount: saleTxs.length,
         channelBreakdown, topItems,
       });
@@ -310,12 +397,20 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
             <option key={ev.id} value={ev.id}>{ev.name}{ev.status === "active" ? " (aktif)" : ""}</option>
           ))}
         </select>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className={selectCls()}
-        />
+        <div className="flex items-center gap-2">
+          <NavButton onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </NavButton>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className={selectCls()}
+          />
+          <NavButton onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}>
+            <ChevronRight className="w-4 h-4" />
+          </NavButton>
+        </div>
       </SectionCard>
 
       {loading && <p className="text-sm text-muted-fg text-center py-6">Menghitung…</p>}
@@ -327,9 +422,9 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
               <CsvButton onClick={() => downloadCsv(buildDailyCsv(report), `laporan-harian-${selectedDate}.csv`)} />
             </div>
             <p className="text-xs text-muted-fg">{report.date} — {report.eventName}</p>
-            <ReportRow label="Penjualan Kotor" value={<MaskedAmount amount={report.gross} className="font-bold text-fg" />} />
-            <ReportRow label="Void / Refund" value={<MaskedAmount amount={report.voidRefundAmount} className="font-bold text-destructive" />} />
-            <ReportRow label="Penjualan Bersih" value={<MaskedAmount amount={report.net} className="font-extrabold text-success text-lg" />} />
+            <ReportRow label="Penjualan Kotor" value={<span className="font-bold text-fg">{fmtRp(report.gross)}</span>} />
+            <ReportRow label="Void / Refund" value={<span className="font-bold text-destructive">{fmtRp(report.voidRefundAmount)}</span>} />
+            <ReportRow label="Penjualan Bersih" value={<span className="font-extrabold text-success text-lg">{fmtRp(report.net)}</span>} />
             <ReportRow label="Jumlah Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
           </SectionCard>
 
@@ -346,7 +441,7 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
                       <p className="text-sm font-bold text-fg truncate">{item.cardTitle}</p>
                       <p className="text-xs text-muted-fg font-mono">#{item.transactionId.slice(0, 8).toUpperCase()}</p>
                     </div>
-                    <MaskedAmount amount={item.soldPriceIdr} className="text-sm font-bold text-fg shrink-0" />
+                    <span className="text-sm font-bold text-fg shrink-0">{fmtRp(item.soldPriceIdr)}</span>
                   </li>
                 ))}
               </ol>
@@ -364,12 +459,10 @@ function DailyTab({ events }: { events: IdbEvent[] }) {
   );
 }
 
-// ── Sub-page: Monthly ──────────────────────────────────────────────────────
+// ── Detail: Monthly ────────────────────────────────────────────────────────
 
-function MonthlyTab() {
+function MonthlyDetail() {
   const now = new Date();
-  const yearId = useId();
-  const monthId = useId();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [report, setReport] = useState<MonthlyReport | null>(null);
@@ -391,24 +484,23 @@ function MonthlyTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  function nav(delta: number) {
+    const next = shiftMonth(year, month, delta);
+    setYear(next.year);
+    setMonth(next.month);
+  }
+
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
 
   return (
     <div className="space-y-3">
       <SectionCard>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label htmlFor={yearId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Tahun</label>
-            <input id={yearId} type="number" value={year} min={2020} max={2099}
-              onChange={(e) => setYear(parseInt(e.target.value, 10))}
-              className={selectCls()} />
+        <div className="flex items-center gap-2">
+          <NavButton onClick={() => nav(-1)}><ChevronLeft className="w-4 h-4" /></NavButton>
+          <div className="flex-1 h-11 flex items-center justify-center bg-surface border border-border rounded-xl">
+            <span className="text-sm font-bold text-fg">{fmtMonth(year, month)}</span>
           </div>
-          <div className="flex-1">
-            <label htmlFor={monthId} className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg block mb-1">Bulan</label>
-            <input id={monthId} type="number" value={month} min={1} max={12}
-              onChange={(e) => setMonth(parseInt(e.target.value, 10))}
-              className={selectCls()} />
-          </div>
+          <NavButton onClick={() => nav(1)}><ChevronRight className="w-4 h-4" /></NavButton>
         </div>
       </SectionCard>
 
@@ -421,9 +513,9 @@ function MonthlyTab() {
               <SectionLabel>Ringkasan Bulanan</SectionLabel>
               <CsvButton onClick={() => downloadCsv(buildMonthlyCsv(report), `laporan-bulanan-${monthStr}.csv`)} />
             </div>
-            <ReportRow label="Gross IDR" value={<MaskedAmount amount={report.grossIdr} className="font-bold text-fg" />} />
-            <ReportRow label="Void/Refund IDR" value={<MaskedAmount amount={report.voidRefundIdr} className="font-bold text-destructive" />} />
-            <ReportRow label="Net IDR" value={<MaskedAmount amount={report.netIdr} className="font-extrabold text-success text-lg" />} />
+            <ReportRow label="Gross IDR" value={<span className="font-bold text-fg">{fmtRp(report.grossIdr)}</span>} />
+            <ReportRow label="Void/Refund IDR" value={<span className="font-bold text-destructive">{fmtRp(report.voidRefundIdr)}</span>} />
+            <ReportRow label="Net IDR" value={<span className="font-extrabold text-success text-lg">{fmtRp(report.netIdr)}</span>} />
             <ReportRow label="Total Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
           </SectionCard>
 
@@ -436,7 +528,7 @@ function MonthlyTab() {
                     <p className="text-sm font-bold text-fg">{day.date}</p>
                     <p className="text-xs text-muted-fg">{day.count} transaksi</p>
                   </div>
-                  <MaskedAmount amount={day.netIdr} className="text-sm font-bold text-fg" />
+                  <span className="text-sm font-bold text-fg">{fmtRp(day.netIdr)}</span>
                 </div>
               ))}
             </SectionCard>
@@ -449,9 +541,9 @@ function MonthlyTab() {
   );
 }
 
-// ── Sub-page: Settlement ───────────────────────────────────────────────────
+// ── Detail: Settlement ─────────────────────────────────────────────────────
 
-function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: string }) {
+function SettlementDetail({ events, userRole }: { events: IdbEvent[]; userRole: string }) {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [report, setReport] = useState<SettlementReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -535,9 +627,9 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
               </div>
             )}
 
-            <ReportRow label="Gross Sales" value={<MaskedAmount amount={report.grandTotalSalesIdr} className="font-bold text-fg" />} />
-            <ReportRow label="Total Void/Refund" value={<MaskedAmount amount={report.grandTotalVoidsIdr} className="font-bold text-destructive" />} />
-            <ReportRow label="Net" value={<MaskedAmount amount={report.netIdr} className="font-extrabold text-success text-lg" />} />
+            <ReportRow label="Gross Sales" value={<span className="font-bold text-fg">{fmtRp(report.grandTotalSalesIdr)}</span>} />
+            <ReportRow label="Total Void/Refund" value={<span className="font-bold text-destructive">{fmtRp(report.grandTotalVoidsIdr)}</span>} />
+            <ReportRow label="Net" value={<span className="font-extrabold text-success text-lg">{fmtRp(report.netIdr)}</span>} />
           </SectionCard>
 
           {report.breakdown.length > 0 && (
@@ -549,7 +641,7 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
                     <p className="text-sm font-bold text-fg">{row.ownerName}</p>
                     <p className="text-xs text-muted-fg">{row.itemsSold} kartu terjual</p>
                   </div>
-                  <MaskedAmount amount={row.totalPayoutIdr} className="text-sm font-extrabold text-fg" />
+                  <span className="text-sm font-extrabold text-fg">{fmtRp(row.totalPayoutIdr)}</span>
                 </div>
               ))}
             </SectionCard>
@@ -562,9 +654,9 @@ function SettlementTab({ events, userRole }: { events: IdbEvent[]; userRole: str
   );
 }
 
-// ── Sub-page: Inventory Value ──────────────────────────────────────────────
+// ── Detail: Inventory ──────────────────────────────────────────────────────
 
-function InventoryTab({ events }: { events: IdbEvent[] }) {
+function InventoryDetail({ events }: { events: IdbEvent[] }) {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [report, setReport] = useState<InventoryReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -582,8 +674,6 @@ function InventoryTab({ events }: { events: IdbEvent[] }) {
     setLoading(true);
     setError(null);
     try {
-      // Cards registered when no event was active have eventId = undefined (orphaned).
-      // Include them under whichever event is currently selected so they are not invisible.
       const eventCards = await idb.cards
         .filter((c) => !c.eventId || c.eventId === selectedEventId)
         .toArray();
@@ -639,9 +729,9 @@ function InventoryTab({ events }: { events: IdbEvent[] }) {
             <Stat label="Terjual" value={String(report.soldCount)} />
           </div>
           <div className="pt-2 space-y-1 border-t border-border mt-2">
-            <ReportRow label="Nilai Tersedia" value={<MaskedAmount amount={report.availableValueIdr} className="font-bold text-success" />} />
-            <ReportRow label="Nilai Ditahan" value={<MaskedAmount amount={report.heldValueIdr} className="font-bold text-warning" />} />
-            <ReportRow label="Total Nilai Listed" value={<MaskedAmount amount={report.totalListedValueIdr} className="font-extrabold text-fg text-lg" />} />
+            <ReportRow label="Nilai Tersedia" value={<span className="font-bold text-success">{fmtRp(report.availableValueIdr)}</span>} />
+            <ReportRow label="Nilai Ditahan" value={<span className="font-bold text-warning">{fmtRp(report.heldValueIdr)}</span>} />
+            <ReportRow label="Total Nilai Listed" value={<span className="font-extrabold text-fg text-lg">{fmtRp(report.totalListedValueIdr)}</span>} />
           </div>
         </SectionCard>
       )}
@@ -651,76 +741,35 @@ function InventoryTab({ events }: { events: IdbEvent[] }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
-type Tab = "daily" | "monthly" | "settlement" | "inventory";
-
 export function ReportsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<Tab>("daily");
+  const [activeReport, setActiveReport] = useState<ReportId | null>(null);
   const [events, setEvents] = useState<IdbEvent[]>([]);
 
   useEffect(() => {
     idb.events.toArray().then(setEvents);
   }, []);
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "daily", label: "Harian" },
-    { id: "monthly", label: "Bulanan" },
-    { id: "settlement", label: "Settlement" },
-    { id: "inventory", label: "Inventori" },
-  ];
+  const activeMeta = REPORT_META.find((r) => r.id === activeReport);
 
   return (
-    <MaskedScopeProvider>
-      <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
-        <MobileAppBar
-          title="Laporan"
-          back
-          onBack={() => navigate("/dashboard")}
-          right={<ReportsMaskToggle />}
-        />
+    <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
+      <MobileAppBar
+        title={activeMeta ? activeMeta.name : "Laporan"}
+        back
+        onBack={activeReport ? () => setActiveReport(null) : () => navigate("/dashboard")}
+      />
 
-        {/* Tab bar */}
-        <div className="bg-card border-b border-border flex shrink-0">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
-              className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
-                tab === t.id
-                  ? "text-primary border-primary"
-                  : "text-muted-fg border-transparent hover:text-fg"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
-          {tab === "daily" && <DailyTab events={events} />}
-          {tab === "monthly" && <MonthlyTab />}
-          {tab === "settlement" && <SettlementTab events={events} userRole={user?.role ?? ""} />}
-          {tab === "inventory" && <InventoryTab events={events} />}
-        </div>
+      <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
+        {!activeReport && (
+          <ReportListPage onSelect={setActiveReport} />
+        )}
+        {activeReport === "daily" && <DailyDetail events={events} />}
+        {activeReport === "monthly" && <MonthlyDetail />}
+        {activeReport === "settlement" && <SettlementDetail events={events} userRole={user?.role ?? ""} />}
+        {activeReport === "inventory" && <InventoryDetail events={events} />}
       </div>
-    </MaskedScopeProvider>
-  );
-}
-
-function ReportsMaskToggle() {
-  const scope = useMaskedScope();
-  if (!scope) return null;
-  const { revealed, toggle } = scope;
-  return (
-    <button
-      onClick={toggle}
-      className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition"
-      aria-label={revealed ? "Sembunyikan semua nominal" : "Tampilkan semua nominal"}
-      title={revealed ? "Sembunyikan nominal" : "Tampilkan nominal"}
-    >
-      {revealed ? <Eye className="w-5 h-5 text-fg" /> : <EyeOff className="w-5 h-5 text-fg" />}
-    </button>
+    </div>
   );
 }
