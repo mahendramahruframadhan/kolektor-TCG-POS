@@ -643,7 +643,8 @@ export function ReportsPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 ${
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`flex-1 text-xs font-extrabold py-3 tracking-wide transition border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 tab === t.id
                   ? "text-primary border-primary"
                   : "text-muted-fg border-transparent hover:text-fg"

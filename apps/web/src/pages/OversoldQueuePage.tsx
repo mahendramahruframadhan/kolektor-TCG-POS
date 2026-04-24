@@ -64,7 +64,7 @@ export function OversoldQueuePage() {
         onBack={() => navigate("/admin")}
       />
 
-      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
+      <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         {isLoading && (
           <p className="text-muted-fg text-center py-8 text-sm">Memuat…</p>
         )}

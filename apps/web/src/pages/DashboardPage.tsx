@@ -80,7 +80,7 @@ export function DashboardPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
+      <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* User greeting */}
         <div className="flex items-center gap-3 pt-1">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -145,13 +145,13 @@ export function DashboardPage() {
             <Link
               key={a.to}
               to={a.to}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl font-bold text-sm text-center transition active:scale-[0.97] ${
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl font-bold text-sm text-center transition active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                 a.primary
                   ? "bg-primary text-primary-fg hover:opacity-90"
                   : "bg-card border border-border text-fg hover:bg-muted"
               }`}
             >
-              <a.Icon className="w-6 h-6" />
+              <a.Icon className="w-6 h-6" aria-hidden="true" />
               {a.label}
             </Link>
           ))}

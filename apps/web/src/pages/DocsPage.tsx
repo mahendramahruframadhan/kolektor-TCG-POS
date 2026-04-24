@@ -160,7 +160,7 @@ export function DocsPage() {
         onBack={() => navigate(-1)}
       />
 
-      <main className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
+      <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-3">
         <div className="flex items-center gap-3 pt-1 pb-1">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
             <BookOpen className="w-5 h-5 text-primary-fg" />

@@ -26,6 +26,7 @@ export function Toast({ message, variant = "success", onDismiss }: ToastProps) {
         }`}
       >
         <Icon
+          aria-hidden="true"
           className={`w-5 h-5 shrink-0 ${isSuccess ? "text-success" : "text-destructive"}`}
         />
         <p className="text-sm font-semibold text-fg flex-1 min-w-0">{message}</p>

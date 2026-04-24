@@ -87,7 +87,7 @@ export function HamburgerMenu() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition active:bg-muted"
             >
-              <item.Icon className="w-5 h-5 text-muted-fg shrink-0" />
+              <item.Icon className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
               {item.label}
             </Link>
           ))}
@@ -99,7 +99,7 @@ export function HamburgerMenu() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
           >
-            <KeyRound className="w-5 h-5 text-muted-fg shrink-0" />
+            <KeyRound className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
             Ubah Password
           </Link>
 
@@ -108,7 +108,7 @@ export function HamburgerMenu() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
           >
-            <BookOpen className="w-5 h-5 text-muted-fg shrink-0" />
+            <BookOpen className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
             Bantuan &amp; Docs
           </Link>
         </nav>

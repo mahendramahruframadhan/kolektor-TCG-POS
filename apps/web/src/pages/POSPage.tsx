@@ -849,9 +849,13 @@ export function POSPage() {
             spellCheck={false}
             className="w-full h-14 border-2 border-accent rounded-2xl px-4 text-2xl font-mono font-bold text-center tracking-widest text-fg focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-border placeholder:text-sm"
           />
-          {scanning && (
-            <p className="text-sm text-muted-fg text-center">Mencari…</p>
-          )}
+          <p
+            role="status"
+            aria-live="polite"
+            className={scanning ? "text-sm text-muted-fg text-center" : "sr-only"}
+          >
+            {scanning ? "Mencari kartu…" : ""}
+          </p>
           {scanError && (
             <div className="bg-destructive bg-opacity-10 border border-destructive border-opacity-30 text-destructive rounded-xl px-3 py-2 text-sm font-medium">
               {scanError}

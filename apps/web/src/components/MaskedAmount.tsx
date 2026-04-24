@@ -53,6 +53,6 @@ export function MaskedAmount({ amount, className = "", autoHideMs }: Props) {
 
 function EyeIcon({ revealed }: { revealed: boolean }) {
   return revealed
-    ? <Eye className="w-4 h-4 text-muted-fg" />
-    : <EyeOff className="w-4 h-4 text-muted-fg" />;
+    ? <Eye className="w-4 h-4 text-muted-fg" aria-hidden="true" />
+    : <EyeOff className="w-4 h-4 text-muted-fg" aria-hidden="true" />;
 }
