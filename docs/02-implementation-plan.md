@@ -108,7 +108,7 @@ Turbo + pnpm workspace, root configs, empty package manifests, `CLAUDE.md`, `REA
 **Goal:** end-to-end sale of one fixed-price card, with cart-locking wired through every layer.
 
 **Scope**
-- Intake one card manually via API (seed or admin tool — no UI yet).
+- Stock-receive one card manually via API (seed or admin tool — no UI yet).
 - Checkout page with camera viewfinder (`html5-qrcode`) + USB HID scanner feeding the same input.
 - Scan → card review screen (masked price, eye-reveal).
 - Add to cart → writes `cart_items` row + updates `cards.locked_by_cart_id` atomically.
@@ -150,7 +150,7 @@ Turbo + pnpm workspace, root configs, empty package manifests, `CLAUDE.md`, `REA
 - **F7** payment channel picker (already seeded M1).
 - **F10** masking coverage audit across all screens.
 - **F11** daily report (single date × active event).
-- **F13** owner + intaken-by fields on intake form.
+- **F13** owner + stock-received-by fields on stock-receive form.
 - **F14, F15** condition / set / rarity / language / edition inputs.
 - **F17** per-event owner payout report (CSV export).
 - **F18** hold flow with user-set expiry + auto-release.
@@ -210,13 +210,13 @@ Turbo + pnpm workspace, root configs, empty package manifests, `CLAUDE.md`, `REA
 
 ---
 
-### M8 — Intake polish + bulk import
+### M8 — Stock-receive polish + bulk import
 
 **Goal:** remaining Phase 2 features (PRD §13).
 
 **Scope**
 - F16 graded card fields.
-- F19 photo-at-intake capture + thumbnail on device.
+- F19 photo-at-stock-receive capture + thumbnail on device.
 - F23 transaction-level discount with cap + override.
 - F26 xlsx bulk import via SheetJS with row-level validation + error report.
 - F30 transaction notes field.
