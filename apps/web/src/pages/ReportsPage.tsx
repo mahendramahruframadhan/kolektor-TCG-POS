@@ -5,6 +5,7 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
 import type { IdbEvent, IdbTransactionItem, IdbCard } from "../lib/db.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -544,6 +545,7 @@ function MonthlyDetail() {
 // ── Detail: Settlement ─────────────────────────────────────────────────────
 
 function SettlementDetail({ events, userRole }: { events: IdbEvent[]; userRole: string }) {
+  const isOnline = useIsOnline();
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [report, setReport] = useState<SettlementReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -612,7 +614,7 @@ function SettlementDetail({ events, userRole }: { events: IdbEvent[]; userRole: 
                 {userRole === "admin" && !report.settledAt && events.find((e) => e.id === selectedEventId)?.status === "closed" && (
                   <button
                     onClick={handleSettle}
-                    disabled={settling}
+                    disabled={settling || !isOnline}
                     className="text-xs font-bold bg-success text-white rounded-lg px-3 py-1 disabled:opacity-50 hover:opacity-90 transition"
                   >
                     {settling ? "Mengunci…" : "Kunci Settlement"}

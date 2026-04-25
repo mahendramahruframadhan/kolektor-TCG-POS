@@ -5,6 +5,7 @@ import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
 import type { IdbEvent, IdbCashReconciliation } from "../lib/db.js";
 
 interface ApiReconciliation {
@@ -25,6 +26,7 @@ const labelCls = "block text-[10px] font-extrabold tracking-widest uppercase tex
 export function CashReconciliationPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const isOnline = useIsOnline();
 
   const expectedId = useId();
   const countedId = useId();
@@ -201,7 +203,7 @@ export function CashReconciliationPage() {
 
             <button
               onClick={handleSave}
-              disabled={saving || !selectedEventId || !countedCash}
+              disabled={saving || !selectedEventId || !countedCash || !isOnline}
               className="w-full h-12 bg-primary text-primary-fg font-bold rounded-2xl text-sm disabled:opacity-50 hover:opacity-90 transition"
             >
               {saving ? "Menyimpan…" : "Simpan Rekonsiliasi"}

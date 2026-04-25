@@ -7,6 +7,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import { api } from "../lib/api.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
 import type { IdbCard } from "../lib/db.js";
 
 // ── Bottom price tap-and-hold reveal (2 s) ────────────────────────────────
@@ -96,6 +97,7 @@ function CardDetail({
   onClose: () => void;
 }) {
   const user = useAuthStore((s) => s.user);
+  const isOnline = useIsOnline();
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -136,7 +138,8 @@ function CardDetail({
             {user?.role === "admin" && !editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0"
+                disabled={!isOnline}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-fg hover:bg-border transition shrink-0 disabled:opacity-50"
                 aria-label="Edit kartu"
               >
                 <Pencil className="w-4 h-4" />
@@ -264,6 +267,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 // ── Return card button ─────────────────────────────────────────────────────
 
 function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () => void }) {
+  const isOnline = useIsOnline();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -299,7 +303,7 @@ function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () 
           </button>
           <button
             onClick={handleReturn}
-            disabled={busy}
+            disabled={busy || !isOnline}
             className="flex-1 h-10 bg-primary text-primary-fg font-bold rounded-xl hover:opacity-90 text-xs transition disabled:opacity-50"
           >
             {busy ? "Menyimpan…" : "Kembalikan"}
@@ -312,7 +316,8 @@ function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () 
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="w-full h-11 border border-primary border-opacity-40 text-primary font-bold rounded-2xl hover:bg-primary hover:bg-opacity-5 text-sm transition flex items-center justify-center gap-2"
+      disabled={!isOnline}
+      className="w-full h-11 border border-primary border-opacity-40 text-primary font-bold rounded-2xl hover:bg-primary hover:bg-opacity-5 text-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
     >
       <RotateCcw className="w-4 h-4" />
       Kembalikan ke Pemilik

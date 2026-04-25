@@ -6,10 +6,12 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
 
 export function OversoldQueuePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isOnline = useIsOnline();
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export function OversoldQueuePage() {
                       </button>
                       <button
                         onClick={() => handleVoid(card.id, voidReason)}
-                        disabled={!voidReason.trim()}
+                        disabled={!voidReason.trim() || !isOnline}
                         className="flex-1 h-10 bg-destructive text-white text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 transition"
                       >
                         Konfirmasi Void
@@ -136,7 +138,8 @@ export function OversoldQueuePage() {
                 ) : (
                   <button
                     onClick={() => setVoidingId(card.id)}
-                    className="w-full h-11 border border-destructive border-opacity-50 text-destructive text-sm font-bold rounded-2xl hover:bg-destructive hover:bg-opacity-5 transition"
+                    disabled={!isOnline}
+                    className="w-full h-11 border border-destructive border-opacity-50 text-destructive text-sm font-bold rounded-2xl hover:bg-destructive hover:bg-opacity-5 transition disabled:opacity-50"
                   >
                     Void Transaksi
                   </button>

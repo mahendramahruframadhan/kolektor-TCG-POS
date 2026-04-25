@@ -4,6 +4,7 @@ import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
 import type { IdbSetting } from "../lib/db.js";
 
 const EDITABLE_KEYS: {
@@ -68,6 +69,7 @@ function SettingSelectRow({
   currentValue: unknown;
   onSaved: (key: string, newValue: string) => void;
 }) {
+  const isOnline = useIsOnline();
   const selectId = useId();
   const errorId = useId();
   const initial = typeof currentValue === "string" && currentValue ? currentValue : def.defaultValue;
@@ -109,9 +111,9 @@ function SettingSelectRow({
           aria-describedby={`${selectId}-desc${error ? ` ${errorId}` : ""}`}
           aria-invalid={!!error}
           value={value}
-          disabled={saving}
+          disabled={saving || !isOnline}
           onChange={(e) => handleChange(e.target.value)}
-          className="flex-1 h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition"
+          className="flex-1 h-11 border border-border rounded-xl px-3 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary transition disabled:opacity-50"
         >
           {def.options.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -140,6 +142,7 @@ function SettingRow({
   max?: number;
   onSaved: (key: string, newValue: number) => void;
 }) {
+  const isOnline = useIsOnline();
   const inputId = useId();
   const errorId = useId();
   const [inputValue, setInputValue] = useState(String(currentValue ?? ""));
@@ -198,7 +201,7 @@ function SettingRow({
         />
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !isOnline}
           className="bg-primary text-primary-fg text-sm font-bold px-4 py-2.5 rounded-xl transition hover:opacity-90 disabled:opacity-50 shrink-0"
         >
           {saving ? "Menyimpan…" : saved ? "Tersimpan ✓" : "Simpan"}
