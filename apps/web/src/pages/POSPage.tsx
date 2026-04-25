@@ -15,8 +15,10 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
-import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel } from "../lib/db.js";
+import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel, IdbPendingTransactionItem } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
+import { useIsOnline } from "../hooks/use-is-online.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -367,10 +369,11 @@ interface ReceiptModalProps {
   transactionId: string;
   totalIdr: number;
   itemCount: number;
+  isPendingSync: boolean;
   onDone: () => void;
 }
 
-function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptModalProps) {
+function ReceiptModal({ transactionId, totalIdr, itemCount, isPendingSync, onDone }: ReceiptModalProps) {
   const handlePrint = () => {
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) return;
@@ -436,6 +439,11 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, onDone }: ReceiptMod
             <span className="font-extrabold text-primary">Rp {totalIdr.toLocaleString("id-ID")}</span>
           </div>
         </div>
+        {isPendingSync && (
+          <div className="text-xs text-warning font-medium text-center px-4 pb-2">
+            Tersimpan lokal — akan disinkronkan saat kembali online.
+          </div>
+        )}
         <div className="space-y-2">
           <button
             onClick={handlePrint}
@@ -462,6 +470,8 @@ export function POSPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { activeCartId, scannedCard, setActiveCartId, setScannedCard } = usePosStore();
+  const isOnline = useIsOnline();
+  const { activeCartIsOffline, setActiveCartIsOffline } = usePosStore();
 
   const [scanInput, setScanInput] = useState("");
   const [cartItems, setCartItems] = useState<IdbCartItem[]>([]);
@@ -476,6 +486,7 @@ export function POSPage() {
     transactionId: string;
     totalIdr: number;
     itemCount: number;
+    isPendingSync: boolean;
   } | null>(null);
 
   const [finalPriceInput, setFinalPriceInput] = useState("");
@@ -628,18 +639,34 @@ export function POSPage() {
     const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
     if (!activeEvent) throw new Error("Tidak ada event aktif.");
     const clientId = uuidv4();
-    const response = (await api.carts.create({ clientId, eventId: activeEvent.id })) as { id: string };
-    const cartId = response.id;
-    await idb.carts.put({
-      id: cartId, clientId,
-      cashierUserId: user!.id,
-      eventId: activeEvent.id,
-      status: "draft",
-      lastActivityAt: nowSec(),
-      version: 1,
-    });
-    setActiveCartId(cartId);
-    return cartId;
+
+    if (isOnline) {
+      const response = (await api.carts.create({ clientId, eventId: activeEvent.id })) as { id: string };
+      const cartId = response.id;
+      await idb.carts.put({
+        id: cartId, clientId,
+        cashierUserId: user!.id,
+        eventId: activeEvent.id,
+        status: "draft",
+        lastActivityAt: nowSec(),
+        version: 1,
+      });
+      setActiveCartId(cartId);
+      setActiveCartIsOffline(false);
+      return cartId;
+    } else {
+      await idb.carts.put({
+        id: clientId, clientId,
+        cashierUserId: user!.id,
+        eventId: activeEvent.id,
+        status: "draft",
+        lastActivityAt: nowSec(),
+        version: 1,
+      });
+      setActiveCartId(clientId);
+      setActiveCartIsOffline(true);
+      return clientId;
+    }
   }
 
   async function handleAddToCart() {
@@ -682,13 +709,24 @@ export function POSPage() {
         lineDiscountPct = 0;
       }
 
-      const response = (await api.carts.addItem(cartId, {
-        cardId: scannedCard.id, intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
-      })) as { item: { id: string } };
+      let newItemId: string;
+      if (isOnline && !activeCartIsOffline) {
+        const response = (await api.carts.addItem(cartId, {
+          cardId: scannedCard.id, intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
+        })) as { item: { id: string } };
+        newItemId = response.item.id;
+      } else {
+        newItemId = uuidv4();
+      }
 
       const newItem: IdbCartItem = {
-        id: response.item.id, cartId, cardId: scannedCard.id,
-        intendedPriceIdr, lineDiscountIdr, lineDiscountPct, requiresAdminOverride,
+        id: newItemId,
+        cartId,
+        cardId: scannedCard.id,
+        intendedPriceIdr,
+        lineDiscountIdr,
+        lineDiscountPct,
+        requiresAdminOverride,
       };
 
       await idb.cartItems.put(newItem);
@@ -754,32 +792,120 @@ export function POSPage() {
     refocusScan();
   }
 
-  async function handlePay(channelId: string, discountIdr: number, discountReason: string, notes: string) {
+  async function handlePay(
+    channelId: string,
+    discountIdr: number,
+    discountReason: string,
+    notes: string
+  ) {
     if (!activeCartId) throw new Error("Tidak ada keranjang aktif.");
-    const response = (await api.carts.pay(activeCartId, {
-      paymentChannelId: channelId,
-      transactionClientId: uuidv4(),
-      discountIdr: discountIdr || undefined,
-      discountReason: discountReason || undefined,
-      notes: notes || undefined,
-    })) as { transaction: { id: string }; receipt: unknown[] };
 
-    const txId = response.transaction.id;
-    await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
-    await Promise.all(
-      cartItems.map((item) =>
-        idb.cards.update(item.cardId, {
-          status: "sold", lockedByCartId: undefined, lockedByUserId: undefined, lockedAt: undefined,
-        })
-      )
+    const subtotalIdr = cartItems.reduce(
+      (sum, item) => sum + (item.intendedPriceIdr - item.lineDiscountIdr),
+      0
     );
-    setShowPayModal(false);
-    setReceipt({ transactionId: txId, totalIdr: Math.max(0, totalIdr - discountIdr), itemCount: cartItems.length });
+    const finalTotalIdr = Math.max(0, subtotalIdr - discountIdr);
+
+    if (isOnline && !activeCartIsOffline) {
+      const response = (await api.carts.pay(activeCartId, {
+        paymentChannelId: channelId,
+        transactionClientId: uuidv4(),
+        discountIdr: discountIdr || undefined,
+        discountReason: discountReason || undefined,
+        notes: notes || undefined,
+      })) as { transaction: { id: string }; receipt: unknown[] };
+
+      const txId = response.transaction.id;
+      await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
+      await Promise.all(
+        cartItems.map((item) =>
+          idb.cards.update(item.cardId, {
+            status: "sold",
+            lockedByCartId: undefined,
+            lockedByUserId: undefined,
+            lockedAt: undefined,
+          })
+        )
+      );
+      setShowPayModal(false);
+      setReceipt({
+        transactionId: txId,
+        totalIdr: finalTotalIdr,
+        itemCount: cartItems.length,
+        isPendingSync: false,
+      });
+    } else {
+      const txClientId = uuidv4();
+      const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
+
+      const pendingItems: IdbPendingTransactionItem[] = cartItems.map((item) => {
+        const card = cartCards[item.cardId];
+        const listedPriceIdrSnapshot =
+          card?.pricingMode === "fixed"
+            ? (card.priceIdr ?? 0)
+            : (card?.listedPriceIdr ?? 0);
+        return {
+          cardId: item.cardId,
+          ownerUserIdSnapshot: card?.ownerUserId ?? "",
+          listedPriceIdrSnapshot,
+          intendedPriceIdr: item.intendedPriceIdr,
+          lineDiscountIdr: item.lineDiscountIdr,
+          lineDiscountReason: item.lineDiscountReason,
+          overrideBelowBottom: item.requiresAdminOverride,
+          overrideReason: item.overrideReason,
+          soldPriceIdr: item.intendedPriceIdr - item.lineDiscountIdr,
+        };
+      });
+
+      await idb.pendingTransactions.put({
+        clientId: txClientId,
+        cartClientId: activeCartId,
+        eventId: activeEvent?.id ?? "",
+        items: pendingItems,
+        subtotalIdr,
+        discountIdr: discountIdr || 0,
+        discountReason: discountReason || undefined,
+        totalIdr: finalTotalIdr,
+        paymentChannelId: channelId || undefined,
+        notes: notes || undefined,
+        paidAt: nowSec(),
+        createdAt: nowSec(),
+        createdByUserId: user!.id,
+        syncStatus: "pending",
+      });
+
+      await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txClientId });
+      await Promise.all(
+        cartItems.map((item) =>
+          idb.cards.update(item.cardId, {
+            status: "sold",
+            lockedByCartId: undefined,
+            lockedByUserId: undefined,
+            lockedAt: undefined,
+          })
+        )
+      );
+
+      const pendingCount = await idb.pendingTransactions
+        .where("syncStatus")
+        .equals("pending")
+        .count();
+      useSyncStateStore.getState().setPendingTransactionCount(pendingCount);
+
+      setShowPayModal(false);
+      setReceipt({
+        transactionId: txClientId,
+        totalIdr: finalTotalIdr,
+        itemCount: cartItems.length,
+        isPendingSync: true,
+      });
+    }
   }
 
   function handleReceiptDone() {
     setReceipt(null);
     setActiveCartId(null);
+    setActiveCartIsOffline(false);
     setScannedCard(null);
     setCartItems([]);
     setCartCards({});
@@ -1114,6 +1240,7 @@ export function POSPage() {
           transactionId={receipt.transactionId}
           totalIdr={receipt.totalIdr}
           itemCount={receipt.itemCount}
+          isPendingSync={receipt.isPendingSync}
           onDone={handleReceiptDone}
         />
       )}
