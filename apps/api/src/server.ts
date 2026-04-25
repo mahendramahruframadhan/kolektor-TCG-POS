@@ -28,6 +28,7 @@ import { holdRoutes } from "./routes/holds.js";
 import { transactionRoutes } from "./routes/transactions.js";
 import { backupRoute } from "./routes/backup.js";
 import { syncRoutes } from "./routes/sync.js";
+import { flushPendingTxRoute } from "./routes/flush-pending-tx.js";
 import { settlementRoutes } from "./routes/settlement.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
 import { overrideRoutes } from "./routes/overrides.js";
@@ -128,6 +129,7 @@ async function build() {
   await transactionRoutes(app, { db });
   await backupRoute(app, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
   await syncRoutes(app, { db });
+  await flushPendingTxRoute(app, { db });
   await settlementRoutes(app, { db });
   await auditLogRoutes(app, { db });
   await overrideRoutes(app, { db });
