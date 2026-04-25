@@ -165,6 +165,14 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ ops, deviceId }),
       }),
+    flushPendingTx: (pendingTxs: unknown[]) =>
+      request<{
+        results: { clientId: string; status: "accepted" | "rejected"; serverTransactionId?: string; reason?: string }[];
+        processedAt: number;
+      }>("/sync/flush-pending-tx", {
+        method: "POST",
+        body: JSON.stringify({ transactions: pendingTxs }),
+      }),
   },
   carts: {
     create: (body: unknown) =>

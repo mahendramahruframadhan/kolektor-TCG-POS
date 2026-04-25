@@ -32,6 +32,7 @@ interface Props {
 export function SyncDot({ state }: Props) {
   const storeState = useSyncStateStore((s) => s.state);
   const storeError = useSyncStateStore((s) => s.lastError);
+  const pendingCount = useSyncStateStore((s) => s.pendingTransactionCount);
   const effective = state ?? storeState;
   const color = COLORS[effective];
   const Icon = ICONS[effective];
@@ -60,6 +61,15 @@ export function SyncDot({ state }: Props) {
       >
         {label}
       </span>
+      {pendingCount > 0 && (
+        <span
+          className="text-[11px] font-extrabold"
+          style={{ color }}
+          aria-label={`${pendingCount} transaksi menunggu sinkronisasi`}
+        >
+          ({pendingCount})
+        </span>
+      )}
     </div>
   );
 }

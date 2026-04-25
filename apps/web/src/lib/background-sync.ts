@@ -114,6 +114,43 @@ export async function deltaSyncPull(): Promise<void> {
   }
 }
 
+export async function flushPendingTransactions(): Promise<void> {
+  const pending = await idb.pendingTransactions
+    .where("syncStatus")
+    .equals("pending")
+    .toArray();
+
+  if (pending.length === 0) return;
+
+  await Promise.all(
+    pending.map((tx) =>
+      idb.pendingTransactions.update(tx.clientId, { syncStatus: "syncing" })
+    )
+  );
+
+  const response = await api.sync.flushPendingTx(pending);
+
+  for (const result of response.results) {
+    if (result.status === "accepted") {
+      await idb.pendingTransactions.update(result.clientId, {
+        syncStatus: "synced",
+        syncedAt: Date.now(),
+      });
+    } else {
+      await idb.pendingTransactions.update(result.clientId, {
+        syncStatus: "error",
+        syncError: result.reason,
+      });
+    }
+  }
+
+  const stillPending = await idb.pendingTransactions
+    .where("syncStatus")
+    .equals("pending")
+    .count();
+  useSyncStateStore.getState().setPendingTransactionCount(stillPending);
+}
+
 /**
  * Background sync — runs every 60s + opportunistically after cashier actions.
  * PRD §11: Background every 60s when online + opportunistic on every cashier action.
@@ -130,6 +167,7 @@ export function startBackgroundSync() {
     }
     useSyncStateStore.getState().setState("syncing");
     try {
+      await flushPendingTransactions();
       await deltaSyncPull();
       useSyncStateStore.getState().markSuccess();
     } catch (err) {
@@ -157,7 +195,8 @@ export function opportunisticSync() {
     return;
   }
   useSyncStateStore.getState().setState("syncing");
-  deltaSyncPull()
+  flushPendingTransactions()
+    .then(() => deltaSyncPull())
     .then(() => useSyncStateStore.getState().markSuccess())
     .catch((err) => {
       useSyncStateStore.getState().setState(
