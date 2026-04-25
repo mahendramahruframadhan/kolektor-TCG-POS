@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Search, Award, Pencil, RotateCcw } from "lucide-react";
+import { X, Search, Award, Pencil, RotateCcw, Copy, Check } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
@@ -97,6 +97,14 @@ function CardDetail({
 }) {
   const user = useAuthStore((s) => s.user);
   const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(card.shortId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50">
@@ -110,7 +118,19 @@ function CardDetail({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className="font-bold text-fg text-lg leading-tight">{card.title}</p>
-            <p className="text-xs text-muted-fg font-mono mt-0.5">{card.shortId}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs text-muted-fg font-mono">{card.shortId}</p>
+              <button
+                onClick={handleCopy}
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-fg hover:text-fg hover:bg-muted transition shrink-0"
+                aria-label="Salin kode kartu"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+              {copied && (
+                <span className="text-[10px] font-bold text-success">Tersalin!</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {user?.role === "admin" && !editing && (
