@@ -143,6 +143,38 @@ export interface IdbPendingPhoto {
   createdAt: number;
 }
 
+export interface IdbPendingTransactionItem {
+  cardId: string;
+  ownerUserIdSnapshot: string;
+  listedPriceIdrSnapshot: number;
+  intendedPriceIdr: number;
+  lineDiscountIdr: number;
+  lineDiscountReason?: string;
+  overrideBelowBottom: boolean;
+  overrideReason?: string;
+  soldPriceIdr: number;
+}
+
+export interface IdbPendingTransaction {
+  clientId: string;
+  cartClientId: string;
+  eventId: string;
+  items: IdbPendingTransactionItem[];
+  subtotalIdr: number;
+  discountIdr: number;
+  discountReason?: string;
+  totalIdr: number;
+  paymentChannelId?: string;
+  paymentNote?: string;
+  notes?: string;
+  paidAt: number;
+  createdAt: number;
+  createdByUserId: string;
+  syncStatus: "pending" | "syncing" | "synced" | "error";
+  syncError?: string;
+  syncedAt?: number;
+}
+
 class KolektaDb extends Dexie {
   users!: Table<IdbUser>;
   events!: Table<IdbEvent>;
@@ -154,6 +186,7 @@ class KolektaDb extends Dexie {
   transactions!: Table<IdbTransaction>;
   transactionItems!: Table<IdbTransactionItem>;
   pendingPhotos!: Table<IdbPendingPhoto>;
+  pendingTransactions!: Table<IdbPendingTransaction>;
   cashReconciliations!: Table<IdbCashReconciliation>;
 
   constructor() {
@@ -172,6 +205,9 @@ class KolektaDb extends Dexie {
     });
     this.version(2).stores({
       cashReconciliations: "id, eventId, date",
+    });
+    this.version(3).stores({
+      pendingTransactions: "clientId, syncStatus",
     });
   }
 }
