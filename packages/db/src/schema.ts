@@ -78,6 +78,7 @@ export const cards = sqliteTable(
       .references(() => users.id),
     eventId: text("event_id").references(() => events.id),
     title: text("title").notNull(),
+    category: text("category").notNull().default(""),
     setName: text("set_name").notNull().default(""),
     setNumber: text("set_number").notNull().default(""),
     rarity: text("rarity").notNull().default(""),

@@ -53,6 +53,7 @@ type PricingMode = "fixed" | "negotiable";
 interface FormState {
   ownerUserId: string;
   title: string;
+  category: string;
   setName: string;
   setNumber: string;
   rarity: string;
@@ -72,6 +73,7 @@ interface FormState {
 const INITIAL_FORM: FormState = {
   ownerUserId: "",
   title: "",
+  category: "",
   setName: "",
   setNumber: "",
   rarity: "",
@@ -123,6 +125,7 @@ export function StockReceivePage() {
   const user = useAuthStore((s) => s.user);
 
   const [users, setUsers] = useState<IdbUser[]>([]);
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [shortId, setShortId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -139,6 +142,13 @@ export function StockReceivePage() {
       next: (list) => setUsers(list),
     });
     return () => sub.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    idb.cards.toArray().then((cards) => {
+      const cats = [...new Set(cards.map((c) => c.category).filter(Boolean))].sort();
+      setExistingCategories(cats);
+    });
   }, []);
 
   useEffect(() => {
@@ -173,6 +183,7 @@ export function StockReceivePage() {
 
     if (!form.ownerUserId) newErrors.ownerUserId = "Pilih pemilik kartu.";
     if (!form.title.trim()) newErrors.title = "Judul wajib diisi.";
+    if (!form.category.trim()) newErrors.category = "Kategori wajib diisi.";
 
     if (form.pricingMode === "fixed") {
       const price = parseInt(form.priceIdr, 10);
@@ -214,6 +225,7 @@ export function StockReceivePage() {
         stockReceivedByUserId: user!.id,
         eventId: activeEvent?.id,
         title: form.title.trim(),
+        category: form.category.trim(),
         setName: form.setName.trim(),
         setNumber: form.setNumber.trim(),
         rarity: form.rarity.trim(),
@@ -243,6 +255,7 @@ export function StockReceivePage() {
         stockReceivedByUserId: user!.id,
         eventId: activeEvent?.id,
         title: form.title.trim(),
+        category: form.category.trim(),
         setName: form.setName.trim(),
         setNumber: form.setNumber.trim(),
         rarity: form.rarity.trim(),
@@ -380,6 +393,25 @@ export function StockReceivePage() {
                 className={inputCls(errors.title)}
               />
               {errors.title && <p className="text-xs text-destructive mt-1 font-medium">{errors.title}</p>}
+            </div>
+
+            {/* Category */}
+            <div>
+              <FieldLabel required>Kategori</FieldLabel>
+              <input
+                type="text"
+                list="category-suggestions"
+                value={form.category}
+                onChange={(e) => setField("category", e.target.value)}
+                placeholder="Contoh: Pokemon, Magic: The Gathering"
+                className={inputCls(errors.category)}
+              />
+              <datalist id="category-suggestions">
+                {existingCategories.map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
+              </datalist>
+              {errors.category && <p className="text-xs text-destructive mt-1 font-medium">{errors.category}</p>}
             </div>
 
             {/* Set Name + Number */}

@@ -177,6 +177,7 @@ function CardDetail({
         {/* Details grid */}
         <div className="space-y-2">
           <DetailRow label="Pemilik" value={ownerName} />
+          {card.category && <DetailRow label="Kategori" value={card.category} />}
           {card.setName && <DetailRow label="Set" value={card.setName} />}
           {card.setNumber && <DetailRow label="Nomor Set" value={`#${card.setNumber}`} />}
           {card.rarity && <DetailRow label="Kelangkaan" value={card.rarity} />}
@@ -336,6 +337,7 @@ export function InventoryPage() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [pricingFilter, setPricingFilter] = useState<PricingFilter>("all");
   const [sortBy, setSortBy] = useState<SortBy>("none");
   const [selectedCard, setSelectedCard] = useState<IdbCard | null>(null);
@@ -365,12 +367,18 @@ export function InventoryPage() {
     [userMap]
   );
 
+  const allCategories = useMemo(
+    () => [...new Set(allCards.map((c) => c.category).filter(Boolean))].sort(),
+    [allCards]
+  );
+
   // Reset pagination whenever filters change — tracked as a page count so the
   // reset happens in the same render pass that sees new filter values, avoiding
   // the extra render cycle a useEffect reset would cause.
   const [prevSearch, setPrevSearch] = useState(searchText);
   const [prevStatus, setPrevStatus] = useState(statusFilter);
   const [prevOwner, setPrevOwner] = useState(ownerFilter);
+  const [prevCategory, setPrevCategory] = useState(categoryFilter);
   const [prevPricing, setPrevPricing] = useState(pricingFilter);
   const [prevSort, setPrevSort] = useState(sortBy);
   let currentExtraPages = extraPages;
@@ -378,6 +386,7 @@ export function InventoryPage() {
     searchText !== prevSearch ||
     statusFilter !== prevStatus ||
     ownerFilter !== prevOwner ||
+    categoryFilter !== prevCategory ||
     pricingFilter !== prevPricing ||
     sortBy !== prevSort
   ) {
@@ -385,6 +394,7 @@ export function InventoryPage() {
     setPrevSearch(searchText);
     setPrevStatus(statusFilter);
     setPrevOwner(ownerFilter);
+    setPrevCategory(categoryFilter);
     setPrevPricing(pricingFilter);
     setPrevSort(sortBy);
     setExtraPages(0);
@@ -401,8 +411,9 @@ export function InventoryPage() {
         card.shortId.toLowerCase().includes(lc);
       const matchesStatus = statusFilter === "all" || card.status === statusFilter;
       const matchesOwner = ownerFilter === "all" || card.ownerUserId === ownerFilter;
+      const matchesCategory = categoryFilter === "all" || card.category === categoryFilter;
       const matchesPricing = pricingFilter === "all" || card.pricingMode === pricingFilter;
-      return matchesSearch && matchesStatus && matchesOwner && matchesPricing;
+      return matchesSearch && matchesStatus && matchesOwner && matchesCategory && matchesPricing;
     });
 
     if (sortBy === "none") return filtered;
@@ -414,7 +425,7 @@ export function InventoryPage() {
       const priceB = (b.pricingMode === "fixed" ? b.priceIdr : b.listedPriceIdr) ?? 0;
       return sortBy === "price_asc" ? priceA - priceB : priceB - priceA;
     });
-  }, [allCards, searchText, statusFilter, ownerFilter, pricingFilter, sortBy]);
+  }, [allCards, searchText, statusFilter, ownerFilter, categoryFilter, pricingFilter, sortBy]);
 
   const visibleCards = filteredCards.slice(0, visibleCount);
   const hasMore = filteredCards.length > visibleCount;
@@ -467,6 +478,16 @@ export function InventoryPage() {
               <option value="shortId_asc">Kode A–Z</option>
             </select>
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="w-full h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">Semua kategori</option>
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FILTERS.map((f) => (
               <button
@@ -550,9 +571,9 @@ export function InventoryPage() {
                     </div>
                     <p className="text-sm font-bold text-fg truncate">{card.title}</p>
                     <p className="text-xs text-muted-fg truncate">
+                      {card.category ? `${card.category} · ` : ""}
                       {card.condition}
                       {card.setName ? ` · ${card.setName}` : ""}
-                      {card.language ? ` · ${card.language}` : ""}
                     </p>
                   </button>
                 </li>

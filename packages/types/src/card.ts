@@ -21,6 +21,7 @@ export const CreateCardSchema = z.object({
   stockReceivedByUserId: z.string().uuid(),
   eventId: z.string().uuid().optional(),
   title: z.string().min(1),
+  category: z.string().min(1),
   setName: z.string().default(""),
   setNumber: z.string().default(""),
   rarity: z.string().default(""),
@@ -45,6 +46,7 @@ export const CreateCardSchema = z.object({
 
 export const UpdateCardSchema = z.object({
   title: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
   setName: z.string().optional(),
   setNumber: z.string().optional(),
   rarity: z.string().optional(),

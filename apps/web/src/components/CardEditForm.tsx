@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Check, X } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
@@ -25,7 +25,16 @@ interface CardEditFormProps {
 
 export function CardEditForm({ card, onSaved, onCancel }: CardEditFormProps) {
   const [title, setTitle] = useState(card.title);
+  const [category, setCategory] = useState(card.category ?? "");
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [setName, setSetName] = useState(card.setName ?? "");
+
+  useEffect(() => {
+    idb.cards.toArray().then((cards) => {
+      const cats = [...new Set(cards.map((c) => c.category).filter(Boolean))].sort();
+      setExistingCategories(cats);
+    });
+  }, []);
   const [setNumber, setSetNumber] = useState(card.setNumber ?? "");
   const [rarity, setRarity] = useState(card.rarity ?? "");
   const [language, setLanguage] = useState(card.language);
@@ -48,6 +57,7 @@ export function CardEditForm({ card, onSaved, onCancel }: CardEditFormProps) {
 
     const body: Record<string, unknown> = {
       title,
+      category,
       setName,
       setNumber,
       rarity,
@@ -115,6 +125,23 @@ export function CardEditForm({ card, onSaved, onCancel }: CardEditFormProps) {
       <div>
         <label className={labelCls}>Judul Kartu</label>
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} required />
+      </div>
+
+      <div>
+        <label className={labelCls}>Kategori</label>
+        <input
+          className={inputCls}
+          list="edit-category-suggestions"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Contoh: Pokemon"
+          required
+        />
+        <datalist id="edit-category-suggestions">
+          {existingCategories.map((cat) => (
+            <option key={cat} value={cat} />
+          ))}
+        </datalist>
       </div>
 
       <div className="grid grid-cols-2 gap-2">

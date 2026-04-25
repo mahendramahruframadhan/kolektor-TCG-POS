@@ -54,6 +54,7 @@ export interface IdbCard {
   stockReceivedByUserId: string;
   eventId?: string;
   title: string;
+  category: string;
   setName: string;
   setNumber: string;
   rarity: string;

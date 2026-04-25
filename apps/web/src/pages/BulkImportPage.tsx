@@ -17,7 +17,7 @@ import { useAuthStore } from "../store/auth.js";
 
 // ── Column mapping ─────────────────────────────────────────────────────────
 // Expected Excel headers (case-insensitive):
-// owner, title, setName, setNumber, rarity, language, condition, edition,
+// owner, title, category, setName, setNumber, rarity, language, condition, edition,
 // pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded,
 // gradingCompany, grade, certNumber
 
@@ -73,6 +73,7 @@ function validateRow(
 
   const ownerName = rawRow["owner"] ?? "";
   const title = (rawRow["title"] ?? "").trim();
+  const category = (rawRow["category"] ?? "").trim();
   const condition = rawRow["condition"] ?? "Near Mint";
   const language = rawRow["language"] ?? "EN";
   const pricingMode = rawRow["pricingmode"] ?? "fixed";
@@ -83,6 +84,7 @@ function validateRow(
   const isGraded = isGradedRaw === "true" || isGradedRaw === "1" || isGradedRaw === "yes";
 
   if (!title) errors.push("title is required");
+  if (!category) errors.push("category is required");
   if (!VALID_CONDITIONS.has(condition)) errors.push(`invalid condition: "${condition}"`);
   if (!VALID_LANGUAGES.has(language)) errors.push(`invalid language: "${language}"`);
   if (!VALID_PRICING_MODES.has(pricingMode)) errors.push(`invalid pricingMode: "${pricingMode}"`);
@@ -132,6 +134,7 @@ function validateRow(
     stockReceivedByUserId: currentUserId,
     eventId: activeEventId,
     title,
+    category,
     setName: (rawRow["setname"] ?? "").trim(),
     setNumber: (rawRow["setnumber"] ?? "").trim(),
     rarity: (rawRow["rarity"] ?? "").trim(),
@@ -247,6 +250,7 @@ export function BulkImportPage() {
           stockReceivedByUserId: user!.id,
           eventId: activeEvent?.id,
           title: row.cardBody!.title as string,
+          category: row.cardBody!.category as string ?? "",
           setName: row.cardBody!.setName as string ?? "",
           setNumber: row.cardBody!.setNumber as string ?? "",
           rarity: row.cardBody!.rarity as string ?? "",
@@ -292,7 +296,7 @@ export function BulkImportPage() {
   async function downloadTemplate() {
     const XLSX = await loadXlsx();
     const headers = [
-      "owner", "title", "setName", "setNumber", "rarity", "language", "condition", "edition",
+      "owner", "title", "category", "setName", "setNumber", "rarity", "language", "condition", "edition",
       "pricingMode", "priceIdr", "listedPriceIdr", "bottomPriceIdr",
       "isGraded", "gradingCompany", "grade", "certNumber",
     ];
@@ -302,29 +306,29 @@ export function BulkImportPage() {
     const O = "Ownner Specimen";
     const examples: (string | number)[][] = [
       // Graded + fixed (5)
-      [O, "Charizard VSTAR", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 2500000, "", "", "true", "PSA", "10", "12345678"],
-      [O, "Pikachu VMAX", "Vivid Voltage", "044/185", "Secret Rare", "JP", "Near Mint", "", "fixed", 1800000, "", "", "true", "BGS", "9.5", "87654321"],
-      [O, "Blastoise ex", "151", "009/165", "Double Rare", "EN", "Near Mint", "", "fixed", 1200000, "", "", "true", "CGC", "9", "11223344"],
-      [O, "Mewtwo V", "Pokemon GO", "030/078", "Ultra Rare", "EN", "Near Mint", "", "fixed", 750000, "", "", "true", "SGC", "8.5", "55667788"],
-      [O, "Eevee VMAX Rainbow", "Evolving Skies", "215/203", "Rainbow Rare", "KR", "Near Mint", "", "fixed", 3500000, "", "", "true", "Other", "10", "99887766"],
+      [O, "Charizard VSTAR", "Pokemon", "Brilliant Stars", "018/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 2500000, "", "", "true", "PSA", "10", "12345678"],
+      [O, "Pikachu VMAX", "Pokemon", "Vivid Voltage", "044/185", "Secret Rare", "JP", "Near Mint", "", "fixed", 1800000, "", "", "true", "BGS", "9.5", "87654321"],
+      [O, "Blastoise ex", "Pokemon", "151", "009/165", "Double Rare", "EN", "Near Mint", "", "fixed", 1200000, "", "", "true", "CGC", "9", "11223344"],
+      [O, "Mewtwo V", "Pokemon", "Pokemon GO", "030/078", "Ultra Rare", "EN", "Near Mint", "", "fixed", 750000, "", "", "true", "SGC", "8.5", "55667788"],
+      [O, "Eevee VMAX Rainbow", "Pokemon", "Evolving Skies", "215/203", "Rainbow Rare", "KR", "Near Mint", "", "fixed", 3500000, "", "", "true", "Other", "10", "99887766"],
       // Graded + negotiable (5)
-      [O, "Charizard 1st Edition", "Base Set", "004/102", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 50000000, 45000000, "true", "PSA", "10", "10101010"],
-      [O, "Lugia 1st Edition", "Neo Genesis", "009/111", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 15000000, 12000000, "true", "BGS", "9", "20202020"],
-      [O, "Ho-oh Gold Star", "EX Dragon Frontiers", "102/101", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 22000000, 19000000, "true", "CGC", "9.5", "30303030"],
-      [O, "Rayquaza EX", "EX Deoxys", "097/107", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 8500000, 7000000, "true", "PSA", "9", "40404040"],
-      [O, "Umbreon Gold Star", "POP Series 5", "017/017", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 35000000, 30000000, "true", "BGS", "8", "50505050"],
+      [O, "Charizard 1st Edition", "Pokemon", "Base Set", "004/102", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 50000000, 45000000, "true", "PSA", "10", "10101010"],
+      [O, "Lugia 1st Edition", "Pokemon", "Neo Genesis", "009/111", "Holo Rare", "EN", "Near Mint", "", "negotiable", "", 15000000, 12000000, "true", "BGS", "9", "20202020"],
+      [O, "Ho-oh Gold Star", "Pokemon", "EX Dragon Frontiers", "102/101", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 22000000, 19000000, "true", "CGC", "9.5", "30303030"],
+      [O, "Rayquaza EX", "Pokemon", "EX Deoxys", "097/107", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 8500000, 7000000, "true", "PSA", "9", "40404040"],
+      [O, "Umbreon Gold Star", "Pokemon", "POP Series 5", "017/017", "Gold Star", "EN", "Near Mint", "", "negotiable", "", 35000000, 30000000, "true", "BGS", "8", "50505050"],
       // Not graded + fixed (5)
-      [O, "Arceus VSTAR", "Brilliant Stars", "124/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 350000, "", "", "false", "", "", ""],
-      [O, "Gardevoir ex", "Scarlet & Violet", "086/198", "Double Rare", "EN", "Mint", "", "fixed", 180000, "", "", "false", "", "", ""],
-      [O, "Mimikyu V", "Vivid Voltage", "099/185", "Ultra Rare", "JP", "Near Mint", "", "fixed", 85000, "", "", "false", "", "", ""],
-      [O, "Sylveon V", "Evolving Skies", "074/203", "Ultra Rare", "EN", "Near Mint", "", "fixed", 120000, "", "", "false", "", "", ""],
-      [O, "Lucario V", "Vivid Voltage", "094/185", "Ultra Rare", "ID", "Lightly Played", "", "fixed", 60000, "", "", "false", "", "", ""],
+      [O, "Arceus VSTAR", "Pokemon", "Brilliant Stars", "124/172", "Ultra Rare", "EN", "Near Mint", "", "fixed", 350000, "", "", "false", "", "", ""],
+      [O, "Gardevoir ex", "Pokemon", "Scarlet & Violet", "086/198", "Double Rare", "EN", "Mint", "", "fixed", 180000, "", "", "false", "", "", ""],
+      [O, "Mimikyu V", "Pokemon", "Vivid Voltage", "099/185", "Ultra Rare", "JP", "Near Mint", "", "fixed", 85000, "", "", "false", "", "", ""],
+      [O, "Sylveon V", "Pokemon", "Evolving Skies", "074/203", "Ultra Rare", "EN", "Near Mint", "", "fixed", 120000, "", "", "false", "", "", ""],
+      [O, "Lucario V", "Pokemon", "Vivid Voltage", "094/185", "Ultra Rare", "ID", "Lightly Played", "", "fixed", 60000, "", "", "false", "", "", ""],
       // Not graded + negotiable (5)
-      [O, "Charizard V", "Shining Fates", "019/073", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 650000, 550000, "false", "", "", ""],
-      [O, "Pikachu V-Union", "Celebrations", "054/025", "Full Art", "EN", "Mint", "", "negotiable", "", 450000, 350000, "false", "", "", ""],
-      [O, "Machamp V", "Vivid Voltage", "080/185", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 95000, 75000, "false", "", "", ""],
-      [O, "Eevee V", "Evolving Skies", "148/203", "Ultra Rare", "CN", "Near Mint", "", "negotiable", "", 75000, 60000, "false", "", "", ""],
-      [O, "Mew V", "Fusion Strike", "113/264", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 130000, 105000, "false", "", "", ""],
+      [O, "Charizard V", "Pokemon", "Shining Fates", "019/073", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 650000, 550000, "false", "", "", ""],
+      [O, "Pikachu V-Union", "Pokemon", "Celebrations", "054/025", "Full Art", "EN", "Mint", "", "negotiable", "", 450000, 350000, "false", "", "", ""],
+      [O, "Machamp V", "Pokemon", "Vivid Voltage", "080/185", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 95000, 75000, "false", "", "", ""],
+      [O, "Eevee V", "Pokemon", "Evolving Skies", "148/203", "Ultra Rare", "CN", "Near Mint", "", "negotiable", "", 75000, 60000, "false", "", "", ""],
+      [O, "Mew V", "Pokemon", "Fusion Strike", "113/264", "Ultra Rare", "EN", "Near Mint", "", "negotiable", "", 130000, 105000, "false", "", "", ""],
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
     const wb = XLSX.utils.book_new();
@@ -343,7 +347,7 @@ export function BulkImportPage() {
           <p className="text-sm text-muted-fg">
             Upload file Excel (.xlsx) dengan kolom:{" "}
             <code className="text-xs bg-muted px-1.5 py-0.5 rounded-lg font-mono">
-              owner, title, setName, setNumber, rarity, language, condition, edition, pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded, gradingCompany, grade, certNumber
+              owner, title, category, setName, setNumber, rarity, language, condition, edition, pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded, gradingCompany, grade, certNumber
             </code>
           </p>
           <button onClick={downloadTemplate}
