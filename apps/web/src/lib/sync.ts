@@ -23,14 +23,17 @@ export async function fetchAndSync(): Promise<void> {
       api.cards.list() as Promise<IdbCard[]>,
     ]);
 
-  // Persist in parallel using bulkPut (upsert semantics)
+  // Replace server-managed tables entirely so deletions propagate to IDB.
+  // cards use bulkPut (upsert only) because they can be created offline.
   await Promise.all([
-    idb.events.bulkPut(eventsRaw),
-    idb.paymentChannels.bulkPut(channelsRaw),
-    idb.settings.bulkPut(
-      Object.entries(settingsRaw).map(([key, value]) => ({ key, value }))
+    idb.events.clear().then(() => idb.events.bulkPut(eventsRaw)),
+    idb.paymentChannels.clear().then(() => idb.paymentChannels.bulkPut(channelsRaw)),
+    idb.settings.clear().then(() =>
+      idb.settings.bulkPut(
+        Object.entries(settingsRaw).map(([key, value]) => ({ key, value }))
+      )
     ),
-    idb.users.bulkPut(usersRaw),
+    idb.users.clear().then(() => idb.users.bulkPut(usersRaw)),
     idb.cards.bulkPut(cardsRaw),
   ]);
 }
