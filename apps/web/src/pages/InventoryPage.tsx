@@ -303,6 +303,31 @@ function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () 
 
 type StatusFilter = "all" | IdbCard["status"];
 
+function FilterSelect({
+  value,
+  onChange,
+  allLabel,
+  options,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  allLabel: string;
+  options: { id: string; name: string }[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+    >
+      <option value="all">{allLabel}</option>
+      {options.map((opt) => (
+        <option key={opt.id} value={opt.id}>{opt.name}</option>
+      ))}
+    </select>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export function InventoryPage() {
@@ -311,7 +336,6 @@ export function InventoryPage() {
 
   const [allCards, setAllCards] = useState<IdbCard[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string }[]>([]);
   const [allEvents, setAllEvents] = useState<IdbEvent[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -333,7 +357,6 @@ export function InventoryPage() {
       const uMap: Record<string, string> = {};
       for (const u of users) uMap[u.id] = u.displayName;
       setUserMap(uMap);
-      setAllUsers(users.map((u) => ({ id: u.id, name: u.displayName })));
       setAllEvents(events);
     } finally {
       setLoading(false);
@@ -341,6 +364,11 @@ export function InventoryPage() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const allUsers = useMemo(
+    () => Object.entries(userMap).map(([id, name]) => ({ id, name })),
+    [userMap]
+  );
 
   // Reset pagination whenever filters change — tracked as a page count so the
   // reset happens in the same render pass that sees new filter values, avoiding
@@ -408,30 +436,10 @@ export function InventoryPage() {
               className="w-full h-10 border border-border rounded-xl pl-9 pr-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          {/* Owner + Event selects */}
           <div className="flex gap-2">
-            <select
-              value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">Semua pemilik</option>
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-            <select
-              value={eventFilter}
-              onChange={(e) => setEventFilter(e.target.value)}
-              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">Semua event</option>
-              {allEvents.map((ev) => (
-                <option key={ev.id} value={ev.id}>{ev.name}</option>
-              ))}
-            </select>
+            <FilterSelect value={ownerFilter} onChange={setOwnerFilter} allLabel="Semua pemilik" options={allUsers} />
+            <FilterSelect value={eventFilter} onChange={setEventFilter} allLabel="Semua event" options={allEvents} />
           </div>
-          {/* Status chips */}
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FILTERS.map((f) => (
               <button
@@ -474,7 +482,6 @@ export function InventoryPage() {
                     onClick={() => setSelectedCard(card)}
                     className={`w-full bg-card rounded-2xl border border-border px-4 py-3 flex flex-col gap-1 hover:bg-muted transition text-left active:scale-[0.98] ${card.status === "sold" ? "opacity-50" : ""}`}
                   >
-                    {/* Row 1: short ID + nego tag (left) · status + price (right) */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="font-mono text-xs font-extrabold bg-primary bg-opacity-10 text-primary px-2 py-0.5 rounded-lg shrink-0">
@@ -493,9 +500,7 @@ export function InventoryPage() {
                         </span>
                       </div>
                     </div>
-                    {/* Row 2: title */}
                     <p className="text-sm font-bold text-fg truncate">{card.title}</p>
-                    {/* Row 3: details */}
                     <p className="text-xs text-muted-fg truncate">
                       {card.condition}
                       {card.setName ? ` · ${card.setName}` : ""}
