@@ -7,7 +7,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
 import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
 import { api } from "../lib/api.js";
-import type { IdbCard, IdbEvent } from "../lib/db.js";
+import type { IdbCard } from "../lib/db.js";
 
 // ── Bottom price tap-and-hold reveal (2 s) ────────────────────────────────
 
@@ -322,31 +322,8 @@ function ReturnCardButton({ card, onReturned }: { card: IdbCard; onReturned: () 
 // ── Filter helpers ─────────────────────────────────────────────────────────
 
 type StatusFilter = "all" | IdbCard["status"];
-
-function FilterSelect({
-  value,
-  onChange,
-  allLabel,
-  options,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  allLabel: string;
-  options: { id: string; name: string }[];
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
-    >
-      <option value="all">{allLabel}</option>
-      {options.map((opt) => (
-        <option key={opt.id} value={opt.id}>{opt.name}</option>
-      ))}
-    </select>
-  );
-}
+type PricingFilter = "all" | "fixed" | "negotiable";
+type SortBy = "none" | "price_asc" | "price_desc" | "title_asc" | "shortId_asc";
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
@@ -356,11 +333,11 @@ export function InventoryPage() {
 
   const [allCards, setAllCards] = useState<IdbCard[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
-  const [allEvents, setAllEvents] = useState<IdbEvent[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
-  const [eventFilter, setEventFilter] = useState("all");
+  const [pricingFilter, setPricingFilter] = useState<PricingFilter>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("none");
   const [selectedCard, setSelectedCard] = useState<IdbCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [extraPages, setExtraPages] = useState(0);
@@ -368,16 +345,14 @@ export function InventoryPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cards, users, events] = await Promise.all([
+      const [cards, users] = await Promise.all([
         idb.cards.toArray(),
         idb.users.toArray(),
-        idb.events.toArray(),
       ]);
       setAllCards(cards);
       const uMap: Record<string, string> = {};
       for (const u of users) uMap[u.id] = u.displayName;
       setUserMap(uMap);
-      setAllEvents(events);
     } finally {
       setLoading(false);
     }
@@ -396,19 +371,22 @@ export function InventoryPage() {
   const [prevSearch, setPrevSearch] = useState(searchText);
   const [prevStatus, setPrevStatus] = useState(statusFilter);
   const [prevOwner, setPrevOwner] = useState(ownerFilter);
-  const [prevEvent, setPrevEvent] = useState(eventFilter);
+  const [prevPricing, setPrevPricing] = useState(pricingFilter);
+  const [prevSort, setPrevSort] = useState(sortBy);
   let currentExtraPages = extraPages;
   if (
     searchText !== prevSearch ||
     statusFilter !== prevStatus ||
     ownerFilter !== prevOwner ||
-    eventFilter !== prevEvent
+    pricingFilter !== prevPricing ||
+    sortBy !== prevSort
   ) {
     currentExtraPages = 0;
     setPrevSearch(searchText);
     setPrevStatus(statusFilter);
     setPrevOwner(ownerFilter);
-    setPrevEvent(eventFilter);
+    setPrevPricing(pricingFilter);
+    setPrevSort(sortBy);
     setExtraPages(0);
   }
 
@@ -416,17 +394,27 @@ export function InventoryPage() {
 
   const filteredCards = useMemo(() => {
     const lc = searchText.toLowerCase();
-    return allCards.filter((card) => {
+    const filtered = allCards.filter((card) => {
       const matchesSearch =
         !searchText ||
         card.title.toLowerCase().includes(lc) ||
         card.shortId.toLowerCase().includes(lc);
       const matchesStatus = statusFilter === "all" || card.status === statusFilter;
       const matchesOwner = ownerFilter === "all" || card.ownerUserId === ownerFilter;
-      const matchesEvent = eventFilter === "all" || card.eventId === eventFilter;
-      return matchesSearch && matchesStatus && matchesOwner && matchesEvent;
+      const matchesPricing = pricingFilter === "all" || card.pricingMode === pricingFilter;
+      return matchesSearch && matchesStatus && matchesOwner && matchesPricing;
     });
-  }, [allCards, searchText, statusFilter, ownerFilter, eventFilter]);
+
+    if (sortBy === "none") return filtered;
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "title_asc") return a.title.localeCompare(b.title, "id");
+      if (sortBy === "shortId_asc") return a.shortId.localeCompare(b.shortId);
+      const priceA = (a.pricingMode === "fixed" ? a.priceIdr : a.listedPriceIdr) ?? 0;
+      const priceB = (b.pricingMode === "fixed" ? b.priceIdr : b.listedPriceIdr) ?? 0;
+      return sortBy === "price_asc" ? priceA - priceB : priceB - priceA;
+    });
+  }, [allCards, searchText, statusFilter, ownerFilter, pricingFilter, sortBy]);
 
   const visibleCards = filteredCards.slice(0, visibleCount);
   const hasMore = filteredCards.length > visibleCount;
@@ -457,8 +445,27 @@ export function InventoryPage() {
             />
           </div>
           <div className="flex gap-2">
-            <FilterSelect value={ownerFilter} onChange={setOwnerFilter} allLabel="Semua pemilik" options={allUsers} />
-            <FilterSelect value={eventFilter} onChange={setEventFilter} allLabel="Semua event" options={allEvents} />
+            <select
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Semua pemilik</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="flex-1 h-9 border border-border rounded-xl px-2 text-xs text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="none">Urutan default</option>
+              <option value="price_asc">Harga: Rendah ke Tinggi</option>
+              <option value="price_desc">Harga: Tinggi ke Rendah</option>
+              <option value="title_asc">Nama A–Z</option>
+              <option value="shortId_asc">Kode A–Z</option>
+            </select>
           </div>
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FILTERS.map((f) => (
@@ -468,6 +475,27 @@ export function InventoryPage() {
                 className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
                   statusFilter === f.value
                     ? "bg-primary border-primary text-primary-fg"
+                    : "bg-card border-border text-muted-fg hover:bg-muted"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {(
+              [
+                { value: "all", label: "Semua harga" },
+                { value: "fixed", label: "Harga fix" },
+                { value: "negotiable", label: "Harga nego" },
+              ] as { value: PricingFilter; label: string }[]
+            ).map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setPricingFilter(f.value)}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${
+                  pricingFilter === f.value
+                    ? "bg-warning border-warning text-white"
                     : "bg-card border-border text-muted-fg hover:bg-muted"
                 }`}
               >
