@@ -53,7 +53,9 @@ export const useSyncStateStore = create<SyncStateStore>((set) => {
         effectiveIsOnline: computeEffective("online", s.networkMode),
       })),
     setNetworkMode: (networkMode) => {
-      localStorage.setItem(NETWORK_MODE_KEY, networkMode);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(NETWORK_MODE_KEY, networkMode);
+      }
       set((s) => ({
         networkMode,
         effectiveIsOnline: computeEffective(s.state, networkMode),
