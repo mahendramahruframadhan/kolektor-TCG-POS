@@ -90,6 +90,14 @@ export function App() {
             }
           />
           <Route
+            path="/reports/:code"
+            element={
+              <RequireAuth>
+                <ReportsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <RequireAdmin>

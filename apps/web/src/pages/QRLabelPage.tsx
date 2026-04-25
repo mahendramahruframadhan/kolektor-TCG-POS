@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Printer, CheckSquare, Square, Tag } from "lucide-react";
 import QRCode from "qrcode";
 import { idb } from "../lib/db.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import type { IdbCard } from "../lib/db.js";
+
+type PageLayout = "a4-multi" | "33x15" | "50x20";
+
+const PAGE_LAYOUT_OPTIONS: { value: PageLayout; label: string }[] = [
+  { value: "a4-multi", label: "Banyak label per halaman A4" },
+  { value: "33x15",    label: "1 label per halaman (33mm × 15mm)" },
+  { value: "50x20",    label: "1 label per halaman (50mm × 20mm)" },
+];
 
 // ── QR data URL cache ─────────────────────────────────────────────────────
 
@@ -17,51 +26,83 @@ async function generateQR(text: string): Promise<string> {
   });
 }
 
-// ── Single label (screen preview + print) ─────────────────────────────────
+// ── Single label ──────────────────────────────────────────────────────────
 
-function CardLabel({
-  card,
-  ownerName,
-}: {
-  card: IdbCard;
-  ownerName: string;
-}) {
+function CardLabel({ card, ownerName, layout }: { card: IdbCard; ownerName: string; layout: PageLayout }) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
     generateQR(card.shortId).then(setQrUrl).catch(() => null);
   }, [card.shortId]);
 
+  if (layout === "33x15") {
+    return (
+      <div
+        className="label-item flex items-center gap-1 bg-white border border-gray-300 overflow-hidden"
+        style={{ width: "33mm", height: "15mm", padding: "1mm", boxSizing: "border-box" }}
+      >
+        <div className="shrink-0" style={{ width: "13mm", height: "13mm" }}>
+          {qrUrl
+            ? <img src={qrUrl} alt={card.shortId} style={{ width: "13mm", height: "13mm", display: "block" }} />
+            : <div style={{ width: "13mm", height: "13mm", background: "#eee" }} />}
+        </div>
+        <div className="flex flex-col justify-center min-w-0 flex-1">
+          <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "7pt", letterSpacing: "0.05em" }} className="text-black">
+            {card.shortId}
+          </span>
+          <span style={{ fontWeight: 600, fontSize: "4.5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
+            {card.title.length > 32 ? card.title.slice(0, 30) + "…" : card.title}
+          </span>
+          <span style={{ fontSize: "4pt", color: "#666", marginTop: "0.3mm" }}>
+            {ownerName} · {card.condition}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (layout === "50x20") {
+    return (
+      <div
+        className="label-item flex items-center gap-2 bg-white border border-gray-300 overflow-hidden"
+        style={{ width: "50mm", height: "20mm", padding: "2mm", boxSizing: "border-box" }}
+      >
+        <div className="shrink-0" style={{ width: "16mm", height: "16mm" }}>
+          {qrUrl
+            ? <img src={qrUrl} alt={card.shortId} style={{ width: "16mm", height: "16mm", display: "block" }} />
+            : <div style={{ width: "16mm", height: "16mm", background: "#eee" }} />}
+        </div>
+        <div className="flex flex-col justify-center min-w-0 flex-1">
+          <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "8pt", letterSpacing: "0.05em" }} className="text-black">
+            {card.shortId}
+          </span>
+          <span style={{ fontWeight: 600, fontSize: "5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
+            {card.title.length > 38 ? card.title.slice(0, 36) + "…" : card.title}
+          </span>
+          <span style={{ fontSize: "4pt", color: "#666", marginTop: "0.3mm" }}>
+            {ownerName} · {card.condition}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // a4-multi: 50mm × 25mm
   return (
     <div
       className="label-item flex items-center gap-2 bg-white border border-gray-300 rounded overflow-hidden"
       style={{ width: "50mm", height: "25mm", padding: "2mm", boxSizing: "border-box" }}
     >
-      {/* QR code */}
       <div className="shrink-0" style={{ width: "20mm", height: "20mm" }}>
-        {qrUrl ? (
-          <img
-            src={qrUrl}
-            alt={card.shortId}
-            style={{ width: "20mm", height: "20mm", display: "block" }}
-          />
-        ) : (
-          <div style={{ width: "20mm", height: "20mm", background: "#eee" }} />
-        )}
+        {qrUrl
+          ? <img src={qrUrl} alt={card.shortId} style={{ width: "20mm", height: "20mm", display: "block" }} />
+          : <div style={{ width: "20mm", height: "20mm", background: "#eee" }} />}
       </div>
-
-      {/* Text */}
       <div className="flex flex-col justify-center min-w-0 flex-1" style={{ fontSize: "5.5pt", lineHeight: 1.3 }}>
-        <span
-          style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "8pt", letterSpacing: "0.05em" }}
-          className="text-black"
-        >
+        <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "8pt", letterSpacing: "0.05em" }} className="text-black">
           {card.shortId}
         </span>
-        <span
-          style={{ fontWeight: 600, fontSize: "5.5pt", wordBreak: "break-word", lineHeight: 1.2 }}
-          className="text-gray-800"
-        >
+        <span style={{ fontWeight: 600, fontSize: "5.5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
           {card.title.length > 40 ? card.title.slice(0, 38) + "…" : card.title}
         </span>
         <span style={{ fontSize: "4.5pt", color: "#666", marginTop: "0.5mm" }}>
@@ -72,37 +113,83 @@ function CardLabel({
   );
 }
 
-// ── Print styles injected into <head> ─────────────────────────────────────
+// ── Print styles ──────────────────────────────────────────────────────────
 
-const PRINT_STYLE = `
+function buildPrintStyle(layout: PageLayout): string {
+  if (layout === "33x15") {
+    return `
 @media print {
-  @page {
-    size: A4 landscape;
-    margin: 10mm;
-  }
-  body * { visibility: hidden !important; }
-  #label-print-area, #label-print-area * { visibility: visible !important; }
+  @page { size: 33mm 15mm; margin: 0; }
+  body > *:not(#label-print-area) { display: none !important; }
   #label-print-area {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .label-item {
+    width: 33mm !important;
+    height: 15mm !important;
+    overflow: hidden !important;
+    border: none !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  .label-item:last-child { break-after: auto !important; page-break-after: auto !important; }
+}`;
+  }
+
+  if (layout === "50x20") {
+    return `
+@media print {
+  @page { size: 50mm 20mm; margin: 0; }
+  body > *:not(#label-print-area) { display: none !important; }
+  #label-print-area {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  .label-item {
+    width: 50mm !important;
+    height: 20mm !important;
+    overflow: hidden !important;
+    border: none !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  .label-item:last-child { break-after: auto !important; page-break-after: auto !important; }
+}`;
+  }
+
+  // a4-multi
+  return `
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body > *:not(#label-print-area) { display: none !important; }
+  #label-print-area {
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 3mm !important;
+    margin: 0 !important;
     padding: 0 !important;
     background: white !important;
   }
   .label-item {
     width: 50mm !important;
     height: 25mm !important;
+    break-inside: avoid !important;
     page-break-inside: avoid !important;
     border: 0.3mm solid #ccc !important;
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
   }
+}`;
 }
-`;
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
@@ -115,14 +202,17 @@ export function QRLabelPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [pageLayout, setPageLayout] = useState<PageLayout>("a4-multi");
 
+  // Inject print style into <head>, update when layout changes
   useEffect(() => {
     const el = document.createElement("style");
-    el.textContent = PRINT_STYLE;
+    el.textContent = buildPrintStyle(pageLayout);
     document.head.appendChild(el);
     styleRef.current = el;
     return () => { el.remove(); };
-  }, []);
+  }, [pageLayout]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -140,12 +230,15 @@ export function QRLabelPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const allOwners = Object.entries(userMap).map(([id, name]) => ({ id, name }));
+
   const filtered = allCards.filter((c) => {
-    if (!search) return true;
-    return (
+    const matchesOwner = ownerFilter === "all" || c.ownerUserId === ownerFilter;
+    const matchesSearch =
+      !search ||
       c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.shortId.toLowerCase().includes(search.toLowerCase())
-    );
+      c.shortId.toLowerCase().includes(search.toLowerCase());
+    return matchesOwner && matchesSearch;
   });
 
   function toggleCard(id: string) {
@@ -164,20 +257,18 @@ export function QRLabelPage() {
     }
   }
 
-  function handlePrint() {
-    window.print();
-  }
-
   const selectedCards = allCards.filter((c) => selected.has(c.id));
   const allSelected = filtered.length > 0 && selected.size === filtered.length;
 
-  return (
+  const layoutLabel = pageLayout === "a4-multi"
+    ? "Landscape A4 · banyak label"
+    : pageLayout === "33x15"
+    ? "33mm × 15mm per label"
+    : "50mm × 20mm per label";
+
+  const page = (
     <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
-      <MobileAppBar
-        title="Cetak Label QR"
-        back
-        onBack={() => navigate(-1)}
-      />
+      <MobileAppBar title="Cetak Label QR" back onBack={() => navigate(-1)} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
         {/* Header info */}
@@ -187,12 +278,36 @@ export function QRLabelPage() {
           </div>
           <div>
             <p className="text-sm font-bold text-fg">Label QR Kartu</p>
-            <p className="text-xs text-muted-fg">Ukuran stiker 50×25mm · Landscape A4</p>
+            <p className="text-xs text-muted-fg">{layoutLabel}</p>
           </div>
         </div>
 
-        {/* Search + select all */}
+        {/* Filters + layout */}
         <div className="bg-card rounded-2xl border border-border p-3 space-y-2.5">
+          {/* Page layout dropdown */}
+          <select
+            value={pageLayout}
+            onChange={(e) => setPageLayout(e.target.value as PageLayout)}
+            className="w-full h-10 border border-border rounded-xl px-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {PAGE_LAYOUT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          {/* Owner filter */}
+          <select
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            className="w-full h-10 border border-border rounded-xl px-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">Semua pemilik</option>
+            {allOwners.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+
+          {/* Search */}
           <input
             type="search"
             value={search}
@@ -200,6 +315,7 @@ export function QRLabelPage() {
             placeholder="Cari kartu (judul atau ID)…"
             className="w-full h-10 border border-border rounded-xl px-3 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-primary"
           />
+
           <button
             onClick={toggleAll}
             className="flex items-center gap-2 text-sm font-semibold text-fg hover:text-primary transition"
@@ -254,12 +370,11 @@ export function QRLabelPage() {
             })}
           </ul>
         )}
-
       </div>
 
       {/* Floating print FAB */}
       <button
-        onClick={handlePrint}
+        onClick={() => window.print()}
         disabled={selected.size === 0}
         aria-label={selected.size > 0 ? `Cetak ${selected.size} label` : "Pilih kartu untuk mencetak"}
         className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -272,20 +387,27 @@ export function QRLabelPage() {
         )}
       </button>
 
-      {/* Hidden print area — rendered off-screen but visible to print CSS */}
-      <div
-        id="label-print-area"
-        style={{ position: "absolute", left: "-9999px", top: 0, display: "flex", flexWrap: "wrap", gap: "3mm" }}
-        aria-hidden="true"
-      >
-        {selectedCards.map((card) => (
-          <CardLabel
-            key={card.id}
-            card={card}
-            ownerName={userMap[card.ownerUserId] ?? card.ownerUserId}
-          />
-        ))}
-      </div>
     </div>
   );
+
+  // Render print area as direct child of body so page-break works correctly
+  const printArea = createPortal(
+    <div
+      id="label-print-area"
+      aria-hidden="true"
+      style={{ position: "absolute", left: "-9999px", top: 0, display: "flex", flexWrap: "wrap", gap: "3mm" }}
+    >
+      {selectedCards.map((card) => (
+        <CardLabel
+          key={card.id}
+          card={card}
+          ownerName={userMap[card.ownerUserId] ?? card.ownerUserId}
+          layout={pageLayout}
+        />
+      ))}
+    </div>,
+    document.body
+  );
+
+  return <>{page}{printArea}</>;
 }

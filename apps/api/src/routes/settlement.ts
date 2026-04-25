@@ -46,15 +46,28 @@ export async function settlementRoutes(
 
       // Build per-owner totals using ownerUserIdSnapshot (never join live cards)
       const txKindMap: Record<string, string> = {};
-      for (const tx of allTxs) txKindMap[tx.id] = tx.kind;
+      const txDiscountMap: Record<string, { discountIdr: number; subtotalIdr: number }> = {};
+      for (const tx of allTxs) {
+        txKindMap[tx.id] = tx.kind;
+        txDiscountMap[tx.id] = { discountIdr: tx.discountIdr, subtotalIdr: tx.subtotalIdr };
+      }
 
       const ownerTotals: Record<string, number> = {};
       const ownerItemCount: Record<string, number> = {};
       for (const item of allItems) {
         const kind = txKindMap[item.transactionId];
         const ownerId = item.ownerUserIdSnapshot;
-        // item.soldPriceIdr is already signed: negative for void/refund items (§7.3).
-        ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + item.soldPriceIdr;
+        const txDisc = txDiscountMap[item.transactionId];
+
+        // Distribute transaction-level discount proportionally so that
+        // sum(ownerTotals) == tx.totalIdr (not tx.subtotalIdr).
+        let effectivePrice = item.soldPriceIdr;
+        if (txDisc && txDisc.discountIdr > 0 && txDisc.subtotalIdr > 0) {
+          const share = Math.round(txDisc.discountIdr * item.soldPriceIdr / txDisc.subtotalIdr);
+          effectivePrice = item.soldPriceIdr - share;
+        }
+
+        ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + effectivePrice;
         if (kind === "sale") {
           ownerItemCount[ownerId] = (ownerItemCount[ownerId] ?? 0) + 1;
         }

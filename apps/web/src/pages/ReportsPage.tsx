@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
@@ -336,7 +336,7 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
     try {
       const event = events.find((e) => e.id === selectedEventId);
       const allTxs = await idb.transactions.where("eventId").equals(selectedEventId).toArray();
-      const dayTxs = allTxs.filter((tx) => toIsoDate(tx.createdAt) === selectedDate);
+      const dayTxs = allTxs.filter((tx) => tx.paidAt != null && toIsoDate(tx.paidAt) === selectedDate);
       const saleTxs = dayTxs.filter((t) => t.kind === "sale");
       const voidRefundTxs = dayTxs.filter((t) => t.kind === "void" || t.kind === "refund");
 
@@ -743,27 +743,36 @@ function InventoryDetail({ events }: { events: IdbEvent[] }) {
 
 export function ReportsPage() {
   const navigate = useNavigate();
+  const { code } = useParams<{ code?: string }>();
   const user = useAuthStore((s) => s.user);
-  const [activeReport, setActiveReport] = useState<ReportId | null>(null);
   const [events, setEvents] = useState<IdbEvent[]>([]);
 
   useEffect(() => {
     idb.events.toArray().then(setEvents);
   }, []);
 
+  const activeReport = REPORT_META.find(
+    (r) => r.code.toLowerCase() === code?.toLowerCase()
+  )?.id ?? null;
+
   const activeMeta = REPORT_META.find((r) => r.id === activeReport);
+
+  function handleSelect(id: ReportId) {
+    const meta = REPORT_META.find((r) => r.id === id);
+    if (meta) navigate(`/reports/${meta.code.toLowerCase()}`);
+  }
 
   return (
     <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
       <MobileAppBar
         title={activeMeta ? activeMeta.name : "Laporan"}
         back
-        onBack={activeReport ? () => setActiveReport(null) : () => navigate("/dashboard")}
+        onBack={activeReport ? () => navigate("/reports") : () => navigate("/dashboard")}
       />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4">
         {!activeReport && (
-          <ReportListPage onSelect={setActiveReport} />
+          <ReportListPage onSelect={handleSelect} />
         )}
         {activeReport === "daily" && <DailyDetail events={events} />}
         {activeReport === "monthly" && <MonthlyDetail />}

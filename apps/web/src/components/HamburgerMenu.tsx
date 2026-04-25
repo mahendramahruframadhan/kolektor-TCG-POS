@@ -23,7 +23,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
-  { to: "/settings",          Icon: Settings,     label: "Konfigurasi",      adminOnly: true },
   { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
   { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
   { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
@@ -92,6 +91,17 @@ export function HamburgerMenu() {
           ))}
 
           <div className="border-t border-border my-2 mx-4" />
+
+          {user?.role === "admin" && (
+            <Link
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
+            >
+              <Settings className="w-5 h-5 text-muted-fg shrink-0" aria-hidden="true" />
+              Konfigurasi
+            </Link>
+          )}
 
           <Link
             to="/docs"
