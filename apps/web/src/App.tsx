@@ -22,6 +22,7 @@ import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
+import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -48,7 +49,11 @@ export function App() {
         </a>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={
+            <OfflineModeGuard offlineMode="blocked">
+              <LoginPage />
+            </OfflineModeGuard>
+          } />
           <Route
             path="/dashboard"
             element={
@@ -69,7 +74,9 @@ export function App() {
             path="/inventory"
             element={
               <RequireAuth>
-                <InventoryPage />
+                <OfflineModeGuard offlineMode="partial">
+                  <InventoryPage />
+                </OfflineModeGuard>
               </RequireAuth>
             }
           />
@@ -77,7 +84,9 @@ export function App() {
             path="/stock-receive"
             element={
               <RequireAuth>
-                <StockReceivePage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <StockReceivePage />
+                </OfflineModeGuard>
               </RequireAuth>
             }
           />
@@ -85,7 +94,9 @@ export function App() {
             path="/reports"
             element={
               <RequireAuth>
-                <ReportsPage />
+                <OfflineModeGuard offlineMode="partial">
+                  <ReportsPage />
+                </OfflineModeGuard>
               </RequireAuth>
             }
           />
@@ -93,7 +104,9 @@ export function App() {
             path="/reports/:code"
             element={
               <RequireAuth>
-                <ReportsPage />
+                <OfflineModeGuard offlineMode="partial">
+                  <ReportsPage />
+                </OfflineModeGuard>
               </RequireAuth>
             }
           />
@@ -101,7 +114,9 @@ export function App() {
             path="/settings"
             element={
               <RequireAdmin>
-                <AdminPage />
+                <OfflineModeGuard offlineMode="partial">
+                  <AdminPage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -109,7 +124,9 @@ export function App() {
             path="/settings/users"
             element={
               <RequireAdmin>
-                <UsersAdminPage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <UsersAdminPage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -117,7 +134,9 @@ export function App() {
             path="/settings/events"
             element={
               <RequireAdmin>
-                <EventsAdminPage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <EventsAdminPage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -125,7 +144,9 @@ export function App() {
             path="/settings/oversold"
             element={
               <RequireAdmin>
-                <OversoldQueuePage />
+                <OfflineModeGuard offlineMode="partial">
+                  <OversoldQueuePage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -133,7 +154,9 @@ export function App() {
             path="/settings/audit-log"
             element={
               <RequireAdmin>
-                <AuditLogPage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <AuditLogPage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -141,7 +164,9 @@ export function App() {
             path="/settings/overrides"
             element={
               <RequireAdmin>
-                <OverrideHistoryPage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <OverrideHistoryPage />
+                </OfflineModeGuard>
               </RequireAdmin>
             }
           />
@@ -157,7 +182,9 @@ export function App() {
             path="/stock-receive/bulk"
             element={
               <RequireAuth>
-                <BulkImportPage />
+                <OfflineModeGuard offlineMode="blocked">
+                  <BulkImportPage />
+                </OfflineModeGuard>
               </RequireAuth>
             }
           />

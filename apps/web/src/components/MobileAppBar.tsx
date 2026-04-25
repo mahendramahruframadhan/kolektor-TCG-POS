@@ -2,6 +2,7 @@ import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { SyncDot } from "./SyncDot.js";
 import { HamburgerMenu } from "./HamburgerMenu.js";
+import { NetworkModeToggle } from "./NetworkModeToggle.js";
 
 interface MobileAppBarProps {
   title: string;
@@ -42,6 +43,7 @@ export function MobileAppBar({
       </div>
       <div className="flex items-center gap-2 ml-2 shrink-0">
         <SyncDot />
+        <NetworkModeToggle />
         {right}
         {showMenu && <HamburgerMenu />}
       </div>
