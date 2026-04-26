@@ -2,9 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import Fastify from "fastify";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import bcrypt from "bcryptjs";
 import * as schema from "@kolektapos/db/schema";
-import { applyDrizzleMigrations } from "../test-migrations.js";
+import { createTestDb, seedUser, seedEvent } from "../test-helpers.js";
 
 process.env.SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
 
@@ -14,25 +13,18 @@ import { sessionPlugin } from "../plugins/session.js";
 
 let app: ReturnType<typeof Fastify>;
 let sqlite: Database.Database;
+let db: ReturnType<typeof drizzle<typeof schema>>;
 let adminCookie: string;
 let eventId: string;
 let card1Id: string;
 let card2Id: string;
 
 beforeAll(async () => {
-  sqlite = new Database(":memory:");
-  applyDrizzleMigrations(sqlite);
-  const db = drizzle(sqlite, { schema });
+  ({ sqlite, db } = createTestDb());
 
-  const hash = await bcrypt.hash("pw-admin-12345", 10);
-  sqlite
-    .prepare("INSERT INTO users (id, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?)")
-    .run("admin1", "admin@test.com", hash, "Admin", "admin");
+  await seedUser(sqlite, { id: "admin1", email: "admin@test.com", role: "admin", password: "pw-admin-12345" });
 
-  eventId = crypto.randomUUID();
-  sqlite
-    .prepare("INSERT INTO events (id, name, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)")
-    .run(eventId, "Test Event", "2026-04-26", "2026-04-27", "active");
+  eventId = seedEvent(sqlite);
 
   card1Id = crypto.randomUUID();
   sqlite

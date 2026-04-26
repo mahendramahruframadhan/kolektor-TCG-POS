@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
 import * as schema from "@kolektapos/db/schema";
 import { cards, holds } from "@kolektapos/db/schema";
-import { applyDrizzleMigrations } from "../test-migrations.js";
+import { createTestDb, seedUser, seedEvent } from "../test-helpers.js";
 import { expireOverdueHolds } from "./cart-sweeper.js";
+import type Database from "better-sqlite3";
+import type { drizzle } from "drizzle-orm/better-sqlite3";
 
 process.env.SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
 
@@ -16,19 +16,11 @@ let soldCardId: string;
 let userId: string;
 
 beforeAll(async () => {
-  sqlite = new Database(":memory:");
-  applyDrizzleMigrations(sqlite);
-  db = drizzle(sqlite, { schema });
+  ({ sqlite, db } = createTestDb());
 
-  userId = crypto.randomUUID();
-  sqlite
-    .prepare("INSERT INTO users (id, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?)")
-    .run(userId, "user@test.com", "hash", "TestUser", "cashier");
+  userId = await seedUser(sqlite, { email: "user@test.com", passwordHash: "hash" });
 
-  const eventId = crypto.randomUUID();
-  sqlite
-    .prepare("INSERT INTO events (id, name, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)")
-    .run(eventId, "Test Event", "2026-04-26", "2026-04-27", "active");
+  seedEvent(sqlite);
 
   heldCardId = crypto.randomUUID();
   sqlite
