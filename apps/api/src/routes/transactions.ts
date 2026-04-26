@@ -14,7 +14,6 @@ export async function transactionRoutes(
 ) {
   const { db } = opts;
 
-  // GET /transactions — list transactions, optionally filtered by eventId
   app.get(
     "/transactions",
     { preHandler: requireAuth },
@@ -31,7 +30,6 @@ export async function transactionRoutes(
     }
   );
 
-  // GET /transactions/:id — get one transaction with its items
   app.get(
     "/transactions/:id",
     { preHandler: requireAuth },
@@ -55,7 +53,6 @@ export async function transactionRoutes(
     }
   );
 
-  // POST /transactions/:id/void — void a sale transaction
   app.post(
     "/transactions/:id/void",
     { preHandler: requireAdmin },
@@ -64,7 +61,6 @@ export async function transactionRoutes(
     }
   );
 
-  // POST /transactions/:id/refund — refund a sale transaction
   app.post(
     "/transactions/:id/refund",
     { preHandler: requireAdmin },
@@ -91,7 +87,6 @@ async function handleVoidRefund(
     return reply.status(400).send({ error: "clientId is required for idempotency" });
   }
 
-  // Idempotency: if this clientId already exists, return the existing transaction
   const existingTx = db
     .select()
     .from(transactions)
@@ -106,7 +101,6 @@ async function handleVoidRefund(
     return reply.status(200).send({ transaction: existingTx, items: existingItems });
   }
 
-  // Fetch parent transaction
   const parent = db
     .select()
     .from(transactions)
@@ -121,7 +115,6 @@ async function handleVoidRefund(
       .send({ error: "Only sale transactions can be voided or refunded" });
   }
 
-  // Check if already voided — look for a void child transaction
   const existingVoid = db
     .select()
     .from(transactions)
@@ -135,7 +128,6 @@ async function handleVoidRefund(
       .send({ error: "Transaction has already been voided", voidTransactionId: existingVoid.id });
   }
 
-  // Fetch parent items
   const parentItems = db
     .select()
     .from(transactionItems)
@@ -200,11 +192,9 @@ async function handleVoidRefund(
         .run();
     }
 
-    // Set cards.status = 'available' only if no other un-voided sale references the card
     const cardIds = parentItems.map((i) => i.cardId);
     if (cardIds.length > 0) {
       for (const cardId of cardIds) {
-        // Find any other sale transactions referencing this card (excluding the one being voided/refunded)
         const otherSales = db
           .select({ id: transactions.id })
           .from(transactionItems)
@@ -218,7 +208,6 @@ async function handleVoidRefund(
           )
           .all();
 
-        // Among those other sales, check if any are not themselves voided
         const otherUnvoidedSales = otherSales.filter((otherSale) => {
           const voidChild = db
             .select({ id: transactions.id })
@@ -233,7 +222,6 @@ async function handleVoidRefund(
           return !voidChild;
         });
 
-        // Only reopen the card if no other active (un-voided) sale holds it
         if (otherUnvoidedSales.length === 0) {
           db.update(cards)
             .set({ status: "available", oversold: false, updatedAt: nowSec, version: sql`version + 1` })

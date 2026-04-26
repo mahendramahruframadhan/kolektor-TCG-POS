@@ -55,8 +55,6 @@ export function NetworkModeToggle() {
             onClick={() => {
               setNetworkMode("auto");
               setOpen(false);
-              // Trigger an immediate sync when restoring online mode so pending
-              // transactions flush without waiting for the 60s background interval.
               opportunisticSync();
             }}
             className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition flex items-center gap-2"

@@ -1,4 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve, dirname } from "node:path";
 import { count, eq, min, max } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
@@ -8,6 +11,14 @@ import { requireAdmin } from "../plugins/auth-guard.js";
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
 const startedAtSec = Math.floor(Date.now() / 1000);
+
+// Derived once at startup from the same journal the migrator reads — never stale.
+const _journalPath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../packages/db/drizzle/meta/_journal.json"
+);
+const _journal = JSON.parse(readFileSync(_journalPath, "utf8")) as { entries: { tag: string }[] };
+const SCHEMA_VERSION = _journal.entries.at(-1)?.tag ?? "unknown";
 
 /**
  * GET /health — liveness + shallow DB probe + a few operational counters.
@@ -62,34 +73,22 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
     async (_request, reply) => {
       const nowSec = Math.floor(Date.now() / 1000);
 
-      const activeDraftCarts =
-        db
-          .select({ c: count() })
-          .from(carts)
-          .where(eq(carts.status, "draft"))
-          .get()?.c ?? 0;
-
-      const oldestDraftUpdatedAt =
-        db
-          .select({ m: min(carts.updatedAt) })
-          .from(carts)
-          .where(eq(carts.status, "draft"))
-          .get()?.m ?? null;
-
-      const oldestOpenCartAgeSec =
-        oldestDraftUpdatedAt !== null
-          ? nowSec - oldestDraftUpdatedAt
-          : null;
+      const draftStats = db
+        .select({ c: count(), oldest: min(carts.updatedAt) })
+        .from(carts)
+        .where(eq(carts.status, "draft"))
+        .get();
+      const activeDraftCarts = draftStats?.c ?? 0;
+      const oldestOpenCartAgeSec = draftStats?.oldest != null
+        ? nowSec - draftStats.oldest
+        : null;
 
       const lastPaidAt =
-        db
-          .select({ m: max(transactions.paidAt) })
-          .from(transactions)
-          .get()?.m ?? null;
+        db.select({ m: max(transactions.paidAt) }).from(transactions).get()?.m ?? null;
 
       return reply.send({
         ok: true,
-        schemaVersion: "0005",
+        schemaVersion: SCHEMA_VERSION,
         uptimeSec: nowSec - startedAtSec,
         activeDraftCarts,
         oldestOpenCartAgeSec,

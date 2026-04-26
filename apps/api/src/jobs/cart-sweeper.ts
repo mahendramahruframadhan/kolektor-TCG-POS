@@ -7,6 +7,38 @@ import { cards, carts, cartItems, holds, settings } from "@kolektapos/db/schema"
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
+/**
+ * Expire overdue holds and release their card locks.
+ * Only reverts cards that are still status="held" — never touches sold cards.
+ * Exported so tests can call this directly without going through the cron.
+ */
+export function expireOverdueHolds(db: Db, nowSec: number): number {
+  const expiredHolds = db
+    .select({ id: holds.id, cardId: holds.cardId })
+    .from(holds)
+    .where(and(lt(holds.expiresAt, nowSec), isNull(holds.releasedAt)))
+    .all();
+
+  if (expiredHolds.length === 0) return 0;
+
+  const expiredHoldIds = expiredHolds.map((h) => h.id);
+  const heldCardIds = expiredHolds.map((h) => h.cardId);
+
+  db.transaction(() => {
+    db.update(holds)
+      .set({ releasedAt: nowSec, releaseReason: "expired" })
+      .where(inArray(holds.id, expiredHoldIds))
+      .run();
+
+    db.update(cards)
+      .set({ status: "available", updatedAt: nowSec })
+      .where(and(inArray(cards.id, heldCardIds), eq(cards.status, "held")))
+      .run();
+  });
+
+  return expiredHolds.length;
+}
+
 /** Read cart_idle_ttl_minutes from settings, fallback to 30 */
 function getCartIdleTtlMinutes(db: Db): number {
   const row = db
@@ -103,32 +135,9 @@ export function startCartSweeper(
 
       // ── Expire overdue holds ────────────────────────────────────────────
       try {
-        const expiredHolds = db
-          .select({ id: holds.id, cardId: holds.cardId })
-          .from(holds)
-          .where(and(lt(holds.expiresAt, nowSec), isNull(holds.releasedAt)))
-          .all();
-
-        if (expiredHolds.length > 0) {
-          const expiredHoldIds = expiredHolds.map((h) => h.id);
-          const heldCardIds = expiredHolds.map((h) => h.cardId);
-          db.transaction(() => {
-            db.update(holds)
-              .set({ releasedAt: nowSec, releaseReason: "expired" })
-              .where(inArray(holds.id, expiredHoldIds))
-              .run();
-
-            db.update(cards)
-              .set({ status: "available", updatedAt: nowSec })
-              .where(and(inArray(cards.id, heldCardIds), eq(cards.status, "held")))
-              .run();
-          });
-
-          log?.info({
-            event: "holds_expired",
-            count: expiredHolds.length,
-            holdIds: expiredHolds.map((h) => h.id),
-          });
+        const expired = expireOverdueHolds(db, nowSec);
+        if (expired > 0) {
+          log?.info({ event: "holds_expired", count: expired });
         }
       } catch (holdErr) {
         log?.error({ err: holdErr, event: "hold_expiry_failed" });

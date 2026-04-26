@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { eq, and, lt, isNull, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as schema from "@kolektapos/db/schema";
 import { cards, holds } from "@kolektapos/db/schema";
 import { applyDrizzleMigrations } from "../test-migrations.js";
+import { expireOverdueHolds } from "./cart-sweeper.js";
 
 process.env.SESSION_SECRET = "test-secret-that-is-at-least-32-characters-long";
 
@@ -13,36 +14,6 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 let heldCardId: string;
 let soldCardId: string;
 let userId: string;
-
-/**
- * Mirrors the hold-expiry logic from startCartSweeper in cart-sweeper.ts.
- * Releases expired holds and only updates cards whose status is still "held".
- */
-function runHoldExpiry(nowSec: number): void {
-  const expiredHolds = db
-    .select({ id: holds.id, cardId: holds.cardId })
-    .from(holds)
-    .where(and(lt(holds.expiresAt, nowSec), isNull(holds.releasedAt)))
-    .all();
-
-  if (expiredHolds.length === 0) return;
-
-  const expiredHoldIds = expiredHolds.map((h) => h.id);
-  const heldCardIds = expiredHolds.map((h) => h.cardId);
-
-  db.transaction(() => {
-    db.update(holds)
-      .set({ releasedAt: nowSec, releaseReason: "expired" })
-      .where(inArray(holds.id, expiredHoldIds))
-      .run();
-
-    // Only revert cards that are still "held" — do not touch "sold" cards
-    db.update(cards)
-      .set({ status: "available", updatedAt: nowSec })
-      .where(and(inArray(cards.id, heldCardIds), eq(cards.status, "held")))
-      .run();
-  });
-}
 
 beforeAll(async () => {
   sqlite = new Database(":memory:");
@@ -90,7 +61,7 @@ describe("cart-sweeper hold expiry guard", () => {
       )
       .run(holdId, heldCardId, userId, expiredAt);
 
-    runHoldExpiry(nowSec);
+    expireOverdueHolds(db, nowSec);
 
     const card = db.select({ status: cards.status }).from(cards).where(eq(cards.id, heldCardId)).get();
     expect(card?.status).toBe("available");
@@ -115,7 +86,7 @@ describe("cart-sweeper hold expiry guard", () => {
       )
       .run(holdId, soldCardId, userId, expiredAt);
 
-    runHoldExpiry(nowSec);
+    expireOverdueHolds(db, nowSec);
 
     // Sold card must remain "sold" — the WHERE status='held' guard protects it
     const card = db.select({ status: cards.status }).from(cards).where(eq(cards.id, soldCardId)).get();

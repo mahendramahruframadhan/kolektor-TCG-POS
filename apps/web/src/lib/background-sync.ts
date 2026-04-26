@@ -39,6 +39,7 @@ const SyncUserPayloadSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(1),
   role: z.enum(["admin", "cashier"]),
+  version: z.number().int(),
 });
 
 const SyncTransactionPayloadSchema = z.object({
@@ -72,7 +73,7 @@ async function applyChanges(changes: SyncEntityChange[]): Promise<number> {
             console.warn(`[sync] Invalid card payload:`, parsed.error.flatten());
             break;
           }
-          await idb.cards.put(change.payload as unknown as IdbCard);
+          await idb.cards.put(parsed.data as unknown as IdbCard);
           break;
         }
         case "event": {
@@ -82,7 +83,7 @@ async function applyChanges(changes: SyncEntityChange[]): Promise<number> {
             console.warn(`[sync] Invalid event payload:`, parsed.error.flatten());
             break;
           }
-          await idb.events.put(change.payload as unknown as IdbEvent);
+          await idb.events.put(parsed.data as unknown as IdbEvent);
           break;
         }
         case "user": {
@@ -92,7 +93,7 @@ async function applyChanges(changes: SyncEntityChange[]): Promise<number> {
             console.warn(`[sync] Invalid user payload:`, parsed.error.flatten());
             break;
           }
-          await idb.users.put(change.payload as unknown as IdbUser);
+          await idb.users.put(parsed.data as unknown as IdbUser);
           break;
         }
         case "payment_channel":
@@ -113,7 +114,7 @@ async function applyChanges(changes: SyncEntityChange[]): Promise<number> {
             console.warn(`[sync] Invalid transaction payload:`, parsed.error.flatten());
             break;
           }
-          await idb.transactions.put(change.payload as unknown as IdbTransaction);
+          await idb.transactions.put(parsed.data as unknown as IdbTransaction);
           break;
         }
         case "transaction_item":
@@ -155,7 +156,6 @@ export async function deltaSyncPull(): Promise<void> {
     }
   }
 
-  // Handle oversold flags
   const cardChanges = response.changes
     .filter((c) => c.entityType === "card" && Boolean(c.payload["oversold"]));
 

@@ -50,9 +50,7 @@ export function OversoldQueuePage() {
       }
       const target = openSales.reduce((a, b) => ((a.createdAt ?? 0) >= (b.createdAt ?? 0) ? a : b));
       await api.transactions.void(target.id, { reason, clientId: crypto.randomUUID() });
-      // After void, clear the oversold flag in IDB so the UI reflects the resolved state.
-      // The server has already cleared the flag; this keeps IDB in sync without waiting
-      // for the next background delta pull.
+      // Server already cleared the flag; update IDB immediately rather than waiting for the next delta pull.
       await idb.cards.update(cardId, { oversold: false });
       await queryClient.invalidateQueries({ queryKey: ["oversold-cards"] });
       setVoidingId(null);
