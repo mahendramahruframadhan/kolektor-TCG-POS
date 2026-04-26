@@ -429,6 +429,7 @@ function ReceiptModal({ transactionId, totalIdr, itemCount, isPendingSync, onDon
       panelClassName="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-5 text-center"
     >
       <div id="receipt-modal-content" className="space-y-5">
+        <p data-testid="receipt-tx-id" className="sr-only">#{transactionId.slice(0, 8).toUpperCase()}</p>
         <div className="w-16 h-16 rounded-full bg-success bg-opacity-15 flex items-center justify-center mx-auto" aria-hidden="true">
           <Check className="w-8 h-8 text-success" />
         </div>
@@ -989,6 +990,7 @@ export function POSPage() {
               <CameraScanner onScan={(text) => handleScan(text)} />
               <input
                 ref={scanRef}
+                data-testid="scan-input"
                 type="text"
                 value={scanInput}
                 onChange={(e) => setScanInput(e.target.value.toUpperCase())}

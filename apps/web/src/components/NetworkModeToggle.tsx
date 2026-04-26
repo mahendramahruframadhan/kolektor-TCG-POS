@@ -24,6 +24,7 @@ export function NetworkModeToggle() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        data-testid="network-mode-toggle"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={isForceOffline ? "Mode jaringan: Offline" : "Mode jaringan: Auto"}

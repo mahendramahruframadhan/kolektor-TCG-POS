@@ -45,7 +45,18 @@ export function SyncDot({ state }: Props) {
     <div
       role="status"
       aria-live="polite"
-      aria-label={`Status sinkronisasi: ${titleText}`}
+      data-testid="sync-dot"
+      data-sync-state={effective}
+      data-pending-count={pendingCount}
+      aria-label={
+        pendingCount > 0
+          ? `Sync: ${pendingCount} pending`
+          : effective === "error"
+          ? `Sync: error`
+          : effective === "syncing"
+          ? `Sync: syncing`
+          : `Sync: online`
+      }
       title={titleText}
       className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
       style={{ background: `${color}18`, border: `1px solid ${color}40` }}
