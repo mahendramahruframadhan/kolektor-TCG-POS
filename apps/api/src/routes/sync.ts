@@ -12,7 +12,7 @@ import {
   paymentChannels,
   settings,
 } from "@kolektapos/db/schema";
-import { SyncPushRequestSchema } from "@kolektapos/sync";
+import { SyncPushRequestSchema, SyncOpSchema } from "@kolektapos/sync";
 import {
   CardConditionSchema,
   CardLanguageSchema,
@@ -36,6 +36,7 @@ const CreateCardPushPayloadSchema = z
     title: z.string().min(1),
     setName: z.string().default(""),
     setNumber: z.string().default(""),
+    category: z.string().default(""),
     rarity: z.string().default(""),
     language: CardLanguageSchema.default("EN"),
     edition: z.string().default(""),
@@ -95,7 +96,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
    * payment_channels, settings, all non-retired cards, active draft carts,
    * transactions from last 30 days.
    */
-  app.get("/sync/pull", { preHandler: requireAuth }, async (request, reply) => {
+  app.get("/sync/pull", { preHandler: requireAuth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request, reply) => {
     const { cursor: cursorStr = "0" } = request.query as Record<string, string>;
     const cursor = parseInt(cursorStr, 10) || 0;
     const nowSec = Math.floor(Date.now() / 1000);
@@ -142,12 +143,23 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
       const userChanges = db.select().from(users).where(gt(users.updatedAt, cursor)).all();
       const cartChanges = db.select().from(carts).where(gt(carts.updatedAt, cursor)).all();
       const txChanges = db.select().from(transactions).where(gt(transactions.createdAt, cursor)).all();
+      const txIds = txChanges.map((t) => t.id);
+      const txItemChanges =
+        txIds.length > 0
+          ? db.select().from(transactionItems).where(inArray(transactionItems.transactionId, txIds)).all()
+          : [];
+      // paymentChannels has no updatedAt — always return all (small, rarely changes)
+      const channelChanges = db.select().from(paymentChannels).all();
+      const settingChanges = db.select().from(settings).where(gt(settings.updatedAt, cursor)).all();
 
       for (const row of cardChanges) changes.push({ entityType: "card", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of eventChanges) changes.push({ entityType: "event", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of userChanges) changes.push({ entityType: "user", operation: "update", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of cartChanges) changes.push({ entityType: "cart", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of txChanges) changes.push({ entityType: "transaction", operation: "create", payload: row, serverReceivedAt: row.createdAt });
+      for (const row of txItemChanges) changes.push({ entityType: "transaction_item", operation: "create", payload: row, serverReceivedAt: row.createdAt });
+      for (const row of channelChanges) changes.push({ entityType: "payment_channel", operation: "update", payload: row, serverReceivedAt: 0 });
+      for (const row of settingChanges) changes.push({ entityType: "setting", operation: "update", payload: row, serverReceivedAt: row.updatedAt });
     }
 
     return reply.send({
@@ -163,8 +175,11 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
    * Client sends batch of ops. Server applies each, returns per-op result.
    * Server uses server_received_at (not client wall-clock) for ordering.
    */
-  app.post("/sync/push", { preHandler: requireAuth }, async (request, reply) => {
-    const parsed = SyncPushRequestSchema.safeParse(request.body);
+  app.post("/sync/push", { preHandler: requireAuth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const BoundedSyncPushRequestSchema = SyncPushRequestSchema.extend({
+      ops: z.array(SyncOpSchema).max(500),
+    });
+    const parsed = BoundedSyncPushRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
@@ -259,18 +274,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
     "/sync/photo/:cardClientId",
     { preHandler: requireAuth },
     async (request, reply) => {
-      const { cardClientId } = request.params as { cardClientId: string };
-      // Simplified: just acknowledge the upload
-      // Production implementation would write to PHOTO_STORAGE_PATH
-      const photoPath = `/storage/photos/${cardClientId}.jpg`;
-      const card = db.select().from(cards).where(eq(cards.clientId, cardClientId)).get();
-      if (card) {
-        db.update(cards)
-          .set({ photoPath, updatedAt: Math.floor(Date.now() / 1000), version: card.version + 1 })
-          .where(eq(cards.clientId, cardClientId))
-          .run();
-      }
-      return reply.send({ photoPath });
+      return reply.status(501).send({ error: "Photo upload not yet implemented" });
     }
   );
 }
