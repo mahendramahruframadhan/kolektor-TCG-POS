@@ -2,22 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { liveQuery } from "dexie";
+import { generateShortId } from "@kolektapos/qr";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { Toast } from "../components/Toast.js";
 import type { IdbUser } from "../lib/db.js";
-
-// ── Short ID generator ─────────────────────────────────────────────────────
-
-function genShortId(ownerIndex: number): string {
-  const ownerChar = ownerIndex < 10 ? String(ownerIndex) : "A";
-  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let rand = "";
-  for (let i = 0; i < 5; i++) rand += chars[Math.floor(Math.random() * 36)];
-  return `${ownerChar}-${rand}`;
-}
 
 // ── Thumbnail helper ───────────────────────────────────────────────────────
 
@@ -159,7 +150,7 @@ export function StockReceivePage() {
   function regenerateShortId() {
     const ownerIndex = users.findIndex((u) => u.id === form.ownerUserId);
     const idx = ownerIndex >= 0 ? ownerIndex : 0;
-    setShortId(genShortId(idx));
+    setShortId(generateShortId(idx));
   }
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {

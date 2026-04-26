@@ -120,6 +120,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@kolektapos/qr':
+        specifier: workspace:*
+        version: link:../../packages/qr
       '@kolektapos/sync':
         specifier: workspace:*
         version: link:../../packages/sync

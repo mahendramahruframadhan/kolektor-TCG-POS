@@ -11,6 +11,7 @@ function loadXlsx(): Promise<XlsxModule> {
   return xlsxPromise;
 }
 import { v4 as uuidv4 } from "uuid";
+import { generateShortId } from "@kolektapos/qr";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
@@ -52,14 +53,6 @@ interface ImportUser {
 
 function normalizeHeader(h: string): string {
   return h.trim().toLowerCase().replace(/\s+/g, "");
-}
-
-function genShortId(ownerIndex: number): string {
-  const ownerChar = ownerIndex < 10 ? String(ownerIndex) : "A";
-  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let rand = "";
-  for (let i = 0; i < 5; i++) rand += chars[Math.floor(Math.random() * 36)];
-  return `${ownerChar}-${rand}`;
 }
 
 function validateRow(
@@ -124,7 +117,7 @@ function validateRow(
   }
 
   const ownerIndex = matchedUser ? users.indexOf(matchedUser) : 0;
-  const shortId = genShortId(ownerIndex);
+  const shortId = generateShortId(ownerIndex);
   const clientId = uuidv4();
 
   const cardBody: Record<string, unknown> = {

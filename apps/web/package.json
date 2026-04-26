@@ -16,6 +16,7 @@
     "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@kolektapos/qr": "workspace:*",
     "@kolektapos/sync": "workspace:*",
     "@kolektapos/types": "workspace:*",
     "@tanstack/query-sync-storage-persister": "^5.67.2",
