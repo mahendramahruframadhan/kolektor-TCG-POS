@@ -1,5 +1,15 @@
 # Railway Deployment Implementation Plan
 
+> **Status: DEFERRED / NOT CURRENTLY RELEVANT (archived 2026-04-26)**
+>
+> Reviewed against the PRD and current architecture. The PRD explicitly specifies
+> "single VPS node, SQLite on persistent disk" (CLAUDE.md §Planned architecture).
+> This plan requires routing all API under `/api` prefix and adding Docker/static
+> serving — meaningful breaking changes with no current driver. The plan is
+> technically sound and can be executed if cloud deployment is ever needed;
+> keeping it here as a reference. Do not implement without re-opening the
+> deployment decision with the team.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deploy KolektaPOS as a single Docker container — Fastify serves both the compiled PWA static files and the API on one port.
