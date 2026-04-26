@@ -108,13 +108,15 @@ async function build() {
       },
     },
   });
-  await app.register(swaggerUi, {
-    routePrefix: "/docs/api",
-    uiConfig: { docExpansion: "list", deepLinking: false },
-  });
+  if (cfg.NODE_ENV !== "production") {
+    await app.register(swaggerUi, {
+      routePrefix: "/docs/api",
+      uiConfig: { docExpansion: "list", deepLinking: false },
+    });
+  }
 
   // Plugins
-  await sessionPlugin(app);
+  await sessionPlugin(app, { secret: cfg.SESSION_SECRET, nodeEnv: cfg.NODE_ENV });
   await auditPlugin(app, { db });
 
   // Routes
@@ -136,12 +138,24 @@ async function build() {
   await healthRoutes(app, { db });
 
   // Start background jobs
-  startCartSweeper(db, { logger: app.log });
-  startAuditPruner(db, { logger: app.log });
+  const cartSweeperTask = startCartSweeper(db, { logger: app.log });
+  const auditPrunerTask = startAuditPruner(db, { logger: app.log });
 
-  return app;
+  return { app, cartSweeperTask, auditPrunerTask };
 }
 
 // Bootstrap
-const app = await build();
+const { app, cartSweeperTask, auditPrunerTask } = await build();
 await app.listen({ port: cfg.PORT, host: cfg.HOST });
+
+const shutdown = async (signal: string) => {
+  app.log.info({ signal }, "Shutting down gracefully");
+  // Stop background jobs
+  cartSweeperTask.stop();
+  auditPrunerTask.stop();
+  await app.close();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => { shutdown("SIGTERM").catch(() => process.exit(1)); });
+process.on("SIGINT", () => { shutdown("SIGINT").catch(() => process.exit(1)); });
