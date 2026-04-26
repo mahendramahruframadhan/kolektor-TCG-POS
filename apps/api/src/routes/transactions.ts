@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ne, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { cards, transactions, transactionItems } from "@kolektapos/db/schema";
@@ -192,14 +192,46 @@ async function handleVoidRefund(
         .run();
     }
 
-    // Set cards.status = 'available' for all items (void/refund makes them available again)
+    // Set cards.status = 'available' only if no other un-voided sale references the card
     const cardIds = parentItems.map((i) => i.cardId);
     if (cardIds.length > 0) {
       for (const cardId of cardIds) {
-        db.update(cards)
-          .set({ status: "available", updatedAt: nowSec })
-          .where(eq(cards.id, cardId))
-          .run();
+        // Find any other sale transactions referencing this card (excluding the one being voided/refunded)
+        const otherSales = db
+          .select({ id: transactions.id })
+          .from(transactionItems)
+          .innerJoin(transactions, eq(transactions.id, transactionItems.transactionId))
+          .where(
+            and(
+              eq(transactionItems.cardId, cardId),
+              eq(transactions.kind, "sale"),
+              ne(transactions.id, parentId),
+            )
+          )
+          .all();
+
+        // Among those other sales, check if any are not themselves voided
+        const otherUnvoidedSales = otherSales.filter((otherSale) => {
+          const voidChild = db
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(
+              and(
+                eq(transactions.parentTransactionId, otherSale.id),
+                eq(transactions.kind, "void"),
+              )
+            )
+            .get();
+          return !voidChild;
+        });
+
+        // Only reopen the card if no other active (un-voided) sale holds it
+        if (otherUnvoidedSales.length === 0) {
+          db.update(cards)
+            .set({ status: "available", updatedAt: nowSec, version: sql`version + 1` })
+            .where(eq(cards.id, cardId))
+            .run();
+        }
       }
     }
   });
