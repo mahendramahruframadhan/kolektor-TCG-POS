@@ -121,7 +121,7 @@ export function startCartSweeper(
 
               db.update(cards)
                 .set({ status: "available", updatedAt: nowSec })
-                .where(eq(cards.id, hold.cardId))
+                .where(and(eq(cards.id, hold.cardId), eq(cards.status, "held")))
                 .run();
             }
           });

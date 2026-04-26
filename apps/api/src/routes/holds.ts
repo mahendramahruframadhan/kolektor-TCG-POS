@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { eq, isNull } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
-import { cards, holds } from "@kolektapos/db/schema";
+import { cards, carts, holds } from "@kolektapos/db/schema";
 import { requireAuth, makeRequireHoldOwnerOrAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
@@ -26,6 +26,9 @@ export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
     if (typeof body.expiresInMinutes !== "number" || body.expiresInMinutes <= 0) {
       return reply.status(400).send({ error: "expiresInMinutes must be a positive number" });
     }
+    if (body.expiresInMinutes > 1440) {
+      return reply.status(400).send({ error: "expiresInMinutes cannot exceed 1440 (24 hours)" });
+    }
 
     const card = db.select().from(cards).where(eq(cards.id, body.cardId)).get();
     if (!card) {
@@ -35,6 +38,12 @@ export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
       return reply
         .status(409)
         .send({ error: `Card is not available (status: ${card.status})` });
+    }
+    if (card.lockedByCartId) {
+      const lockingCart = db.select().from(carts).where(eq(carts.id, card.lockedByCartId)).get();
+      if (lockingCart && lockingCart.status === "draft") {
+        return reply.status(409).send({ error: "Card is locked in an active cart" });
+      }
     }
 
     const nowSec = Math.floor(Date.now() / 1000);
@@ -83,10 +92,14 @@ export async function holdRoutes(app: FastifyInstance, opts: { db: Db }) {
           .where(eq(holds.id, id))
           .run();
 
-        db.update(cards)
-          .set({ status: "available", updatedAt: nowSec })
-          .where(eq(cards.id, hold.cardId))
-          .run();
+        // Only revert to available if card is still held (not sold in the meantime)
+        const currentCard = db.select().from(cards).where(eq(cards.id, hold.cardId)).get();
+        if (currentCard && currentCard.status === "held") {
+          db.update(cards)
+            .set({ status: "available", updatedAt: nowSec })
+            .where(eq(cards.id, hold.cardId))
+            .run();
+        }
       });
 
       return reply.status(204).send();
