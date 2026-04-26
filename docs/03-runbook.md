@@ -219,3 +219,62 @@ If stock-receive says "duplicate short ID":
 - **Revota** — admin account, has backup files
 - **VPS access** — SSH key required; keep credentials in password manager
 - **Issues** — file at https://github.com/thebennies/kolektapos/issues
+
+---
+
+## 10. Troubleshooting
+
+### Sync not working / SyncDot stuck in error state
+
+**Symptoms:** SyncDot shows red error icon; cashiers see "Sinkronisasi gagal".
+
+1. Check API connectivity: from the tablet browser, open `http://[server-ip]:3001/health`. Should return `{"ok":true}`.
+2. Check the browser console (F12 → Console) for `[sync]` error messages.
+3. If the error is "Unauthorized (401)", the session has expired — cashier must log out and log back in.
+4. If the error is a network error, check Wi-Fi on the tablet.
+5. If sync keeps failing, force a full re-sync: log out → log in (triggers `resetAndSync`).
+
+### Pending transactions not flushing (SyncDot shows count badge)
+
+**Symptoms:** SyncDot shows a number badge (e.g. `(2)`); receipts say "Tersimpan lokal".
+
+1. The transactions are safe in IndexedDB — they will flush as soon as connectivity is restored.
+2. Check connectivity (see above).
+3. To trigger an immediate flush: switch to "Offline" mode and back to "Auto" using the NetworkModeToggle in the app bar.
+4. If transactions remain stuck after connectivity is restored for >5 minutes, check the console for flush rejection reasons. Common cause: a card was sold by another device in the meantime (oversold) — the flush still succeeds, the card is just flagged for the Oversold Queue.
+
+### Oversold queue not clearing
+
+**Symptoms:** Admin sees cards in `Settings → Antrian Oversold` that should be resolved.
+
+1. Navigate to `Settings → Antrian Oversold`.
+2. For each card, click "Void Transaksi", enter a reason, and confirm.
+3. After voiding, the card returns to `available` or remains `sold` depending on how many concurrent sales exist.
+4. If a card still appears after voiding: another sale transaction for the same card still exists. Void that one too, or accept the state and handle manually during reconciliation.
+
+### Card scan says "tidak ditemukan di database lokal"
+
+**Symptoms:** Scanning a valid card QR code shows "Kartu tidak ditemukan di database lokal."
+
+1. The card is not in IDB yet — trigger a fresh sync by logging out and logging back in.
+2. If the card was just added in StockReceive on another device, wait 60 seconds for background sync.
+3. Verify the card exists on the server: `http://[server-ip]:3001/api/cards/by-short-id/[SHORT-ID]`.
+
+### Receipt says the wrong total / settlement numbers don't add up
+
+1. Settlement uses `ownerUserIdSnapshot` on `transaction_items` — it never reads the live `cards.ownerUserId`. If a card's owner was changed after sale, the settlement correctly uses the owner at time of sale.
+2. Discounts are distributed proportionally (last-owner absorbs rounding residual). A ±1 IDR difference per transaction is normal in multi-item carts with discounts.
+3. Void/refund transactions appear as negative values in settlement. Check the "Void" column in the settlement CSV.
+
+### API won't start / port already in use
+
+```bash
+# Find what's using port 3001
+lsof -i :3001
+
+# Kill it (replace PID)
+kill -9 <PID>
+
+# Restart
+pnpm --filter @kolektapos/api dev
+```
