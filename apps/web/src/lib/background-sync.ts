@@ -24,7 +24,8 @@ function setSyncCursor(cursor: number) {
 
 // ── Merge entity changes into IDB ─────────────────────────────────────────
 
-async function applyChanges(changes: unknown[]) {
+async function applyChanges(changes: unknown[]): Promise<number> {
+  let failCount = 0;
   for (const change of changes as Array<{
     entityType: string;
     operation: string;
@@ -64,9 +65,11 @@ async function applyChanges(changes: unknown[]) {
           break;
       }
     } catch (err) {
+      failCount++;
       console.warn(`[sync] Failed to apply change for ${change.entityType}:`, err);
     }
   }
+  return failCount;
 }
 
 /**
@@ -83,7 +86,7 @@ export async function deltaSyncPull(): Promise<void> {
     hasMore: boolean;
   };
 
-  await applyChanges(response.changes);
+  const failCount = await applyChanges(response.changes);
 
   // Handle cart expiry notices (§16.3 cart_expired scenario)
   const cartChanges = (response.changes as Array<{ entityType: string; payload: { status: string; id: string } }>)
@@ -105,7 +108,11 @@ export async function deltaSyncPull(): Promise<void> {
   }
 
   if (response.newCursor > cursor) {
-    setSyncCursor(response.newCursor);
+    if (failCount === 0) {
+      setSyncCursor(response.newCursor);
+    } else {
+      console.warn(`[sync] Skipping cursor advance: ${failCount} change(s) failed to apply`);
+    }
   }
 
   // If more changes available, recurse
@@ -128,20 +135,30 @@ export async function flushPendingTransactions(): Promise<void> {
     )
   );
 
-  const response = await api.sync.flushPendingTx(pending);
+  try {
+    const response = await api.sync.flushPendingTx(pending);
 
-  for (const result of response.results) {
-    if (result.status === "accepted") {
-      await idb.pendingTransactions.update(result.clientId, {
-        syncStatus: "synced",
-        syncedAt: Date.now(),
-      });
-    } else {
-      await idb.pendingTransactions.update(result.clientId, {
-        syncStatus: "error",
-        syncError: result.reason,
-      });
+    for (const result of response.results) {
+      if (result.status === "accepted") {
+        await idb.pendingTransactions.update(result.clientId, {
+          syncStatus: "synced",
+          syncedAt: Date.now(),
+        });
+      } else {
+        await idb.pendingTransactions.update(result.clientId, {
+          syncStatus: "error",
+          syncError: result.reason,
+        });
+      }
     }
+  } catch (err) {
+    // Network failure — reset syncing → pending so they can retry
+    await Promise.all(
+      pending.map((tx) =>
+        idb.pendingTransactions.update(tx.clientId, { syncStatus: "pending" })
+      )
+    );
+    throw err;
   }
 
   const stillPending = await idb.pendingTransactions
