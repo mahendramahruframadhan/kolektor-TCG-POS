@@ -88,92 +88,93 @@ export async function flushPendingTxRoute(
           .all();
         const cardMap = new Map(cardRows.map((c) => [c.id, c]));
 
-        // Change 3b/3c: validate totals and per-item rules; use rejectReason flag to abort
+        // Change 3b/3c: validate totals and per-item rules; throw inside the transaction to
+        // guarantee rollback — better-sqlite3 only rolls back on thrown exceptions, not plain return.
         let rejectReason: string | null = null;
 
-        db.transaction(() => {
-          // Change 3c: verify subtotal and total arithmetic
-          const computedSubtotal = tx.items.reduce((sum, item) => sum + item.soldPriceIdr, 0);
-          if (computedSubtotal !== tx.subtotalIdr) {
-            rejectReason = "subtotalIdr mismatch";
-            return; // triggers rollback
-          }
-          if (tx.totalIdr !== tx.subtotalIdr - tx.discountIdr) {
-            rejectReason = "totalIdr mismatch";
-            return; // triggers rollback
-          }
-
-          db.insert(transactions)
-            .values({
-              id: txId,
-              clientId: tx.clientId,
-              cartId: null,
-              eventId: tx.eventId,
-              cashierUserId,
-              kind: "sale",
-              subtotalIdr: tx.subtotalIdr,
-              discountIdr: tx.discountIdr,
-              discountReason: tx.discountReason,
-              totalIdr: tx.totalIdr,
-              paymentChannelId: tx.paymentChannelId ?? null,
-              paymentNote: tx.paymentNote,
-              paidAt: nowSec,
-              notes: tx.notes,
-            })
-            .run();
-
-          // Change 3a/3b: validate each item and override ownerUserIdSnapshot with server truth
-          for (const item of tx.items) {
-            const card = cardMap.get(item.cardId);
-            if (!card) {
-              rejectReason = `Card ${item.cardId} not found`;
-              return; // triggers rollback
+        try {
+          db.transaction(() => {
+            // Change 3c: verify subtotal and total arithmetic
+            const computedSubtotal = tx.items.reduce((sum, item) => sum + item.soldPriceIdr, 0);
+            if (computedSubtotal !== tx.subtotalIdr) {
+              throw new Error("subtotalIdr mismatch");
+            }
+            if (tx.totalIdr !== tx.subtotalIdr - tx.discountIdr) {
+              throw new Error("totalIdr mismatch");
             }
 
-            // Override client-supplied snapshot with server's authoritative owner
-            const verifiedOwner = card.ownerUserId;
-
-            // Change 3b: price floor check for negotiable cards
-            if (card.pricingMode === "negotiable" && card.bottomPriceIdr !== null) {
-              if (item.soldPriceIdr < card.bottomPriceIdr && !item.overrideBelowBottom) {
-                rejectReason = `soldPriceIdr below floor for card ${item.cardId}`;
-                return; // triggers rollback
-              }
-            }
-
-            db.insert(transactionItems)
+            db.insert(transactions)
               .values({
-                id: crypto.randomUUID(),
-                transactionId: txId,
-                cardId: item.cardId,
-                ownerUserIdSnapshot: verifiedOwner,
-                listedPriceIdrSnapshot: item.listedPriceIdrSnapshot,
-                soldPriceIdr: item.soldPriceIdr,
-                lineDiscountIdr: item.lineDiscountIdr,
-                lineDiscountReason: item.lineDiscountReason,
-                overrideBelowBottom: item.overrideBelowBottom,
-                overrideReason: item.overrideReason,
+                id: txId,
+                clientId: tx.clientId,
+                cartId: null,
+                eventId: tx.eventId,
+                cashierUserId,
+                kind: "sale",
+                subtotalIdr: tx.subtotalIdr,
+                discountIdr: tx.discountIdr,
+                discountReason: tx.discountReason,
+                totalIdr: tx.totalIdr,
+                paymentChannelId: tx.paymentChannelId ?? null,
+                paymentNote: tx.paymentNote,
+                paidAt: nowSec,
+                notes: tx.notes,
               })
               .run();
-          }
 
-          for (const cardId of cardIds) {
-            const card = cardMap.get(cardId);
-            db.update(cards)
-              .set({
-                status: "sold",
-                // Change 4: preserve oversold flag once set; only set it if card was already sold
-                oversold: (card?.oversold === true) ? true : (card?.status === "sold"),
-                lockedByCartId: null,
-                lockedByUserId: null,
-                lockedAt: null,
-                updatedAt: nowSec,
-                version: (card?.version ?? 1) + 1,
-              })
-              .where(eq(cards.id, cardId))
-              .run();
-          }
-        });
+            // Change 3a/3b: validate each item and override ownerUserIdSnapshot with server truth
+            for (const item of tx.items) {
+              const card = cardMap.get(item.cardId);
+              if (!card) {
+                throw new Error(`Card ${item.cardId} not found`);
+              }
+
+              // Override client-supplied snapshot with server's authoritative owner
+              const verifiedOwner = card.ownerUserId;
+
+              // Change 3b: price floor check for negotiable cards
+              if (card.pricingMode === "negotiable" && card.bottomPriceIdr !== null) {
+                if (item.soldPriceIdr < card.bottomPriceIdr && !item.overrideBelowBottom) {
+                  throw new Error(`soldPriceIdr below floor for card ${item.cardId}`);
+                }
+              }
+
+              db.insert(transactionItems)
+                .values({
+                  id: crypto.randomUUID(),
+                  transactionId: txId,
+                  cardId: item.cardId,
+                  ownerUserIdSnapshot: verifiedOwner,
+                  listedPriceIdrSnapshot: item.listedPriceIdrSnapshot,
+                  soldPriceIdr: item.soldPriceIdr,
+                  lineDiscountIdr: item.lineDiscountIdr,
+                  lineDiscountReason: item.lineDiscountReason,
+                  overrideBelowBottom: item.overrideBelowBottom,
+                  overrideReason: item.overrideReason,
+                })
+                .run();
+            }
+
+            for (const cardId of cardIds) {
+              const card = cardMap.get(cardId);
+              db.update(cards)
+                .set({
+                  status: "sold",
+                  // Change 4: preserve oversold flag once set; only set it if card was already sold
+                  oversold: (card?.oversold === true) ? true : (card?.status === "sold"),
+                  lockedByCartId: null,
+                  lockedByUserId: null,
+                  lockedAt: null,
+                  updatedAt: nowSec,
+                  version: (card?.version ?? 1) + 1,
+                })
+                .where(eq(cards.id, cardId))
+                .run();
+            }
+          });
+        } catch (err) {
+          rejectReason = err instanceof Error ? err.message : "internal error";
+        }
 
         if (rejectReason) {
           results.push({ clientId: tx.clientId, status: "rejected", reason: rejectReason });
