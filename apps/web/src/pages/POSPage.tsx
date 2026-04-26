@@ -844,6 +844,7 @@ export function POSPage() {
     } else {
       const txClientId = uuidv4();
       const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
+      if (!activeEvent) throw new Error("Tidak ada event aktif. Tidak bisa bayar dalam mode offline.");
 
       const pendingItems: IdbPendingTransactionItem[] = cartItems.map((item) => {
         const card = cartCards[item.cardId];
@@ -867,7 +868,7 @@ export function POSPage() {
       await idb.pendingTransactions.put({
         clientId: txClientId,
         cartClientId: activeCartId,
-        eventId: activeEvent?.id ?? "",
+        eventId: activeEvent.id,
         items: pendingItems,
         subtotalIdr,
         discountIdr: discountIdr || 0,
