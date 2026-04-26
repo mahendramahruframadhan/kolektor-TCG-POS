@@ -33,10 +33,20 @@ export async function paymentChannelRoutes(app: FastifyInstance, opts: { db: Db 
     const body = UpdatePaymentChannelSchema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
 
+    const bodyWithVersion = (request.body as { version?: number });
+    const clientVersion = bodyWithVersion.version;
+    if (typeof clientVersion !== "number") {
+      return reply.status(400).send({ error: "version is required for updates" });
+    }
+
     const row = db.select().from(paymentChannels).where(eq(paymentChannels.id, id)).get();
     if (!row) return reply.status(404).send({ error: "Not found" });
 
-    db.update(paymentChannels).set(body.data).where(eq(paymentChannels.id, id)).run();
+    if (row.version !== clientVersion) {
+      return reply.status(409).send({ error: "Conflict: version mismatch", currentVersion: row.version });
+    }
+
+    db.update(paymentChannels).set({ ...body.data, version: row.version + 1 }).where(eq(paymentChannels.id, id)).run();
     return reply.send(db.select().from(paymentChannels).where(eq(paymentChannels.id, id)).get());
   });
 
@@ -45,8 +55,8 @@ export async function paymentChannelRoutes(app: FastifyInstance, opts: { db: Db 
     const row = db.select().from(paymentChannels).where(eq(paymentChannels.id, id)).get();
     if (!row) return reply.status(404).send({ error: "Not found" });
 
-    // Soft-delete by deactivating
-    db.update(paymentChannels).set({ isActive: false }).where(eq(paymentChannels.id, id)).run();
+    // Soft-delete by deactivating; bump version so clients detect the mutation
+    db.update(paymentChannels).set({ isActive: false, version: row.version + 1 }).where(eq(paymentChannels.id, id)).run();
     return reply.send({ ok: true });
   });
 }

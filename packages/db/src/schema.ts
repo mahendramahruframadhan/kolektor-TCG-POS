@@ -50,6 +50,7 @@ export const paymentChannels = sqliteTable("payment_channels", {
   type: text("type").notNull().default("other"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
+  version: integer("version").notNull().default(1),
 });
 
 // ── settings ──────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ export const settings = sqliteTable("settings", {
   valueJson: text("value_json").notNull(),
   updatedByUserId: text("updated_by_user_id").references(() => users.id),
   updatedAt: integer("updated_at").notNull().default(now),
+  version: integer("version").notNull().default(1),
 });
 
 // ── cards ─────────────────────────────────────────────────────────────────
@@ -206,6 +208,7 @@ export const cartItems = sqliteTable("cart_items", {
   overrideReason: text("override_reason"),
   createdAt: integer("created_at").notNull().default(now),
   updatedAt: integer("updated_at").notNull().default(now),
+  version: integer("version").notNull().default(1),
 });
 
 // ── transactions (APPEND-ONLY) ────────────────────────────────────────────

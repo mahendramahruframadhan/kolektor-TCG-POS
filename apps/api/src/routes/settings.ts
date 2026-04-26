@@ -43,8 +43,15 @@ export async function settingsRoutes(app: FastifyInstance, opts: { db: Db }) {
       return reply.status(422).send({ error: validated.error });
     }
 
+    const bodyRaw = request.body as { value?: unknown; version?: number };
+    const clientVersion = bodyRaw.version; // undefined means new key (no conflict possible)
+
     const existing = db.select().from(settings).where(eq(settings.key, key)).get();
     const userId = request.session.userId;
+
+    if (existing && clientVersion !== undefined && existing.version !== clientVersion) {
+      return reply.status(409).send({ error: "Conflict: version mismatch", currentVersion: existing.version });
+    }
 
     if (existing) {
       db.update(settings)
@@ -52,6 +59,7 @@ export async function settingsRoutes(app: FastifyInstance, opts: { db: Db }) {
           valueJson: JSON.stringify(validated.value),
           updatedByUserId: userId,
           updatedAt: Math.floor(Date.now() / 1000),
+          version: (existing.version ?? 1) + 1,
         })
         .where(eq(settings.key, key))
         .run();
