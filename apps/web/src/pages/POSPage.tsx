@@ -65,7 +65,7 @@ function StatusBadge({
 // ── Bottom price tap-and-hold reveal ───────────────────────────────────────
 
 function BottomPriceReveal({ amount }: { amount: number | undefined }) {
-  const { revealed, startReveal, endReveal } = useTapHoldReveal(2000);
+  const { revealed, startReveal, endReveal } = useTapHoldReveal();
 
   // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
   // Space/Enter pressed → start the hold timer; released → cancel the
@@ -753,21 +753,24 @@ export function POSPage() {
   async function handleRemoveItem(item: IdbCartItem) {
     if (!activeCartId) return;
     setRemoveError(null);
-    try {
-      await api.carts.removeItem(activeCartId, item.cardId);
-    } catch (err: unknown) {
-      const status = (err as { status?: number }).status;
-      if (status === 404) {
-        // Item tidak ada di server — tetap lanjutkan cleanup lokal
-      } else if (status === 409) {
-        // Keranjang sudah tidak draft di server — bersihkan state lokal
-        setRemoveError("Keranjang sudah tidak aktif di server. Membuat keranjang baru…");
-        handleAbandonCart();
-        return;
-      } else {
-        const message = err instanceof Error ? err.message : "Gagal menghapus dari keranjang.";
-        setRemoveError(message);
-        return;
+    // Only call API if cart exists on server (not offline-created)
+    if (!activeCartIsOffline) {
+      try {
+        await api.carts.removeItem(activeCartId, item.cardId);
+      } catch (err: unknown) {
+        const status = (err as { status?: number }).status;
+        if (status === 404) {
+          // Item tidak ada di server — tetap lanjutkan cleanup lokal
+        } else if (status === 409) {
+          // Keranjang sudah tidak draft di server — bersihkan state lokal
+          setRemoveError("Keranjang sudah tidak aktif di server. Membuat keranjang baru…");
+          handleAbandonCart();
+          return;
+        } else {
+          const message = err instanceof Error ? err.message : "Gagal menghapus dari keranjang.";
+          setRemoveError(message);
+          return;
+        }
       }
     }
     try {
