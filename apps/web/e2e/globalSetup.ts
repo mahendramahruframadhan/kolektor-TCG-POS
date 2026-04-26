@@ -1,6 +1,6 @@
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
-import { rmSync } from "fs";
+import { rmSync, existsSync } from "fs";
 import { spawn } from "child_process";
 import bcrypt from "bcryptjs";
 import { runMigrations, seed } from "@kolektapos/db";
@@ -163,6 +163,10 @@ export default async function globalSetup() {
 
   // Spawn the API — tsx found at repo root node_modules/.bin/tsx
   const tsxBin = resolve(REPO_ROOT, "node_modules/.bin/tsx");
+  if (!existsSync(tsxBin)) {
+    throw new Error(`tsx binary not found at ${tsxBin}. Run pnpm install in the repo root.`);
+  }
+  // Intentional spread (not a reference) — delete calls below only affect testEnv, not process.env
   const testEnv: Record<string, string | undefined> = {
     ...process.env,
     DATABASE_PATH: TEST_DB,
@@ -178,6 +182,18 @@ export default async function globalSetup() {
     cwd: API_DIR,
     env: testEnv as NodeJS.ProcessEnv,
     stdio: ["ignore", "pipe", "pipe"],
+  });
+  apiProcess.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(`[api] ${chunk}`);
+  });
+  apiProcess.on("error", (err) => {
+    throw new Error(`Failed to spawn API process: ${err.message}`);
+  });
+  // Log early exits (before health check passes) so we know why startup failed
+  apiProcess.on("exit", (code) => {
+    if (code !== 0 && code !== null) {
+      process.stderr.write(`[api] Process exited with code ${code} before health check passed\n`);
+    }
   });
   process.env.__E2E_API_PID = String(apiProcess.pid);
 
