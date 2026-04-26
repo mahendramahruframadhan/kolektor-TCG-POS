@@ -4,7 +4,7 @@ Private, self-hosted, single-booth POS for Revota + 10 co-owners running shared 
 
 ## Status
 
-MVP-complete + hardened. Full cashier happy-path (login → scan → cart → pay → receipt), admin tools (users, events, oversold queue, cash reconciliation, audit log), daily/monthly/settlement reports, offline-capable sync, backups, and 60 passing tests across 14 files. See [`docs/progress/`](docs/progress/) for per-milestone and per-hardening-phase reports.
+MVP-complete + hardened. Full cashier happy-path (login → scan → cart → pay → receipt), admin tools (users, events, oversold queue, cash reconciliation, audit log), daily/monthly/settlement reports, offline-capable sync, backups, and ~88 tests across 16 files. See [`docs/progress/`](docs/progress/) for per-milestone and per-hardening-phase reports.
 
 ## Quick start
 
@@ -17,7 +17,7 @@ cp .env.example .env
 # Fill SESSION_SECRET (openssl rand -hex 32), ADMIN_EMAIL, ADMIN_PASSWORD.
 
 pnpm dev          # web on :5173 (vite), api on :3001
-pnpm test         # full test suite (60 tests, 14 files)
+pnpm test         # full test suite (~88 tests, 16 files)
 pnpm typecheck    # all 3 workspaces
 pnpm build        # api → dist/, web → PWA bundle
 ```

@@ -9,6 +9,7 @@ describe("CreateCardSchema", () => {
       ownerUserId: "550e8400-e29b-41d4-a716-446655440001",
       stockReceivedByUserId: "550e8400-e29b-41d4-a716-446655440001",
       title: "Pikachu",
+      category: "TCG",
       pricingMode: "fixed",
       priceIdr: 50000,
     };
@@ -22,6 +23,7 @@ describe("CreateCardSchema", () => {
       ownerUserId: "550e8400-e29b-41d4-a716-446655440001",
       stockReceivedByUserId: "550e8400-e29b-41d4-a716-446655440001",
       title: "Charizard",
+      category: "TCG",
       pricingMode: "negotiable",
       listedPriceIdr: 100000,
       bottomPriceIdr: 80000,

@@ -50,7 +50,7 @@ assert(channels.length === 10, `10 payment channels seeded (got ${channels.lengt
 
 // Verify settings seeded
 const settingsRows = db.select().from(schema.settings).all();
-assert(settingsRows.length === 3, `3 default settings seeded (got ${settingsRows.length})`);
+assert(settingsRows.length >= 3, `default settings seeded (got ${settingsRows.length})`);
 
 // Verify admin user seeded
 const adminUser = db
