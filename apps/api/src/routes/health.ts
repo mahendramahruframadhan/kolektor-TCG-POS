@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { count, eq } from "drizzle-orm";
+import { count, eq, min, max } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
-import { carts, users } from "@kolektapos/db/schema";
+import { carts, users, transactions } from "@kolektapos/db/schema";
+import { requireAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -45,6 +46,55 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
           uptimeSec: nowSec - startedAtSec,
         });
       }
+    }
+  );
+
+  /**
+   * GET /health/deep — admin-only operational detail for the booth operator.
+   * Returns schema version, uptime, cart and transaction counters.
+   */
+  app.get(
+    "/health/deep",
+    {
+      preHandler: requireAdmin,
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+    },
+    async (_request, reply) => {
+      const nowSec = Math.floor(Date.now() / 1000);
+
+      const activeDraftCarts =
+        db
+          .select({ c: count() })
+          .from(carts)
+          .where(eq(carts.status, "draft"))
+          .get()?.c ?? 0;
+
+      const oldestDraftUpdatedAt =
+        db
+          .select({ m: min(carts.updatedAt) })
+          .from(carts)
+          .where(eq(carts.status, "draft"))
+          .get()?.m ?? null;
+
+      const oldestOpenCartAgeSec =
+        oldestDraftUpdatedAt !== null
+          ? nowSec - oldestDraftUpdatedAt
+          : null;
+
+      const lastPaidAt =
+        db
+          .select({ m: max(transactions.paidAt) })
+          .from(transactions)
+          .get()?.m ?? null;
+
+      return reply.send({
+        ok: true,
+        schemaVersion: "0005",
+        uptimeSec: nowSec - startedAtSec,
+        activeDraftCarts,
+        oldestOpenCartAgeSec,
+        lastTransactionAt: lastPaidAt,
+      });
     }
   );
 }

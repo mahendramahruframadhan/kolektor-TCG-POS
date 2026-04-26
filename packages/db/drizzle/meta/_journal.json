@@ -43,6 +43,13 @@
       "when": 1777009500000,
       "tag": "0005_add_version_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1777013100000,
+      "tag": "0006_add_check_constraints",
+      "breakpoints": true
     }
   ]
 }
