@@ -375,40 +375,43 @@ interface ReceiptModalProps {
 
 function ReceiptModal({ transactionId, totalIdr, itemCount, isPendingSync, onDone }: ReceiptModalProps) {
   const handlePrint = () => {
+    const now = new Date().toLocaleString("id-ID");
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <title>Struk KolektaPOS</title>
+  <style>
+    body { font-family: monospace; padding: 24px; max-width: 320px; margin: 0 auto; color: #000; }
+    .center { text-align: center; }
+    .header { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .sub { font-size: 12px; color: #555; margin-bottom: 16px; }
+    .row { display: flex; justify-content: space-between; font-size: 14px; margin: 8px 0; }
+    .divider { border-top: 1px dashed #999; margin: 12px 0; }
+    .total { font-size: 16px; font-weight: bold; }
+    .footer { font-size: 11px; color: #777; margin-top: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div class="header">KolektaPOS</div>
+    <div class="sub">Booth Pokemon TCG</div>
+  </div>
+  <div class="divider"></div>
+  <div class="row"><span>ID Transaksi</span><span>#${transactionId.slice(0, 8).toUpperCase()}</span></div>
+  <div class="row"><span>Tanggal</span><span>${now}</span></div>
+  <div class="row"><span>Jumlah Kartu</span><span>${itemCount}</span></div>
+  <div class="divider"></div>
+  <div class="row total"><span>Total</span><span>Rp ${totalIdr.toLocaleString("id-ID")}</span></div>
+  <div class="divider"></div>
+  <div class="footer">Terima kasih!</div>
+</body>
+</html>`;
+
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) return;
-    const now = new Date().toLocaleString("id-ID");
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Struk KolektaPOS</title>
-          <style>
-            body { font-family: monospace; padding: 24px; max-width: 320px; margin: 0 auto; color: #000; }
-            .center { text-align: center; }
-            .header { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-            .sub { font-size: 12px; color: #555; margin-bottom: 16px; }
-            .line { display: flex; justify-content: space-between; font-size: 14px; margin: 8px 0; }
-            .divider { border-top: 1px dashed #999; margin: 12px 0; }
-            .total { font-size: 16px; font-weight: bold; }
-            .footer { font-size: 11px; color: #777; margin-top: 24px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="center">
-            <div class="header">KolektaPOS</div>
-            <div class="sub">Booth Pokemon TCG</div>
-          </div>
-          <div class="divider"></div>
-          <div class="line"><span>ID Transaksi</span><span>#${transactionId.slice(0, 8).toUpperCase()}</span></div>
-          <div class="line"><span>Tanggal</span><span>${now}</span></div>
-          <div class="line"><span>Jumlah Kartu</span><span>${itemCount}</span></div>
-          <div class="divider"></div>
-          <div class="line total"><span>Total</span><span>Rp ${totalIdr.toLocaleString("id-ID")}</span></div>
-          <div class="divider"></div>
-          <div class="footer">Terima kasih!</div>
-        </body>
-      </html>
-    `);
+    printWindow.document.open();
+    printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {

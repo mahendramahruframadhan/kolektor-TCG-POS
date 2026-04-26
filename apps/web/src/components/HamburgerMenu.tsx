@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
+import { queryClient } from "../lib/query-client.js";
 
 interface NavItem {
   to: string;
@@ -39,6 +40,8 @@ export function HamburgerMenu() {
     setOpen(false);
     await api.auth.logout().catch(() => null);
     useAuthStore.getState().setUser(null);
+    useAuthStore.persist.clearStorage();
+    queryClient.clear();
     navigate("/login");
   }
 
