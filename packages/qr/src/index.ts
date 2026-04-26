@@ -35,10 +35,11 @@ function ownerChar(ownerIndex: number): string {
  * Generate a random 5-character uppercase base-36 string.
  */
 function randomBase36x5(): string {
+  const bytes = new Uint8Array(5);
+  crypto.getRandomValues(bytes);
   let result = "";
-  for (let i = 0; i < 5; i++) {
-    const idx = Math.floor(Math.random() * 36);
-    result += toBase36Char(idx);
+  for (const byte of bytes) {
+    result += toBase36Char(byte % 36);
   }
   return result;
 }
