@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNull, gt } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import {
   cards,
   carts,
   cartItems,
+  holds,
   transactions,
   transactionItems,
   settings,
@@ -19,20 +20,6 @@ import { requireAuth, makeRequireCartOwnerOrAdmin } from "../plugins/auth-guard.
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
-/** Read cart_idle_ttl_minutes from settings, fallback to 30 */
-function getCartIdleTtl(db: Db): number {
-  const row = db
-    .select()
-    .from(settings)
-    .where(eq(settings.key, "cart_idle_ttl_minutes"))
-    .get();
-  if (!row) return 30;
-  try {
-    return Number(JSON.parse(row.valueJson)) || 30;
-  } catch {
-    return 30;
-  }
-}
 
 export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
@@ -355,17 +342,33 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
 
       const cardMap = new Map(cardRows.map((c) => [c.id, c]));
 
-      // Check for oversold: any card already sold by another transaction
-      const soldCards = cardRows.filter((c) => c.status === "sold");
-      if (soldCards.length > 0) {
-        // Per design rule §10 (oversold is accepted residual risk), we still record.
-        // However, we still validate the cart's own lock hasn't been stolen.
-        // Cards locked by THIS cart but status not 'sold' are still OK.
-        // Cards already 'sold' by another transaction create an oversold flag.
+      // Per PRD §10: oversold is accepted residual risk; record and flag, don't block.
+
+      const cashierUserId = request.session.userId!;
+
+      // Check for active holds on any cart card by a different user
+      const nowSecHoldCheck = Math.floor(Date.now() / 1000);
+      const activeHolds = db
+        .select()
+        .from(holds)
+        .where(
+          and(
+            inArray(holds.cardId, cardIds),
+            isNull(holds.releasedAt),
+            gt(holds.expiresAt, nowSecHoldCheck),
+          )
+        )
+        .all();
+
+      const blockedByHold = activeHolds.filter((h) => h.heldByUserId !== cashierUserId);
+      if (blockedByHold.length > 0) {
+        return reply.status(409).send({
+          error: "One or more cards have an active hold by another user",
+          holdIds: blockedByHold.map((h) => h.id),
+        });
       }
 
       const nowSec = Math.floor(Date.now() / 1000);
-      const cashierUserId = request.session.userId!;
 
       // Compute totals — all integer IDR
       const subtotalIdr = items.reduce((sum, item) => {
@@ -431,7 +434,7 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
           db.update(cards)
             .set({
               status: "sold",
-              oversold: alreadySold ? true : false,
+              oversold: (card?.oversold === true) ? true : alreadySold,
               lockedByCartId: null,
               lockedByUserId: null,
               lockedAt: null,
