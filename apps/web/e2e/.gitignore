@@ -1,0 +1,6 @@
+test.db
+test.db-wal
+test.db-shm
+test-results/
+.auth/
+playwright-report/

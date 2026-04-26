@@ -8,7 +8,8 @@
     "dev": "turbo run dev",
     "lint": "biome check --no-errors-on-unmatched .",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "e2e": "pnpm --filter @kolektapos/web e2e"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
