@@ -29,6 +29,13 @@
       "when": 1777002300000,
       "tag": "0003_add_category_to_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1777005900000,
+      "tag": "0004_add_indexes",
+      "breakpoints": true
     }
   ]
 }
