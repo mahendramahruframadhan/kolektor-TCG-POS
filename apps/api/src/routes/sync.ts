@@ -12,72 +12,15 @@ import {
   paymentChannels,
   settings,
 } from "@kolektapos/db/schema";
-import { SyncPushRequestSchema, SyncOpSchema } from "@kolektapos/sync";
 import {
-  CardConditionSchema,
-  CardLanguageSchema,
-  CardPricingModeSchema,
-  GradingCompanySchema,
-} from "@kolektapos/types";
+  SyncPushRequestSchema,
+  SyncOpSchema,
+  CreateCardOpPayloadSchema,
+  CreateTransactionOpPayloadSchema,
+} from "@kolektapos/sync";
 import { z } from "zod";
 import { requireAuth } from "../plugins/auth-guard.js";
 import { userDto } from "../utils/user-dto.js";
-
-// Strict whitelist of fields the client may send in a create_card push op.
-// Server derives everything else (id, createdAt, updatedAt, status, oversold, locked_*).
-// Mirrors CreateCardSchema but .strict() + inline (CreateCardSchema uses .refine() which
-// strips .strict()).
-const CreateCardPushPayloadSchema = z
-  .object({
-    shortId: z.string().regex(/^[A-Z0-9]-[A-Z0-9]{5}$/),
-    ownerUserId: z.string().uuid(),
-    stockReceivedByUserId: z.string().uuid(),
-    eventId: z.string().uuid().optional(),
-    title: z.string().min(1),
-    setName: z.string().default(""),
-    setNumber: z.string().default(""),
-    category: z.string().default(""),
-    rarity: z.string().default(""),
-    language: CardLanguageSchema.default("EN"),
-    edition: z.string().default(""),
-    condition: CardConditionSchema.default("Near Mint"),
-    isGraded: z.boolean().default(false),
-    gradingCompany: GradingCompanySchema.optional(),
-    grade: z.string().optional(),
-    certNumber: z.string().optional(),
-    pricingMode: CardPricingModeSchema.default("fixed"),
-    priceIdr: z.number().int().positive().optional(),
-    listedPriceIdr: z.number().int().positive().optional(),
-    bottomPriceIdr: z.number().int().positive().optional(),
-    photoPath: z.string().optional(),
-  })
-  .strict()
-  .refine(
-    (d) =>
-      d.pricingMode === "fixed"
-        ? d.priceIdr != null
-        : d.listedPriceIdr != null && d.bottomPriceIdr != null,
-    { message: "fixed cards need priceIdr; negotiable cards need listedPriceIdr + bottomPriceIdr" }
-  );
-
-// Strict whitelist for create_transaction push op.
-// Server sets: cashierUserId (from session), createdAt (now), serverReceivedAt.
-// Push path only accepts 'sale' kind — void/refund go through the admin route.
-const CreateTransactionPushPayloadSchema = z
-  .object({
-    cartId: z.string().uuid().nullable().optional(),
-    eventId: z.string().uuid(),
-    kind: z.literal("sale"),
-    subtotalIdr: z.number().int(),
-    discountIdr: z.number().int().default(0),
-    discountReason: z.string().optional(),
-    totalIdr: z.number().int(),
-    paymentChannelId: z.string().uuid().nullable().optional(),
-    paymentNote: z.string().optional(),
-    paidAt: z.number().int(),
-    notes: z.string().optional(),
-  })
-  .strict();
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
@@ -202,7 +145,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               results.push({ clientId: op.clientId, status: "accepted", serverEntityId: existing.id });
               break;
             }
-            const payloadParsed = CreateCardPushPayloadSchema.safeParse(op.payload);
+            const payloadParsed = CreateCardOpPayloadSchema.safeParse(op.payload);
             if (!payloadParsed.success) {
               results.push({ clientId: op.clientId, status: "rejected", reason: payloadParsed.error.message });
               break;
@@ -232,7 +175,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
               results.push({ clientId: op.clientId, status: "accepted", serverEntityId: existing.id });
               break;
             }
-            const payloadParsed = CreateTransactionPushPayloadSchema.safeParse(op.payload);
+            const payloadParsed = CreateTransactionOpPayloadSchema.safeParse(op.payload);
             if (!payloadParsed.success) {
               results.push({ clientId: op.clientId, status: "rejected", reason: payloadParsed.error.message });
               break;

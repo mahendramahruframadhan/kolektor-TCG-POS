@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  CardLanguageSchema,
+  CardConditionSchema,
+  CardPricingModeSchema,
+  GradingCompanySchema,
+} from "@kolektapos/types";
 
 /**
  * Sync protocol — push/pull with server-authoritative cursor (PRD §16.2).
@@ -7,6 +13,60 @@ import { z } from "zod";
  * Pull: client requests changes since cursor.
  * Cursor is based on server_received_at (not client wall-clock).
  */
+
+// ── Per-op payload schemas ─────────────────────────────────────────────────
+
+export const CreateCardOpPayloadSchema = z
+  .object({
+    shortId: z.string().regex(/^[A-Z0-9]-[A-Z0-9]{5}$/),
+    ownerUserId: z.string().uuid(),
+    stockReceivedByUserId: z.string().uuid(),
+    eventId: z.string().uuid().optional(),
+    title: z.string().min(1),
+    setName: z.string().default(""),
+    setNumber: z.string().default(""),
+    category: z.string().default(""),
+    rarity: z.string().default(""),
+    language: CardLanguageSchema.default("EN"),
+    edition: z.string().default(""),
+    condition: CardConditionSchema.default("Near Mint"),
+    isGraded: z.boolean().default(false),
+    gradingCompany: GradingCompanySchema.optional(),
+    grade: z.string().optional(),
+    certNumber: z.string().optional(),
+    pricingMode: CardPricingModeSchema.default("fixed"),
+    priceIdr: z.number().int().positive().optional(),
+    listedPriceIdr: z.number().int().positive().optional(),
+    bottomPriceIdr: z.number().int().positive().optional(),
+    photoPath: z.string().optional(),
+  })
+  .strict()
+  .refine(
+    (d) =>
+      d.pricingMode === "fixed"
+        ? d.priceIdr != null
+        : d.listedPriceIdr != null && d.bottomPriceIdr != null,
+    { message: "fixed cards need priceIdr; negotiable cards need listedPriceIdr + bottomPriceIdr" }
+  );
+
+export const CreateTransactionOpPayloadSchema = z
+  .object({
+    cartId: z.string().uuid().nullable().optional(),
+    eventId: z.string().uuid(),
+    kind: z.literal("sale"),
+    subtotalIdr: z.number().int(),
+    discountIdr: z.number().int().default(0),
+    discountReason: z.string().optional(),
+    totalIdr: z.number().int(),
+    paymentChannelId: z.string().uuid().nullable().optional(),
+    paymentNote: z.string().optional(),
+    paidAt: z.number().int(),
+    notes: z.string().optional(),
+  })
+  .strict();
+
+export type CreateCardOpPayload = z.infer<typeof CreateCardOpPayloadSchema>;
+export type CreateTransactionOpPayload = z.infer<typeof CreateTransactionOpPayloadSchema>;
 
 // ── Op types ──────────────────────────────────────────────────────────────
 
@@ -26,14 +86,38 @@ export const SyncOpTypeSchema = z.enum([
 
 export type SyncOpType = z.infer<typeof SyncOpTypeSchema>;
 
-export const SyncOpSchema = z.object({
-  type: SyncOpTypeSchema,
+export const CreateCardOpSchema = z.object({
+  type: z.literal("create_card"),
   clientId: z.string().uuid(),
-  payload: z.record(z.unknown()),
-  clientCreatedAt: z.number().int(), // display-only, not for ordering
+  payload: CreateCardOpPayloadSchema,
+  clientCreatedAt: z.number().int(),
 });
 
+export const CreateTransactionOpSchema = z.object({
+  type: z.literal("create_transaction"),
+  clientId: z.string().uuid(),
+  payload: CreateTransactionOpPayloadSchema,
+  clientCreatedAt: z.number().int(),
+});
+
+// Fallback for unrecognised op types — server rejects them but the client
+// can still send future op types without breaking older servers.
+export const UnknownOpSchema = z.object({
+  type: z.string(),
+  clientId: z.string().uuid(),
+  payload: z.record(z.unknown()),
+  clientCreatedAt: z.number().int(),
+});
+
+export const SyncOpSchema = z.union([
+  CreateCardOpSchema,
+  CreateTransactionOpSchema,
+  UnknownOpSchema,
+]);
+
 export type SyncOp = z.infer<typeof SyncOpSchema>;
+export type CreateCardOp = z.infer<typeof CreateCardOpSchema>;
+export type CreateTransactionOp = z.infer<typeof CreateTransactionOpSchema>;
 
 // ── Push request/response ─────────────────────────────────────────────────
 

@@ -17,9 +17,11 @@ describe("SyncOpSchema", () => {
     expect(SyncOpSchema.safeParse(op).success).toBe(false);
   });
 
-  it("rejects unknown op type", () => {
+  it("accepts unknown op type via UnknownOpSchema fallback (server rejects at handler level)", () => {
+    // UnknownOpSchema is a catch-all so future op types pass schema validation;
+    // the push handler returns a 'rejected' result for unrecognised types.
     const op = { type: "destroy_everything", clientId: "550e8400-e29b-41d4-a716-446655440000", payload: {}, clientCreatedAt: Date.now() };
-    expect(SyncOpSchema.safeParse(op).success).toBe(false);
+    expect(SyncOpSchema.safeParse(op).success).toBe(true);
   });
 });
 
