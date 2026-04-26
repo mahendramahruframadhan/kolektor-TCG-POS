@@ -223,6 +223,16 @@ export function opportunisticSync() {
     });
 }
 
+/**
+ * Full reset + re-pull: clears the sync cursor then runs an initial pull.
+ * Use this instead of the legacy fetchAndSync() after login.
+ */
+export async function resetAndSync(): Promise<void> {
+  // Clear cursor so deltaSyncPull triggers a cursor=0 (full initial pull)
+  localStorage.removeItem("kolekta-sync-cursor");
+  await deltaSyncPull();
+}
+
 /** Persistent device UUID for sync cursors. */
 function getOrCreateDeviceId(): string {
   const key = "kolekta-device-id";

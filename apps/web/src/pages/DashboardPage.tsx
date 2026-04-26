@@ -9,7 +9,7 @@ import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import { fetchAndSync } from "../lib/sync.js";
+import { resetAndSync } from "../lib/background-sync.js";
 
 function useDashboardStats(eventId: string | undefined) {
   return useQuery({
@@ -47,7 +47,7 @@ export function DashboardPage() {
   useEffect(() => {
     if (syncedRef.current) return;
     syncedRef.current = true;
-    fetchAndSync().catch((err) => {
+    resetAndSync().catch((err) => {
       console.warn("[sync] Initial pull failed (offline?):", err);
     });
   }, []);

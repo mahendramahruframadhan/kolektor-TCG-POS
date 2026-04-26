@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
-import { fetchAndSync } from "../lib/sync.js";
+import { resetAndSync } from "../lib/background-sync.js";
 
 const LANDING_PAGE_PATHS: Record<string, string> = {
   dashboard: "/dashboard",
@@ -41,7 +41,7 @@ export function LoginPage() {
       setUser(user);
       // Kick off IDB sync immediately on login so every page has fresh data.
       // Fire-and-forget — navigation is not blocked by sync completion.
-      fetchAndSync().catch(() => null);
+      resetAndSync().catch(() => null);
       const landingPath = await resolveLandingPath();
       navigate(landingPath);
     } catch (err: unknown) {
