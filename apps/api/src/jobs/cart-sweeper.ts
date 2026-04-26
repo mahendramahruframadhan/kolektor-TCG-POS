@@ -66,19 +66,17 @@ export function startCartSweeper(
         const lockedCardIds = lockedItems.map((i) => i.cardId);
         releasedCardCount = lockedCardIds.length;
 
-        // Release card locks
+        // Release card locks (single batch update)
         if (lockedCardIds.length > 0) {
-          for (const cardId of lockedCardIds) {
-            db.update(cards)
-              .set({
-                lockedByCartId: null,
-                lockedByUserId: null,
-                lockedAt: null,
-                updatedAt: nowSec,
-              })
-              .where(eq(cards.id, cardId))
-              .run();
-          }
+          db.update(cards)
+            .set({
+              lockedByCartId: null,
+              lockedByUserId: null,
+              lockedAt: null,
+              updatedAt: nowSec,
+            })
+            .where(inArray(cards.id, lockedCardIds))
+            .run();
         }
 
         // Mark carts as abandoned
@@ -112,18 +110,18 @@ export function startCartSweeper(
           .all();
 
         if (expiredHolds.length > 0) {
+          const expiredHoldIds = expiredHolds.map((h) => h.id);
+          const heldCardIds = expiredHolds.map((h) => h.cardId);
           db.transaction(() => {
-            for (const hold of expiredHolds) {
-              db.update(holds)
-                .set({ releasedAt: nowSec, releaseReason: "expired" })
-                .where(eq(holds.id, hold.id))
-                .run();
+            db.update(holds)
+              .set({ releasedAt: nowSec, releaseReason: "expired" })
+              .where(inArray(holds.id, expiredHoldIds))
+              .run();
 
-              db.update(cards)
-                .set({ status: "available", updatedAt: nowSec })
-                .where(and(eq(cards.id, hold.cardId), eq(cards.status, "held")))
-                .run();
-            }
+            db.update(cards)
+              .set({ status: "available", updatedAt: nowSec })
+              .where(and(inArray(cards.id, heldCardIds), eq(cards.status, "held")))
+              .run();
           });
 
           log?.info({
