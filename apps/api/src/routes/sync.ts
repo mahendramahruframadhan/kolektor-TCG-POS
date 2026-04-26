@@ -101,6 +101,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
     const cursor = parseInt(cursorStr, 10) || 0;
     const nowSec = Math.floor(Date.now() / 1000);
     const changes: unknown[] = [];
+    let hasMore = false;
 
     if (cursor === 0) {
       // Initial pull — full dataset
@@ -111,29 +112,29 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
         .all();
       const channelRows = db.select().from(paymentChannels).all();
       const settingRows = db.select().from(settings).all();
-      const allCards = db.select().from(cards).all();
+      const allCards = db.select().from(cards).limit(5001).all();
+      hasMore = allCards.length > 5000;
+      const cardPage = allCards.slice(0, 5000);
       const thirtyDaysAgo = nowSec - 30 * 24 * 60 * 60;
       const txRows = db
         .select()
         .from(transactions)
         .where(gt(transactions.createdAt, thirtyDaysAgo))
         .all();
-      const txItemRows = db
-        .select()
-        .from(transactionItems)
-        .where(
-          inArray(
-            transactionItems.transactionId,
-            txRows.map((t) => t.id)
-          )
-        )
-        .all();
+      const txIds = txRows.map((t) => t.id);
+      const txItemRows: (typeof transactionItems.$inferSelect)[] = [];
+      const CHUNK = 900;
+      for (let i = 0; i < txIds.length; i += CHUNK) {
+        const slice = txIds.slice(i, i + CHUNK);
+        const chunk = db.select().from(transactionItems).where(inArray(transactionItems.transactionId, slice)).all();
+        txItemRows.push(...chunk);
+      }
 
       for (const row of userRows) changes.push({ entityType: "user", operation: "create", payload: userDto(row), serverReceivedAt: row.updatedAt });
       for (const row of eventRows) changes.push({ entityType: "event", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of channelRows) changes.push({ entityType: "payment_channel", operation: "create", payload: row, serverReceivedAt: 0 });
       for (const row of settingRows) changes.push({ entityType: "setting", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
-      for (const row of allCards) changes.push({ entityType: "card", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
+      for (const row of cardPage) changes.push({ entityType: "card", operation: "create", payload: row, serverReceivedAt: row.updatedAt });
       for (const row of txRows) changes.push({ entityType: "transaction", operation: "create", payload: row, serverReceivedAt: row.createdAt });
       for (const row of txItemRows) changes.push({ entityType: "transaction_item", operation: "create", payload: row, serverReceivedAt: row.createdAt });
     } else {
@@ -165,7 +166,7 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
     return reply.send({
       changes,
       newCursor: nowSec,
-      hasMore: false,
+      hasMore,
     });
   });
 
