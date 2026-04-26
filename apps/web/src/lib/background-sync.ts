@@ -1,6 +1,8 @@
+import { z } from "zod";
 import { idb } from "./db.js";
 import { api } from "./api.js";
 import { useSyncStateStore } from "../store/sync-state.js";
+import type { SyncEntityChange } from "@kolektapos/sync";
 import type {
   IdbCard,
   IdbEvent,
@@ -11,6 +13,40 @@ import type {
   IdbTransactionItem,
   IdbCashReconciliation,
 } from "./db.js";
+
+// ── Minimal sync payload validators ───────────────────────────────────────
+// @kolektapos/types only exports input/create schemas (no id, version, etc.).
+// These inline schemas validate the minimum structure needed for safe IDB writes.
+
+const SyncCardPayloadSchema = z.object({
+  id: z.string().uuid(),
+  shortId: z.string(),
+  ownerUserId: z.string().uuid(),
+  title: z.string().min(1),
+  status: z.enum(["available", "held", "sold", "returned"]),
+  version: z.number().int(),
+});
+
+const SyncEventPayloadSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  status: z.enum(["draft", "active", "closed"]),
+  version: z.number().int(),
+});
+
+const SyncUserPayloadSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(1),
+  role: z.enum(["admin", "cashier"]),
+});
+
+const SyncTransactionPayloadSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.enum(["sale", "void", "refund"]),
+  totalIdr: z.number().int(),
+  eventId: z.string().uuid(),
+});
 
 const SYNC_CURSOR_KEY = "kolekta-sync-cursor";
 
@@ -24,25 +60,41 @@ function setSyncCursor(cursor: number) {
 
 // ── Merge entity changes into IDB ─────────────────────────────────────────
 
-async function applyChanges(changes: unknown[]): Promise<number> {
+async function applyChanges(changes: SyncEntityChange[]): Promise<number> {
   let failCount = 0;
-  for (const change of changes as Array<{
-    entityType: string;
-    operation: string;
-    payload: Record<string, unknown>;
-    serverReceivedAt: number;
-  }>) {
+  for (const change of changes) {
     try {
       switch (change.entityType) {
-        case "card":
+        case "card": {
+          const parsed = SyncCardPayloadSchema.safeParse(change.payload);
+          if (!parsed.success) {
+            failCount++;
+            console.warn(`[sync] Invalid card payload:`, parsed.error.flatten());
+            break;
+          }
           await idb.cards.put(change.payload as unknown as IdbCard);
           break;
-        case "event":
+        }
+        case "event": {
+          const parsed = SyncEventPayloadSchema.safeParse(change.payload);
+          if (!parsed.success) {
+            failCount++;
+            console.warn(`[sync] Invalid event payload:`, parsed.error.flatten());
+            break;
+          }
           await idb.events.put(change.payload as unknown as IdbEvent);
           break;
-        case "user":
+        }
+        case "user": {
+          const parsed = SyncUserPayloadSchema.safeParse(change.payload);
+          if (!parsed.success) {
+            failCount++;
+            console.warn(`[sync] Invalid user payload:`, parsed.error.flatten());
+            break;
+          }
           await idb.users.put(change.payload as unknown as IdbUser);
           break;
+        }
         case "payment_channel":
           await idb.paymentChannels.put(change.payload as unknown as IdbPaymentChannel);
           break;
@@ -54,9 +106,16 @@ async function applyChanges(changes: unknown[]): Promise<number> {
         case "cart":
           await idb.carts.put(change.payload as unknown as IdbCart);
           break;
-        case "transaction":
+        case "transaction": {
+          const parsed = SyncTransactionPayloadSchema.safeParse(change.payload);
+          if (!parsed.success) {
+            failCount++;
+            console.warn(`[sync] Invalid transaction payload:`, parsed.error.flatten());
+            break;
+          }
           await idb.transactions.put(change.payload as unknown as IdbTransaction);
           break;
+        }
         case "transaction_item":
           await idb.transactionItems.put(change.payload as unknown as IdbTransactionItem);
           break;
@@ -80,28 +139,25 @@ export async function deltaSyncPull(): Promise<void> {
   const cursor = getSyncCursor();
   const deviceId = getOrCreateDeviceId();
 
-  const response = await api.sync.pull(cursor, deviceId) as {
-    changes: unknown[];
-    newCursor: number;
-    hasMore: boolean;
-  };
+  const response = await api.sync.pull(cursor, deviceId);
 
   const failCount = await applyChanges(response.changes);
 
   // Handle cart expiry notices (§16.3 cart_expired scenario)
-  const cartChanges = (response.changes as Array<{ entityType: string; payload: { status: string; id: string } }>)
-    .filter((c) => c.entityType === "cart" && c.payload.status === "abandoned");
+  const cartChanges = response.changes
+    .filter((c) => c.entityType === "cart" && c.payload["status"] === "abandoned");
 
   for (const change of cartChanges) {
-    const localCart = await idb.carts.get(change.payload.id);
+    const cartId = change.payload["id"] as string;
+    const localCart = await idb.carts.get(cartId);
     if (localCart?.status === "draft") {
-      console.info(`[sync] Cart ${change.payload.id} abandoned by server (TTL/admin)`);
+      console.info(`[sync] Cart ${cartId} abandoned by server (TTL/admin)`);
     }
   }
 
   // Handle oversold flags
-  const cardChanges = (response.changes as Array<{ entityType: string; payload: IdbCard }>)
-    .filter((c) => c.entityType === "card" && c.payload.oversold);
+  const cardChanges = response.changes
+    .filter((c) => c.entityType === "card" && Boolean(c.payload["oversold"]));
 
   if (cardChanges.length > 0) {
     console.warn(`[sync] ${cardChanges.length} oversold card(s) flagged by server`);
