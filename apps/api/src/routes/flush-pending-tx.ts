@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
-import { cards, transactions, transactionItems } from "@kolektapos/db/schema";
+import { cards, transactions, transactionItems, settings } from "@kolektapos/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { requireAuth } from "../plugins/auth-guard.js";
 
@@ -58,6 +58,11 @@ export async function flushPendingTxRoute(
 
       const cashierUserId = request.session.userId!;
       const nowSec = Math.floor(Date.now() / 1000);
+
+      // Read max_transaction_discount_pct once before the loop (avoid N+1 reads)
+      const maxTxDiscPctRow = db.select().from(settings).where(eq(settings.key, "max_transaction_discount_pct")).get();
+      const maxTxDiscPct = maxTxDiscPctRow ? JSON.parse(maxTxDiscPctRow.valueJson) as number : 100;
+
       const results: {
         clientId: string;
         status: "accepted" | "rejected";
@@ -101,6 +106,14 @@ export async function flushPendingTxRoute(
             }
             if (tx.totalIdr !== tx.subtotalIdr - tx.discountIdr) {
               throw new Error("totalIdr mismatch");
+            }
+
+            // Enforce max_transaction_discount_pct cap
+            if (tx.discountIdr > 0) {
+              const maxDiscountIdr = Math.floor(tx.subtotalIdr * maxTxDiscPct / 100);
+              if (tx.discountIdr > maxDiscountIdr) {
+                throw new Error(`Transaction discount exceeds max ${maxTxDiscPct}%`);
+              }
             }
 
             db.insert(transactions)

@@ -377,6 +377,20 @@ export async function cartRoutes(app: FastifyInstance, opts: { db: Db }) {
       }, 0);
       const totalIdr = subtotalIdr - (body.data.discountIdr ?? 0);
 
+      // Enforce max_transaction_discount_pct (default 100 = no cap)
+      const maxTxDiscPctRow = db.select().from(settings).where(eq(settings.key, "max_transaction_discount_pct")).get();
+      const maxTxDiscPct = maxTxDiscPctRow ? JSON.parse(maxTxDiscPctRow.valueJson) as number : 100;
+      const requestedDiscount = body.data.discountIdr ?? 0;
+
+      if (requestedDiscount > 0) {
+        const maxDiscountIdr = Math.floor(subtotalIdr * maxTxDiscPct / 100);
+        if (requestedDiscount > maxDiscountIdr) {
+          return reply.status(422).send({
+            error: `Diskon transaksi melebihi batas maksimum ${maxTxDiscPct}% (maks Rp ${maxDiscountIdr.toLocaleString("id-ID")})`,
+          });
+        }
+      }
+
       const txId = crypto.randomUUID();
 
       db.transaction(() => {
