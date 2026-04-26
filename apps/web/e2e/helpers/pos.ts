@@ -16,7 +16,8 @@ export async function addToCart(page: Page, finalPriceIdr?: number): Promise<voi
     await priceInput.fill(String(finalPriceIdr));
   }
   await page.getByRole("button", { name: /tambah ke keranjang/i }).click();
-  await expect(page.getByText(/keranjang/i)).toBeVisible();
+  // Wait for an item to appear in the cart — "Bayar" button only shows when cart is non-empty
+  await expect(page.getByRole("button", { name: /^bayar$/i })).toBeVisible({ timeout: 5_000 });
 }
 
 export async function payWithCash(page: Page): Promise<string> {

@@ -10,7 +10,7 @@ test("POS › fixed-price online sale completes and shows receipt", async ({ log
   await expect(page.getByText(/tersedia/i)).toBeVisible();
 
   await addToCart(page);
-  await expect(page.getByText(/100\.000/)).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText(/100\.000/).first()).toBeVisible({ timeout: 5_000 });
 
   const txShortId = await payWithCash(page);
   expect(txShortId).toMatch(/^[0-9A-F]{8}$/);

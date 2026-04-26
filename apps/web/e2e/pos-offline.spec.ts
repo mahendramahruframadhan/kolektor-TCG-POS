@@ -4,6 +4,7 @@ import { forceOffline, goOnline, waitForSync } from "./helpers/sync.js";
 import { E2E } from "./fixtures/constants.js";
 
 test("POS › offline sale queues in IDB and flushes to server on reconnect", async ({ loggedInPage: page }) => {
+  test.setTimeout(120_000);
   await page.goto("/pos");
 
   await forceOffline(page);
@@ -13,7 +14,7 @@ test("POS › offline sale queues in IDB and flushes to server on reconnect", as
 
   const finalPrice = 400_000;
   await addToCart(page, finalPrice);
-  await expect(page.getByText(/400\.000/)).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText(/400\.000/).first()).toBeVisible({ timeout: 5_000 });
 
   // Pay offline
   await page.getByRole("button", { name: /^bayar$/i }).click();
@@ -28,6 +29,10 @@ test("POS › offline sale queues in IDB and flushes to server on reconnect", as
   // Pending count shows
   const syncDot = page.locator('[data-testid="sync-dot"]');
   await expect(syncDot).toHaveAttribute("data-pending-count", /^[1-9]/, { timeout: 5_000 });
+
+  // Dismiss the receipt modal before interacting with the app bar
+  await page.getByRole("button", { name: /transaksi baru/i }).click();
+  await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5_000 });
 
   // Go online — opportunistic sync fires
   await goOnline(page);

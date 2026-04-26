@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Wifi, Plane } from "lucide-react";
 import { useSyncStateStore } from "../store/sync-state.js";
+import { opportunisticSync } from "../lib/background-sync.js";
 
 export function NetworkModeToggle() {
   const networkMode = useSyncStateStore((s) => s.networkMode);
@@ -51,7 +52,13 @@ export function NetworkModeToggle() {
           <button
             role="option"
             aria-selected={networkMode === "auto"}
-            onClick={() => { setNetworkMode("auto"); setOpen(false); }}
+            onClick={() => {
+              setNetworkMode("auto");
+              setOpen(false);
+              // Trigger an immediate sync when restoring online mode so pending
+              // transactions flush without waiting for the 60s background interval.
+              opportunisticSync();
+            }}
             className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition flex items-center gap-2"
           >
             <Wifi className="w-4 h-4 shrink-0" aria-hidden="true" />

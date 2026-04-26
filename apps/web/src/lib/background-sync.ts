@@ -230,7 +230,17 @@ export function opportunisticSync() {
 export async function resetAndSync(): Promise<void> {
   // Clear cursor so deltaSyncPull triggers a cursor=0 (full initial pull)
   localStorage.removeItem("kolekta-sync-cursor");
-  await deltaSyncPull();
+  useSyncStateStore.getState().setState("syncing");
+  try {
+    await deltaSyncPull();
+    useSyncStateStore.getState().markSuccess();
+  } catch (err) {
+    useSyncStateStore.getState().setState(
+      "error",
+      err instanceof Error ? err.message : "Sinkronisasi gagal"
+    );
+    throw err;
+  }
 }
 
 /** Persistent device UUID for sync cursors. */

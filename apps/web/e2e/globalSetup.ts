@@ -9,7 +9,7 @@ import { E2E } from "./fixtures/constants.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_DB   = resolve(__dirname, "test.db");
-const REPO_ROOT = resolve(__dirname, "../../../../");
+const REPO_ROOT = resolve(__dirname, "../../../");
 const API_DIR   = resolve(__dirname, "../../api");
 
 export default async function globalSetup() {

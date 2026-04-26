@@ -236,7 +236,14 @@ async function handleVoidRefund(
         // Only reopen the card if no other active (un-voided) sale holds it
         if (otherUnvoidedSales.length === 0) {
           db.update(cards)
-            .set({ status: "available", updatedAt: nowSec, version: sql`version + 1` })
+            .set({ status: "available", oversold: false, updatedAt: nowSec, version: sql`version + 1` })
+            .where(eq(cards.id, cardId))
+            .run();
+        } else if (otherUnvoidedSales.length === 1) {
+          // Exactly one unvoided sale remains — the card is no longer oversold
+          // (it was oversold because ≥2 active sales existed; now only 1 remains)
+          db.update(cards)
+            .set({ oversold: false, updatedAt: nowSec, version: sql`version + 1` })
             .where(eq(cards.id, cardId))
             .run();
         }
