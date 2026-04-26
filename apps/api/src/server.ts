@@ -5,6 +5,7 @@ import { resolve, dirname } from "path";
 import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
@@ -73,6 +74,8 @@ async function build() {
     global: false, // only routes that opt in via {config:{rateLimit:...}} are throttled
   });
 
+  await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } });
+
   // OpenAPI — auto-generates from route schemas (route-level JSON schemas
   // are added progressively). Swagger-UI mounted at /docs/api for operator
   // inspection. Keep disabled in production deploys behind DOMAIN if needed.
@@ -130,7 +133,7 @@ async function build() {
   await holdRoutes(app, { db });
   await transactionRoutes(app, { db });
   await backupRoute(app, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
-  await syncRoutes(app, { db });
+  await syncRoutes(app, { db, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
   await flushPendingTxRoute(app, { db });
   await settlementRoutes(app, { db });
   await auditLogRoutes(app, { db });

@@ -1,4 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import { resolve } from "node:path";
+import { createWriteStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
 import { eq, gt, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
@@ -28,8 +31,11 @@ type Db = BetterSQLite3Database<typeof dbSchema>;
  * Sync routes (PRD §16.2) — push/pull with server-authoritative cursor.
  * Cursor is a Unix timestamp (server_received_at / updatedAt).
  */
-export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
-  const { db } = opts;
+export async function syncRoutes(
+  app: FastifyInstance,
+  opts: { db: Db; photoStoragePath?: string }
+) {
+  const { db, photoStoragePath = "storage/photos" } = opts;
 
   /**
    * GET /sync/pull?cursor=0&deviceId=UUID
@@ -218,7 +224,59 @@ export async function syncRoutes(app: FastifyInstance, opts: { db: Db }) {
     "/sync/photo/:cardClientId",
     { preHandler: requireAuth },
     async (request, reply) => {
-      return reply.status(501).send({ error: "Photo upload not yet implemented" });
+      const { cardClientId } = request.params as { cardClientId: string };
+
+      // UUID validation — guards against path traversal in the filename
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          cardClientId
+        )
+      ) {
+        return reply.status(400).send({ error: "Invalid cardClientId" });
+      }
+
+      const data = await request.file();
+      if (!data) {
+        return reply.status(400).send({ error: "No file uploaded" });
+      }
+
+      const contentType = data.mimetype;
+      if (!["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+        return reply
+          .status(415)
+          .send({ error: "Unsupported file type — use JPEG, PNG, or WebP" });
+      }
+
+      const ext =
+        contentType === "image/png"
+          ? ".png"
+          : contentType === "image/webp"
+            ? ".webp"
+            : ".jpg";
+      const filename = `${cardClientId}${ext}`;
+      const target = resolve(photoStoragePath, filename);
+
+      // Write file to disk
+      await pipeline(data.file, createWriteStream(target));
+
+      // Verify card exists
+      const card = db
+        .select({ id: cards.id })
+        .from(cards)
+        .where(eq(cards.clientId, cardClientId))
+        .get();
+      if (!card) {
+        return reply.status(404).send({ error: "Card not found" });
+      }
+
+      // Update card record
+      const photoPath = `/storage/photos/${filename}`;
+      db.update(cards)
+        .set({ photoPath, updatedAt: Math.floor(Date.now() / 1000) })
+        .where(eq(cards.clientId, cardClientId))
+        .run();
+
+      return reply.send({ photoPath });
     }
   );
 }
