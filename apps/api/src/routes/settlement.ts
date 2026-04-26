@@ -54,22 +54,49 @@ export async function settlementRoutes(
 
       const ownerTotals: Record<string, number> = {};
       const ownerItemCount: Record<string, number> = {};
+
+      // Group items by transactionId so the last item in each group can absorb
+      // the rounding residual, guaranteeing sum(ownerTotals) == tx.totalIdr.
+      const itemsByTx = new Map<string, typeof allItems>();
       for (const item of allItems) {
-        const kind = txKindMap[item.transactionId];
-        const ownerId = item.ownerUserIdSnapshot;
-        const txDisc = txDiscountMap[item.transactionId];
+        if (!itemsByTx.has(item.transactionId)) itemsByTx.set(item.transactionId, []);
+        itemsByTx.get(item.transactionId)!.push(item);
+      }
 
-        // Distribute transaction-level discount proportionally so that
-        // sum(ownerTotals) == tx.totalIdr (not tx.subtotalIdr).
-        let effectivePrice = item.soldPriceIdr;
-        if (txDisc && txDisc.discountIdr > 0 && txDisc.subtotalIdr > 0) {
-          const share = Math.round(txDisc.discountIdr * item.soldPriceIdr / txDisc.subtotalIdr);
-          effectivePrice = item.soldPriceIdr - share;
-        }
+      for (const [txId, txItems] of itemsByTx) {
+        const kind = txKindMap[txId];
+        const txDisc = txDiscountMap[txId];
+        const discountIdr = txDisc?.discountIdr ?? 0;
+        const subtotalIdr = txDisc?.subtotalIdr ?? 0;
 
-        ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + effectivePrice;
-        if (kind === "sale") {
-          ownerItemCount[ownerId] = (ownerItemCount[ownerId] ?? 0) + 1;
+        let distributedDiscount = 0;
+        for (let idx = 0; idx < txItems.length; idx++) {
+          const item = txItems[idx]!;
+          const ownerId = item.ownerUserIdSnapshot;
+          const isLast = idx === txItems.length - 1;
+
+          // Distribute transaction-level discount proportionally so that
+          // sum(ownerTotals) == tx.totalIdr (not tx.subtotalIdr).
+          // Use Math.floor + last-item residual instead of Math.round to prevent
+          // cumulative rounding drift across multi-item transactions.
+          let share: number;
+          if (discountIdr > 0 && subtotalIdr > 0) {
+            if (isLast) {
+              // Last item absorbs the rounding residual
+              share = discountIdr - distributedDiscount;
+            } else {
+              share = Math.floor(discountIdr * item.soldPriceIdr / subtotalIdr);
+              distributedDiscount += share;
+            }
+          } else {
+            share = 0;
+          }
+
+          const effectivePrice = item.soldPriceIdr - share;
+          ownerTotals[ownerId] = (ownerTotals[ownerId] ?? 0) + effectivePrice;
+          if (kind === "sale") {
+            ownerItemCount[ownerId] = (ownerItemCount[ownerId] ?? 0) + 1;
+          }
         }
       }
 
