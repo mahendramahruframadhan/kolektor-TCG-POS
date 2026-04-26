@@ -36,6 +36,9 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
       return reply.status(401).send({ error: "Invalid credentials" });
     }
 
+    await new Promise<void>((resolve, reject) =>
+      request.session.regenerate((err) => (err ? reject(err) : resolve()))
+    );
     request.session.userId = user.id;
     request.session.userRole = user.role;
 
