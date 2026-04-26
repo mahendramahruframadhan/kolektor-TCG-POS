@@ -50,14 +50,23 @@ export async function auditPlugin(app: FastifyInstance, opts: { db: Db }) {
     )?.userId as string | undefined;
     const url = request.url;
     const parts = url.split("/").filter(Boolean);
+    const NON_ENTITY_PREFIXES = new Set(["sync", "auth", "reports", "health", "backup", "docs"]);
     const entityType = parts[1] ?? "unknown";
-    const entityId = parts[2] ?? null;
+    const entityId = NON_ENTITY_PREFIXES.has(parts[1] ?? "") ? null : (parts[2] ?? null);
 
     let redactedJson: string | null = null;
     if (typeof payload === "string") {
       try {
         const parsed = JSON.parse(payload);
-        redactedJson = JSON.stringify(redact(parsed)).slice(0, 2000);
+        const full = JSON.stringify(redact(parsed));
+        if (full.length <= 2000) {
+          redactedJson = full;
+        } else {
+          const cut = full.slice(0, 1990);
+          const lastChar = cut.charCodeAt(cut.length - 1);
+          const safe = (lastChar >= 0xD800 && lastChar <= 0xDBFF) ? cut.slice(0, -1) : cut;
+          redactedJson = safe + "…[truncated]";
+        }
       } catch {
         // Non-JSON payload — store nothing rather than risk leaking raw
         redactedJson = null;
