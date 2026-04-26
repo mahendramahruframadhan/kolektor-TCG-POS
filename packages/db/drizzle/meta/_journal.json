@@ -22,6 +22,13 @@
       "when": 1776998700000,
       "tag": "0002_rename_to_stock_received",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1777002300000,
+      "tag": "0003_add_category_to_cards",
+      "breakpoints": true
     }
   ]
 }
