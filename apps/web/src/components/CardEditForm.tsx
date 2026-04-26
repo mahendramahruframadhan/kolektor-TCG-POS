@@ -95,7 +95,7 @@ export function CardEditForm({ card, onSaved, onCancel }: CardEditFormProps) {
 
     setSaving(true);
     try {
-      const updated = await api.cards.update(card.id, body) as IdbCard;
+      const updated = await api.cards.update(card.id, body as Parameters<typeof api.cards.update>[1]) as IdbCard;
       await idb.cards.update(card.id, { ...updated });
       onSaved();
     } catch (err: unknown) {

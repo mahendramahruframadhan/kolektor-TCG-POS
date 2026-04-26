@@ -240,7 +240,7 @@ export function BulkImportPage() {
 
     for (const row of validRows) {
       try {
-        const created = await api.cards.create(row.cardBody) as { id: string };
+        const created = await api.cards.create(row.cardBody as Parameters<typeof api.cards.create>[0]) as { id: string };
         // Persist to IDB immediately
         await idb.cards.put({
           id: created.id,

@@ -247,7 +247,7 @@ export function StockReceivePage() {
             }),
       };
 
-      const created = (await api.cards.create(body)) as { id: string };
+      const created = (await api.cards.create(body as Parameters<typeof api.cards.create>[0])) as { id: string };
 
       await idb.cards.put({
         id: created.id, clientId, shortId,

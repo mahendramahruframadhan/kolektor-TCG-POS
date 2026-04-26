@@ -1,3 +1,6 @@
+import type { SyncPullResponse, SyncPushResponse } from "@kolektapos/sync";
+import type { CreateCard, UpdateCard } from "@kolektapos/types";
+
 const BASE = "/api";
 
 async function request<T>(
@@ -25,6 +28,81 @@ async function request<T>(
   if (res.status === 204) return undefined as T;
   return res.json();
 }
+
+// ── Shared response shape types ────────────────────────────────────────────
+
+/** Server card row (includes all DB columns the API returns). */
+type CardResponse = {
+  id: string;
+  clientId: string;
+  shortId: string;
+  ownerUserId: string;
+  stockReceivedByUserId: string;
+  eventId?: string;
+  title: string;
+  category: string;
+  setName: string;
+  setNumber: string;
+  rarity: string;
+  language: string;
+  edition: string;
+  condition: string;
+  isGraded: boolean;
+  gradingCompany?: string;
+  grade?: string;
+  certNumber?: string;
+  pricingMode: string;
+  priceIdr?: number;
+  listedPriceIdr?: number;
+  bottomPriceIdr?: number;
+  status: string;
+  lockedByCartId?: string;
+  lockedByUserId?: string;
+  lockedAt?: number;
+  oversold: boolean;
+  version: number;
+  createdAt: number;
+};
+
+type CartResponse = {
+  id: string;
+  clientId: string;
+  status: string;
+  eventId: string;
+};
+
+type CartItemResponse = {
+  id: string;
+  cartId: string;
+  cardId: string;
+  intendedPriceIdr: number;
+};
+
+type PayCartResponse = {
+  transaction: { id: string; totalIdr: number; kind: string };
+  receipt: unknown[];
+};
+
+type TransactionResponse = {
+  id: string;
+  kind: string;
+  totalIdr: number;
+  eventId: string;
+  items: unknown[];
+};
+
+type VoidRefundResponse = {
+  transaction: { id: string; kind: string };
+  items: unknown[];
+};
+
+type PaymentChannelListItem = {
+  id: string;
+  name: string;
+  type: string;
+  isActive: boolean;
+  sortOrder: number;
+};
 
 export const api = {
   auth: {
@@ -58,7 +136,7 @@ export const api = {
       }),
   },
   paymentChannels: {
-    list: () => request<unknown[]>("/payment-channels"),
+    list: () => request<PaymentChannelListItem[]>("/payment-channels"),
   },
   settings: {
     get: () => request<Record<string, unknown>>("/settings"),
@@ -83,15 +161,15 @@ export const api = {
   },
   cards: {
     byShortId: (shortId: string) =>
-      request<unknown>(`/cards/by-short-id/${shortId}`),
-    list: () => request<unknown[]>("/cards"),
-    create: (body: unknown) =>
-      request<unknown>("/cards", {
+      request<CardResponse>(`/cards/by-short-id/${shortId}`),
+    list: () => request<CardResponse[]>("/cards"),
+    create: (body: CreateCard) =>
+      request<CardResponse>("/cards", {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    update: (id: string, body: unknown) =>
-      request<unknown>(`/cards/${id}`, {
+    update: (id: string, body: UpdateCard) =>
+      request<CardResponse>(`/cards/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
@@ -106,9 +184,9 @@ export const api = {
       request<unknown>(`/holds/${id}`, { method: "DELETE" }),
   },
   transactions: {
-    get: (id: string) => request<unknown>(`/transactions/${id}`),
+    get: (id: string) => request<TransactionResponse>(`/transactions/${id}`),
     void: (id: string, body: unknown) =>
-      request<unknown>(`/transactions/${id}/void`, {
+      request<VoidRefundResponse>(`/transactions/${id}/void`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
@@ -159,9 +237,9 @@ export const api = {
   },
   sync: {
     pull: (cursor: number, deviceId: string) =>
-      request<unknown>(`/sync/pull?cursor=${cursor}&deviceId=${encodeURIComponent(deviceId)}`),
+      request<SyncPullResponse>(`/sync/pull?cursor=${cursor}&deviceId=${encodeURIComponent(deviceId)}`),
     push: (ops: unknown[], deviceId: string) =>
-      request<unknown>("/sync/push", {
+      request<SyncPushResponse>("/sync/push", {
         method: "POST",
         body: JSON.stringify({ ops, deviceId }),
       }),
@@ -176,25 +254,25 @@ export const api = {
   },
   carts: {
     create: (body: unknown) =>
-      request<unknown>("/carts", {
+      request<CartResponse>("/carts", {
         method: "POST",
         body: JSON.stringify(body),
       }),
     addItem: (cartId: string, body: unknown) =>
-      request<unknown>(`/carts/${cartId}/items`, {
+      request<{ item: CartItemResponse }>(`/carts/${cartId}/items`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
     removeItem: (cartId: string, cardId: string) =>
-      request<unknown>(`/carts/${cartId}/items/${cardId}`, {
+      request<void>(`/carts/${cartId}/items/${cardId}`, {
         method: "DELETE",
       }),
     pay: (cartId: string, body: unknown) =>
-      request<unknown>(`/carts/${cartId}/pay`, {
+      request<PayCartResponse>(`/carts/${cartId}/pay`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
     abandon: (cartId: string) =>
-      request<unknown>(`/carts/${cartId}/abandon`, { method: "POST" }),
+      request<{ ok: boolean }>(`/carts/${cartId}/abandon`, { method: "POST" }),
   },
 };
