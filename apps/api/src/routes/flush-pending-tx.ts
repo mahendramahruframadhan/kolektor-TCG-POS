@@ -36,7 +36,8 @@ const PendingTxSchema = z.object({
 });
 
 const FlushBodySchema = z.object({
-  transactions: z.array(PendingTxSchema).min(1),
+  // Change 1: cap batch size at 100
+  transactions: z.array(PendingTxSchema).min(1).max(100),
 });
 
 export async function flushPendingTxRoute(
@@ -45,9 +46,10 @@ export async function flushPendingTxRoute(
 ) {
   const { db } = opts;
 
+  // Change 2: add rate limit config
   app.post(
     "/sync/flush-pending-tx",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const parsed = FlushBodySchema.safeParse(request.body);
       if (!parsed.success) {
@@ -77,7 +79,30 @@ export async function flushPendingTxRoute(
 
         const txId = crypto.randomUUID();
 
+        // Change 3a: pre-fetch cardMap BEFORE the transaction so validation can abort cleanly
+        const cardIds = tx.items.map((i) => i.cardId);
+        const cardRows = db
+          .select()
+          .from(cards)
+          .where(inArray(cards.id, cardIds))
+          .all();
+        const cardMap = new Map(cardRows.map((c) => [c.id, c]));
+
+        // Change 3b/3c: validate totals and per-item rules; use rejectReason flag to abort
+        let rejectReason: string | null = null;
+
         db.transaction(() => {
+          // Change 3c: verify subtotal and total arithmetic
+          const computedSubtotal = tx.items.reduce((sum, item) => sum + item.soldPriceIdr, 0);
+          if (computedSubtotal !== tx.subtotalIdr) {
+            rejectReason = "subtotalIdr mismatch";
+            return; // triggers rollback
+          }
+          if (tx.totalIdr !== tx.subtotalIdr - tx.discountIdr) {
+            rejectReason = "totalIdr mismatch";
+            return; // triggers rollback
+          }
+
           db.insert(transactions)
             .values({
               id: txId,
@@ -97,13 +122,31 @@ export async function flushPendingTxRoute(
             })
             .run();
 
+          // Change 3a/3b: validate each item and override ownerUserIdSnapshot with server truth
           for (const item of tx.items) {
+            const card = cardMap.get(item.cardId);
+            if (!card) {
+              rejectReason = `Card ${item.cardId} not found`;
+              return; // triggers rollback
+            }
+
+            // Override client-supplied snapshot with server's authoritative owner
+            const verifiedOwner = card.ownerUserId;
+
+            // Change 3b: price floor check for negotiable cards
+            if (card.pricingMode === "negotiable" && card.bottomPriceIdr !== null) {
+              if (item.soldPriceIdr < card.bottomPriceIdr && !item.overrideBelowBottom) {
+                rejectReason = `soldPriceIdr below floor for card ${item.cardId}`;
+                return; // triggers rollback
+              }
+            }
+
             db.insert(transactionItems)
               .values({
                 id: crypto.randomUUID(),
                 transactionId: txId,
                 cardId: item.cardId,
-                ownerUserIdSnapshot: item.ownerUserIdSnapshot,
+                ownerUserIdSnapshot: verifiedOwner,
                 listedPriceIdrSnapshot: item.listedPriceIdrSnapshot,
                 soldPriceIdr: item.soldPriceIdr,
                 lineDiscountIdr: item.lineDiscountIdr,
@@ -114,20 +157,13 @@ export async function flushPendingTxRoute(
               .run();
           }
 
-          const cardIds = tx.items.map((i) => i.cardId);
-          const cardRows = db
-            .select()
-            .from(cards)
-            .where(inArray(cards.id, cardIds))
-            .all();
-          const cardMap = new Map(cardRows.map((c) => [c.id, c]));
-
           for (const cardId of cardIds) {
             const card = cardMap.get(cardId);
             db.update(cards)
               .set({
                 status: "sold",
-                oversold: card?.status === "sold" ? true : false,
+                // Change 4: preserve oversold flag once set; only set it if card was already sold
+                oversold: (card?.oversold === true) ? true : (card?.status === "sold"),
                 lockedByCartId: null,
                 lockedByUserId: null,
                 lockedAt: null,
@@ -138,6 +174,11 @@ export async function flushPendingTxRoute(
               .run();
           }
         });
+
+        if (rejectReason) {
+          results.push({ clientId: tx.clientId, status: "rejected", reason: rejectReason });
+          continue;
+        }
 
         results.push({ clientId: tx.clientId, status: "accepted", serverTransactionId: txId });
       }
