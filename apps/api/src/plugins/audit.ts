@@ -73,6 +73,18 @@ export async function auditPlugin(app: FastifyInstance, opts: { db: Db }) {
       }
     }
 
+    // Merge any extra context the handler attached (e.g. void reason from req body)
+    const auditExtra = (request as unknown as { auditExtra?: unknown }).auditExtra;
+    if (auditExtra) {
+      try {
+        const merged = { ...( redactedJson ? JSON.parse(redactedJson) : {}), _auditExtra: auditExtra };
+        const mergedStr = JSON.stringify(merged);
+        redactedJson = mergedStr.length <= 2000 ? mergedStr : redactedJson; // keep original if merge blows limit
+      } catch {
+        // ignore merge failure
+      }
+    }
+
     try {
       db.insert(auditLog)
         .values({

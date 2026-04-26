@@ -142,6 +142,14 @@ async function handleVoidRefund(
     .where(eq(transactionItems.transactionId, parentId))
     .all();
 
+  // Annotate request so the audit onSend hook can capture the reason from the
+  // request body (not visible in the response body).
+  (request as unknown as { auditExtra?: unknown }).auditExtra = {
+    voidOrRefundReason: body.reason,
+    parentTransactionId: parentId,
+    kind,
+  };
+
   const nowSec = Math.floor(Date.now() / 1000);
   const cashierUserId = request.session.userId!;
 
