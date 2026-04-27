@@ -1,6 +1,7 @@
 import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 
@@ -98,9 +99,11 @@ export function EventsAdminPage() {
     setSaving(true);
     try {
       if (editId) {
-        await api.events.update(editId, { name: name.trim(), venue: venue.trim(), startDate, endDate, status, version: editVersion });
+        const updated = await api.events.update(editId, { name: name.trim(), venue: venue.trim(), startDate, endDate, status, version: editVersion });
+        await idb.events.put(updated as unknown as import("../lib/db.js").IdbEvent);
       } else {
-        await api.events.create({ name: name.trim(), venue: venue.trim(), startDate, endDate, status });
+        const created = await api.events.create({ name: name.trim(), venue: venue.trim(), startDate, endDate, status });
+        await idb.events.put(created as unknown as import("../lib/db.js").IdbEvent);
       }
       resetForm();
       await loadEvents();

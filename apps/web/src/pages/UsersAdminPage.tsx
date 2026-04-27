@@ -1,6 +1,7 @@
 import React, { useId, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 
@@ -83,9 +84,11 @@ export function UsersAdminPage() {
       if (editId) {
         const body: { displayName?: string; role?: string; password?: string } = { displayName: displayName.trim(), role };
         if (password) body.password = password;
-        await api.users.update(editId, body);
+        const updated = await api.users.update(editId, body);
+        await idb.users.put({ id: updated.id, email: updated.email, displayName: updated.displayName, role: updated.role as "admin" | "cashier" });
       } else {
-        await api.users.create({ email: email.trim(), password, displayName: displayName.trim(), role });
+        const created = await api.users.create({ email: email.trim(), password, displayName: displayName.trim(), role });
+        await idb.users.put({ id: created.id, email: created.email, displayName: created.displayName, role: created.role as "admin" | "cashier" });
       }
       resetForm();
       await loadUsers();

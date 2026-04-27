@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { liveQuery } from "dexie";
 import { X, Check, Printer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -510,7 +511,12 @@ export function POSPage() {
     idb.settings.get("max_transaction_discount_pct").then((s) => {
       if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
     });
-    idb.events.filter((ev) => ev.status === "active").first().then((ev) => setActiveEvent(ev ?? null));
+  }, []);
+
+  useEffect(() => {
+    const sub = liveQuery(() => idb.events.filter((ev) => ev.status === "active").first())
+      .subscribe({ next: (ev) => setActiveEvent(ev ?? null) });
+    return () => sub.unsubscribe();
   }, []);
 
   useEffect(() => {
