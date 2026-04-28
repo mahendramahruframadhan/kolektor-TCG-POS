@@ -17,6 +17,10 @@ const PAGE_LAYOUT_OPTIONS: { value: PageLayout; label: string }[] = [
 
 // ── QR data URL cache ─────────────────────────────────────────────────────
 
+function formatPrice(idr: number): string {
+  return `Rp${idr.toLocaleString("id-ID")}`;
+}
+
 async function generateQR(text: string): Promise<string> {
   return QRCode.toDataURL(text, {
     errorCorrectionLevel: "H",
@@ -35,6 +39,9 @@ function CardLabel({ card, ownerName, layout }: { card: IdbCard; ownerName: stri
     generateQR(card.shortId).then(setQrUrl).catch(() => null);
   }, [card.shortId]);
 
+  const displayPrice = card.pricingMode === "fixed" ? card.priceIdr : card.listedPriceIdr;
+  const priceLabel = displayPrice != null ? formatPrice(displayPrice) : null;
+
   if (layout === "33x15") {
     return (
       <div
@@ -47,13 +54,18 @@ function CardLabel({ card, ownerName, layout }: { card: IdbCard; ownerName: stri
             : <div style={{ width: "13mm", height: "13mm", background: "#eee" }} />}
         </div>
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "7pt", letterSpacing: "0.05em" }} className="text-black">
+          <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: "4pt", letterSpacing: "0.05em" }} className="text-black">
             {card.shortId}
           </span>
-          <span style={{ fontWeight: 600, fontSize: "4.5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
+          {priceLabel && (
+            <span style={{ fontWeight: 900, fontSize: "5.5pt", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden" }} className="text-black">
+              {priceLabel}
+            </span>
+          )}
+          <span style={{ fontWeight: 600, fontSize: "4pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
             {card.title.length > 32 ? card.title.slice(0, 30) + "…" : card.title}
           </span>
-          <span style={{ fontSize: "4pt", color: "#666", marginTop: "0.3mm" }}>
+          <span style={{ fontSize: "4pt", color: "#666" }}>
             {ownerName} · {card.condition}
           </span>
         </div>
@@ -73,13 +85,18 @@ function CardLabel({ card, ownerName, layout }: { card: IdbCard; ownerName: stri
             : <div style={{ width: "16mm", height: "16mm", background: "#eee" }} />}
         </div>
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "8pt", letterSpacing: "0.05em" }} className="text-black">
+          <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: "4pt", letterSpacing: "0.05em" }} className="text-black">
             {card.shortId}
           </span>
-          <span style={{ fontWeight: 600, fontSize: "5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
+          {priceLabel && (
+            <span style={{ fontWeight: 900, fontSize: "6pt", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden" }} className="text-black">
+              {priceLabel}
+            </span>
+          )}
+          <span style={{ fontWeight: 600, fontSize: "4pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
             {card.title.length > 38 ? card.title.slice(0, 36) + "…" : card.title}
           </span>
-          <span style={{ fontSize: "4pt", color: "#666", marginTop: "0.3mm" }}>
+          <span style={{ fontSize: "4pt", color: "#666" }}>
             {ownerName} · {card.condition}
           </span>
         </div>
@@ -98,14 +115,19 @@ function CardLabel({ card, ownerName, layout }: { card: IdbCard; ownerName: stri
           ? <img src={qrUrl} alt={card.shortId} style={{ width: "20mm", height: "20mm", display: "block" }} />
           : <div style={{ width: "20mm", height: "20mm", background: "#eee" }} />}
       </div>
-      <div className="flex flex-col justify-center min-w-0 flex-1" style={{ fontSize: "5.5pt", lineHeight: 1.3 }}>
-        <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "8pt", letterSpacing: "0.05em" }} className="text-black">
+      <div className="flex flex-col justify-center min-w-0 flex-1">
+        <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: "4.5pt", letterSpacing: "0.05em" }} className="text-black">
           {card.shortId}
         </span>
-        <span style={{ fontWeight: 600, fontSize: "5.5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
+        {priceLabel && (
+          <span style={{ fontWeight: 900, fontSize: "6pt", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden" }} className="text-black">
+            {priceLabel}
+          </span>
+        )}
+        <span style={{ fontWeight: 600, fontSize: "4.5pt", wordBreak: "break-word", lineHeight: 1.2 }} className="text-gray-800">
           {card.title.length > 40 ? card.title.slice(0, 38) + "…" : card.title}
         </span>
-        <span style={{ fontSize: "4.5pt", color: "#666", marginTop: "0.5mm" }}>
+        <span style={{ fontSize: "4.5pt", color: "#666" }}>
           {ownerName} · {card.condition}
         </span>
       </div>
@@ -123,6 +145,8 @@ function buildPrintStyle(layout: PageLayout): string {
   body > *:not(#label-print-area) { display: none !important; }
   #label-print-area {
     display: block !important;
+    position: static !important;
+    left: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
@@ -148,6 +172,8 @@ function buildPrintStyle(layout: PageLayout): string {
   body > *:not(#label-print-area) { display: none !important; }
   #label-print-area {
     display: block !important;
+    position: static !important;
+    left: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
@@ -174,6 +200,8 @@ function buildPrintStyle(layout: PageLayout): string {
   #label-print-area {
     display: flex !important;
     flex-wrap: wrap !important;
+    position: static !important;
+    left: auto !important;
     gap: 3mm !important;
     margin: 0 !important;
     padding: 0 !important;

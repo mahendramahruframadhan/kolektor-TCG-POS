@@ -25,14 +25,14 @@ const SyncCardPayloadSchema = z.object({
   title: z.string().min(1),
   status: z.enum(["available", "held", "sold", "returned"]),
   version: z.number().int(),
-});
+}).passthrough();
 
 const SyncEventPayloadSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
   status: z.enum(["draft", "active", "closed"]),
   version: z.number().int(),
-});
+}).passthrough();
 
 const SyncUserPayloadSchema = z.object({
   id: z.string().uuid(),
@@ -40,14 +40,14 @@ const SyncUserPayloadSchema = z.object({
   displayName: z.string().min(1),
   role: z.enum(["admin", "cashier"]),
   version: z.number().int(),
-});
+}).passthrough();
 
 const SyncTransactionPayloadSchema = z.object({
   id: z.string().uuid(),
   kind: z.enum(["sale", "void", "refund"]),
   totalIdr: z.number().int(),
   eventId: z.string().uuid(),
-});
+}).passthrough();
 
 const SYNC_CURSOR_KEY = "kolekta-sync-cursor";
 
