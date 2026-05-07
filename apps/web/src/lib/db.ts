@@ -188,6 +188,9 @@ class KolektaDb extends Dexie {
   pendingPhotos!: Table<IdbPendingPhoto>;
   pendingTransactions!: Table<IdbPendingTransaction>;
   cashReconciliations!: Table<IdbCashReconciliation>;
+  // Offline support tables
+  offlineSession!: Table<{key: string; value: unknown}>;
+  offlineData!: Table<{key: string; value: unknown; updatedAt: number}>;
 
   constructor() {
     super("kolektapos");
@@ -208,6 +211,11 @@ class KolektaDb extends Dexie {
     });
     this.version(3).stores({
       pendingTransactions: "clientId, syncStatus",
+    });
+    // Version 4: Offline support
+    this.version(4).stores({
+      offlineSession: "key",
+      offlineData: "key, updatedAt",
     });
   }
 }

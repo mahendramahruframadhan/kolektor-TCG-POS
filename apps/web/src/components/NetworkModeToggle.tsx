@@ -1,13 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Wifi, Plane } from "lucide-react";
 import { useSyncStateStore } from "../store/sync-state.js";
+import { useAuthStore } from "../store/auth.js";
 import { opportunisticSync } from "../lib/background-sync.js";
 
 export function NetworkModeToggle() {
   const networkMode = useSyncStateStore((s) => s.networkMode);
+  const isForceOfflineLocked = useSyncStateStore((s) => s.isForceOfflineLocked);
   const setNetworkMode = useSyncStateStore((s) => s.setNetworkMode);
+  const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Cashier cannot change network mode - it's locked
+  const isLocked = isForceOfflineLocked || user?.role === "cashier";
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -24,16 +30,17 @@ export function NetworkModeToggle() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => !isLocked && setOpen((o) => !o)}
         data-testid="network-mode-toggle"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={isForceOffline ? "Mode jaringan: Offline" : "Mode jaringan: Auto"}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-widest uppercase border transition ${
+        aria-disabled={isLocked}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-widest border transition ${
           isForceOffline
             ? "bg-warning/10 border-warning/40 text-warning"
             : "bg-muted border-border text-muted-fg"
-        }`}
+        } ${isLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       >
         {isForceOffline ? (
           <Plane className="w-3 h-3" aria-hidden="true" />
@@ -43,7 +50,7 @@ export function NetworkModeToggle() {
         {isForceOffline ? "Offline" : "Auto"}
       </button>
 
-      {open && (
+      {open && !isLocked && (
         <div
           role="listbox"
           aria-label="Pilih mode jaringan"

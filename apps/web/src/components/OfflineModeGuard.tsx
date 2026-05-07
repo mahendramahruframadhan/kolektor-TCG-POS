@@ -1,5 +1,5 @@
 import React from "react";
-import { useIsOnline } from "../hooks/use-is-online.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import { OfflineBanner } from "./OfflineBanner.js";
 import { OfflineBlockedState } from "./OfflineBlockedState.js";
 
@@ -11,13 +11,15 @@ interface Props {
 }
 
 export function OfflineModeGuard({ children, offlineMode }: Props) {
-  const isOnline = useIsOnline();
+  // Use effectiveIsOnline from sync state (considers networkMode)
+  // This allows cashier in force-offline mode to use app without needing internet
+  const effectiveIsOnline = useSyncStateStore((s) => s.effectiveIsOnline);
 
-  if (!isOnline && offlineMode === "blocked") {
+  if (!effectiveIsOnline && offlineMode === "blocked") {
     return <OfflineBlockedState />;
   }
 
-  if (!isOnline && offlineMode === "partial") {
+  if (!effectiveIsOnline && offlineMode === "partial") {
     return (
       <>
         <OfflineBanner />

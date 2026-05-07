@@ -215,6 +215,65 @@ export async function syncRoutes(
   });
 
   /**
+   * POST /sync/manual
+   *
+   * Manual sync endpoint - pull only for cashier manual sync button.
+   * Accepts optional cursor to get latest changes since last sync.
+   */
+  app.post(
+    "/sync/manual",
+    { preHandler: requireAuth, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { cursor: cursorStr = "0" } = request.body as { cursor?: string } | undefined;
+      const cursor = parseInt(cursorStr || "0", 10) || 0;
+      const nowSec = Math.floor(Date.now() / 1000);
+      const result: Record<string, unknown> = {};
+
+      // Pull events (active + recent closed)
+      const eventRows = db
+        .select()
+        .from(events)
+        .where(eq(events.status, "active"))
+        .all();
+      if (eventRows.length > 0) result.events = eventRows;
+
+      // Pull all users (for display)
+      const userRows = db.select().from(users).all();
+      if (userRows.length > 0) result.users = userRows.map(userDto);
+
+      // Pull settings
+      const settingRows = db.select().from(settings).all();
+      if (settingRows.length > 0) {
+        result.settings = settingRows.map((s) => ({
+          key: s.key,
+          value: s.value,
+        }));
+      }
+
+      // Pull payment channels
+      const channelRows = db
+        .select()
+        .from(paymentChannels)
+        .where(eq(paymentChannels.isActive, true))
+        .all();
+      if (channelRows.length > 0) result.paymentChannels = channelRows;
+
+      // Pull cards (non-retired only)
+      const cardRows = db
+        .select()
+        .from(cards)
+        .where(eq(cards.retiredAt, 0))
+        .all();
+      if (cardRows.length > 0) result.cards = cardRows;
+
+      result.cursor = nowSec;
+      result.serverTime = nowSec;
+
+      return reply.send(result);
+    }
+  );
+
+  /**
    * POST /sync/photo/:cardClientId
    *
    * Multipart photo upload (PRD §16.5).

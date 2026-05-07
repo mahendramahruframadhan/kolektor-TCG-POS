@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import { resetAndSync } from "../lib/background-sync.js";
+import bcrypt from "bcryptjs";
 
 const LANDING_PAGE_PATHS: Record<string, string> = {
   dashboard: "/dashboard",
@@ -36,15 +38,113 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    
+    const syncState = useSyncStateStore.getState();
+    const isBrowserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    const isEffectiveOnline = syncState.effectiveIsOnline;
+    const networkMode = syncState.networkMode;
+    
+    // OFFLINE LOGIN: Untuk cashier yang sudah pernah login dan punya credentials lokal
+    // Hanya bisa offline login jika credentials ada DAN email match DAN bukan admin
+    const hasOfflineCreds = syncState.offlineCredentials && 
+                         syncState.offlineCredentials.role === "cashier";
+    const isCashierCreds = hasOfflineCreds && 
+                         syncState.offlineCredentials?.email === email;
+    
+    if (isCashierCreds && (!isBrowserOnline || networkMode === "force-offline")) {
+      try {
+        // Validasi credentials lokal
+        const isValid = await syncState.validateOfflineCredentials(email, password);
+        
+        if (!isValid) {
+          // Check if expired
+          if (syncState.offlineCredentials.expiresAt < Date.now()) {
+            setError("Session offline expired. Silakan login saat online.");
+          } else {
+            setError("Email atau password salah.");
+          }
+          setLoading(false);
+          return;
+        }
+        
+        // Load user dari offline credentials
+        const user = {
+          id: syncState.offlineCredentials.userId,
+          email: syncState.offlineCredentials.email,
+          displayName: syncState.offlineCredentials.email.split('@')[0],
+          role: syncState.offlineCredentials.role,
+        };
+        
+        setUser(user);
+        // Offline login berhasil - force offline mode untuk cashier
+        if (user.role === "cashier") {
+          syncState.enableForceOffline();
+        }
+        const landingPath = await resolveLandingPath();
+        navigate(landingPath);
+      } catch (err) {
+        setError("Login offline gagal. Coba login saat online.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    
+    // ONLINE LOGIN
     try {
       const user = await api.auth.login(email, password);
       setUser(user);
-      // Kick off IDB sync immediately on login so every page has fresh data.
-      // Fire-and-forget — navigation is not blocked by sync completion.
-      resetAndSync().catch(() => null);
-      const landingPath = await resolveLandingPath();
-      navigate(landingPath);
+      
+      // Set networkMode based on role
+      if (user.role === "cashier") {
+        // Cashier: force offline mode + save credentials for offline login
+        const passwordHash = await bcrypt.hash(password, 10);
+        syncState.saveOfflineCredentials(email, passwordHash, user.id, user.role);
+        syncState.enableForceOffline();
+      } else if (user.role === "admin") {
+        // Admin: clear any existing cashier credentials to avoid conflicts
+        syncState.clearOfflineCredentials();
+        syncState.setNetworkMode("auto");
+}
+       
+       // Untuk cashier: WAJIB tekan Sync Data untuk dapat data terbaru (tidak auto pull)
+       // Untuk admin: auto pull data
+       if (user.role === "admin") {
+         resetAndSync().catch(() => null);
+       }
+       // Cashier harus tekan "Sync Data" button untuk pull data
+       
+       const landingPath = await resolveLandingPath();
+       navigate(landingPath);
     } catch (err: unknown) {
+      // Jika online login gagal dan ada offline cashier credentials dengan email sama, coba offline login
+      const storedCashierCreds = syncState.offlineCredentials && 
+                            syncState.offlineCredentials.role === "cashier" &&
+                            syncState.offlineCredentials.email === email;
+      
+      if (storedCashierCreds) {
+        try {
+          const isValid = await syncState.validateOfflineCredentials(email, password);
+          if (isValid) {
+            const user = {
+              id: syncState.offlineCredentials.userId,
+              email: syncState.offlineCredentials.email,
+              displayName: syncState.offlineCredentials.email.split('@')[0],
+              role: syncState.offlineCredentials.role,
+            };
+            setUser(user);
+            if (user.role === "cashier") {
+              syncState.enableForceOffline();
+            }
+            const landingPath = await resolveLandingPath();
+            navigate(landingPath);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Fall through to error
+        }
+      }
       setError(
         err instanceof Error ? err.message : "Login gagal. Coba lagi."
       );

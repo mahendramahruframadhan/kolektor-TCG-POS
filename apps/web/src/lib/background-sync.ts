@@ -232,25 +232,12 @@ let syncInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBackgroundSync() {
   if (syncInterval) return;
-  syncInterval = setInterval(async () => {
-    const { effectiveIsOnline } = useSyncStateStore.getState();
-    if (!effectiveIsOnline) {
-      useSyncStateStore.getState().setState("offline");
-      return;
-    }
-    useSyncStateStore.getState().setState("syncing");
-    try {
-      await flushPendingTransactions();
-      await deltaSyncPull();
-      useSyncStateStore.getState().markSuccess();
-    } catch (err) {
-      console.warn("[sync] Background sync failed:", err);
-      useSyncStateStore.getState().setState(
-        "error",
-        err instanceof Error ? err.message : "Sinkronisasi gagal"
-      );
-    }
-  }, 60 * 1000);
+  // Background sync disabled for both admin and cashier
+  // All syncing must be done manually via Sync Data button
+  // This ensures data flow is controlled:
+  // - Admin: online, data from server
+  // - Cashier: press "Sync Data" to get latest from admin + push pending
+  return;
 }
 
 export function stopBackgroundSync() {
@@ -262,11 +249,13 @@ export function stopBackgroundSync() {
 
 /** Trigger an opportunistic sync immediately (call after cashier actions). */
 export function opportunisticSync() {
-  const { effectiveIsOnline } = useSyncStateStore.getState();
-  if (!effectiveIsOnline) {
+  // Check browser online status, NOT effectiveIsOnline (which is false for force-offline)
+  const browserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+  if (!browserOnline) {
     useSyncStateStore.getState().setState("offline");
     return;
   }
+  
   useSyncStateStore.getState().setState("syncing");
   flushPendingTransactions()
     .then(() => deltaSyncPull())
@@ -284,6 +273,10 @@ export function opportunisticSync() {
  * Use this instead of the legacy fetchAndSync() after login.
  */
 export async function resetAndSync(): Promise<void> {
+  // Skip sync if offline - don't try to sync when no internet
+  if (!useSyncStateStore.getState().effectiveIsOnline) {
+    return;
+  }
   // Clear cursor so deltaSyncPull triggers a cursor=0 (full initial pull)
   localStorage.removeItem("kolekta-sync-cursor");
   useSyncStateStore.getState().setState("syncing");

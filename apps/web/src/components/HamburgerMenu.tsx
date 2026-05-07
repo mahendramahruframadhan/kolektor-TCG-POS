@@ -6,6 +6,7 @@ import {
   BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import { api } from "../lib/api.js";
 import { queryClient } from "../lib/query-client.js";
 
@@ -34,11 +35,22 @@ const NAV_ITEMS: NavItem[] = [
 export function HamburgerMenu() {
   const [open, setOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const effectiveIsOnline = useSyncStateStore((s) => s.effectiveIsOnline);
   const navigate = useNavigate();
 
   async function handleLogout() {
     setOpen(false);
-    await api.auth.logout().catch(() => null);
+    
+    // For cashier, skip server logout entirely (offline mode by design)
+    // For admin, try logout if online
+    if (user?.role !== "cashier") {
+      const browserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+      if (browserOnline && effectiveIsOnline) {
+        await api.auth.logout().catch(() => null);
+      }
+    }
+    
+    // Keep credentials for cashier (expire in 7 days)
     useAuthStore.getState().setUser(null);
     useAuthStore.persist.clearStorage();
     queryClient.clear();

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -7,9 +7,9 @@ import {
 } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import { resetAndSync } from "../lib/background-sync.js";
 
 function useDashboardStats(eventId: string | undefined) {
   return useQuery({
@@ -42,15 +42,10 @@ function useDashboardStats(eventId: string | undefined) {
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const syncedRef = useRef(false);
-
-  useEffect(() => {
-    if (syncedRef.current) return;
-    syncedRef.current = true;
-    resetAndSync().catch((err) => {
-      console.warn("[sync] Initial pull failed (offline?):", err);
-    });
-  }, []);
+  const networkMode = useSyncStateStore((s) => s.networkMode);
+  
+  // NO auto pull on dashboard for cashier
+  // Cashier must use "Sync Data" button to get latest data
 
   const { data: events } = useQuery({
     queryKey: ["events"],
