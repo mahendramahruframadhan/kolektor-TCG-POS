@@ -60,10 +60,10 @@ export function DashboardPage() {
   const activeEvent = events?.find((e) => e.status === "active");
   const { data: stats } = useDashboardStats(activeEvent?.id);
 
-  const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
+  const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean; adminOnly?: boolean }[] = [
     { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
     { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
-    { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", primary: false },
+    { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", primary: false, adminOnly: true },
     { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 
@@ -141,7 +141,7 @@ export function DashboardPage() {
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
-          {quickActions.map((a) => (
+          {quickActions.filter((a) => !a.adminOnly || user?.role === "admin").map((a) => (
             <Link
               key={a.to}
               to={a.to}

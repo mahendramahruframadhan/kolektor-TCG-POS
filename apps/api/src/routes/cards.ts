@@ -39,8 +39,8 @@ export async function cardRoutes(app: FastifyInstance, opts: { db: Db }) {
     }
   );
 
-  // POST /cards — create card (any authenticated user, intake flow)
-  app.post("/cards", { preHandler: requireAuth }, async (request, reply) => {
+  // POST /cards — create card (ADMIN ONLY - stock receive)
+  app.post("/cards", { preHandler: requireAdmin }, async (request, reply) => {
     const body = CreateCardSchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: body.error.flatten() });

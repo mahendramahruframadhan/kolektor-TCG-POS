@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
   { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
   { to: "/inventory", Icon: Package,      label: "Inventaris" },
-  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive" },
+  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", adminOnly: true },
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },

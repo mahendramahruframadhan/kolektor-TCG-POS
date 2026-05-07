@@ -83,11 +83,11 @@ export function App() {
           <Route
             path="/stock-receive"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <StockReceivePage />
                 </OfflineModeGuard>
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
