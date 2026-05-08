@@ -225,19 +225,109 @@ export async function flushPendingTransactions(): Promise<void> {
 }
 
 /**
- * Background sync — runs every 60s + opportunistically after cashier actions.
- * PRD §11: Background every 60s when online + opportunistic on every cashier action.
+ * Background sync — runs every 60 minutes for transactions push only.
+ * 
+ * Flow:
+ * - Auto sync after 60 min inactivity (forgot to press sync)
+ * - Push only (transactions to server)
+ * - Keep synced data for 60 min before cleanup
+ * - Error history kept for 24 hours
  */
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 
+const SYNC_INTERVAL_MS = 60 * 60 * 1000;  // 60 minutes
+const SYNC_CLEANUP_MS = 60 * 60 * 1000; // 60 minutes after sync success
+const ERROR_HISTORY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export function startBackgroundSync() {
   if (syncInterval) return;
-  // Background sync disabled for both admin and cashier
-  // All syncing must be done manually via Sync Data button
-  // This ensures data flow is controlled:
-  // - Admin: online, data from server
-  // - Cashier: press "Sync Data" to get latest from admin + push pending
-  return;
+  
+  // Enable background sync - runs every 60 minutes
+  syncInterval = setInterval(async () => {
+    const browserOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    if (!browserOnline) return;
+    
+    const { networkMode } = useSyncStateStore.getState();
+    
+    // Skip for admin (they don't need auto sync for transactions)
+    if (networkMode !== "force-offline") return;
+    
+    // Push only - don't pull data from server
+    try {
+      await flushPendingTransactions();
+      
+      // After successful push, schedule cleanup
+      schedulePendingCleanup();
+      
+    } catch (err) {
+      // Save error to local storage (will be cleaned after 24 hours)
+      saveSyncError(err instanceof Error ? err.message : "Sync failed");
+      console.warn("[auto-sync] Failed:", err);
+    }
+  }, SYNC_INTERVAL_MS);
+}
+
+/**
+ * Schedule cleanup of synced transactions after 60 minutes
+ */
+function schedulePendingCleanup() {
+  setTimeout(async () => {
+    try {
+      await cleanupSyncedTransactions();
+    } catch (err) {
+      console.warn("[cleanup] Failed:", err);
+    }
+  }, SYNC_CLEANUP_MS);
+}
+
+/**
+ * Cleanup synced transactions after 60 minutes
+ */
+async function cleanupSyncedTransactions() {
+  if (typeof window === "undefined") return;
+  
+  const now = Date.now();
+  const db = await import("./db.js").then(m => m.idb);
+  
+  // Find all synced transactions older than 60 minutes
+  const toDelete = await db.pendingTransactions
+    .where("syncStatus")
+    .equals("synced")
+    .and(tx => tx.syncedAt && (now - tx.syncedAt > SYNC_CLEANUP_MS))
+    .toArray();
+  
+  // Delete them
+  for (const tx of toDelete) {
+    await db.pendingTransactions.delete(tx.clientId);
+  }
+  
+  if (toDelete.length > 0) {
+    console.log(`[cleanup] Deleted ${toDelete.length} synced transactions`);
+  }
+}
+
+/**
+ * Save sync error to localStorage (kept for 24 hours)
+ */
+function saveSyncError(message: string) {
+  if (typeof localStorage === "undefined") return;
+  
+  const errors = JSON.parse(localStorage.getItem("sync-error-history") || "[]");
+  errors.push({
+    message,
+    timestamp: nowSec()
+  });
+  
+  // Keep only last 24 hours of errors
+  const cutoff = Date.now() - ERROR_HISTORY_MS;
+  const recentErrors = errors.filter(e => e.timestamp > cutoff);
+  
+  localStorage.setItem("sync-error-history", JSON.stringify(recentErrors));
+}
+
+// Helper to get current timestamp in seconds
+function nowSec(): number {
+  return Math.floor(Date.now() / 1000);
 }
 
 export function stopBackgroundSync() {
