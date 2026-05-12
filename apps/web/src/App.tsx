@@ -21,6 +21,7 @@ import { ProfilePage } from "./pages/ProfilePage.js";
 import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
+import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 
@@ -83,11 +84,11 @@ export function App() {
           <Route
             path="/stock-receive"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <StockReceivePage />
                 </OfflineModeGuard>
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
@@ -181,11 +182,11 @@ export function App() {
           <Route
             path="/stock-receive/bulk"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <BulkImportPage />
                 </OfflineModeGuard>
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
@@ -211,6 +212,14 @@ export function App() {
               <RequireAuth>
                 <MyPayoutPage />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/pending-transactions"
+            element={
+              <RequireAdmin>
+                <PendingTransactionsPage />
+              </RequireAdmin>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

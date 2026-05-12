@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
-import { useAuthStore } from "../store/auth.js";
+import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
+import { useSyncStateStore } from "../store/sync-state.js";
 import { resetAndSync } from "../lib/background-sync.js";
 
 const LANDING_PAGE_PATHS: Record<string, string> = {
@@ -22,9 +23,21 @@ async function resolveLandingPath(): Promise<string> {
   }
 }
 
+function OfflineExpiryBanner({ hoursLeft }: { hoursLeft: number }) {
+  if (hoursLeft <= 0) return null;
+  return (
+    <div className="bg-warning bg-opacity-10 border border-warning border-opacity-30 rounded-xl px-4 py-2.5 text-xs font-medium text-warning text-center">
+      Logged in offline — expires in {hoursLeft}h
+    </div>
+  );
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
+  const cacheCredential = useOfflineAuthStore((s) => s.cacheCredential);
+  const clearOfflineCredential = useOfflineAuthStore((s) => s.clearOfflineCredential);
+  const isOnline = useSyncStateStore((s) => s.effectiveIsOnline);
   const emailId = useId();
   const passwordId = useId();
   const [email, setEmail] = useState("");
@@ -32,22 +45,98 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  interface LoginResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  role: string;
+  offlineHash?: string;
+  allUsersHash?: Array<{
+    id: string;
+    email: string;
+    displayName: string;
+    role: string;
+    offlineHash: string;
+  }>;
+}
+
+async function handleOnlineLogin() {
+    const response = await api.auth.login(email, password);
+    const user = response as LoginResponse;
+    setUser(user);
+
+    if (user.role === "admin" && user.allUsersHash) {
+      for (const u of user.allUsersHash) {
+        cacheCredential({
+          email: u.email,
+          offlineHash: u.offlineHash,
+          id: u.id,
+          displayName: u.displayName,
+          role: u.role,
+        });
+      }
+    } else if ((user.role === "cashier" || user.role === "admin") && user.offlineHash) {
+      cacheCredential({
+        email: user.email,
+        offlineHash: user.offlineHash,
+        id: user.id,
+        displayName: user.displayName,
+        role: user.role,
+      });
+    }
+
+    resetAndSync().catch(() => null);
+    const landingPath = await resolveLandingPath();
+    navigate(landingPath);
+  }
+
+  async function handleOfflineLogin() {
+    const validateOfflineLogin = useOfflineAuthStore.getState().validateOfflineLogin;
+    const setOfflineSession = useOfflineAuthStore.getState().setOfflineSession;
+    clearOfflineCredential();
+
+    const offlineUser = validateOfflineLogin(email, password);
+    if (!offlineUser) {
+      setError("Login offline gagal. Pastikan Anda sudah login online sebelumnya dan credential belum expired (7 hari).");
+      return;
+    }
+
+    setUser(offlineUser);
+    const offlineExpiresAt = offlineUser.id
+      ? Date.now() + 7 * 24 * 60 * 60 * 1000
+      : Date.now();
+
+    setOfflineSession(offlineUser, offlineExpiresAt);
+    const landingPath = await resolveLandingPath();
+    navigate(landingPath);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
-      const user = await api.auth.login(email, password);
-      setUser(user);
-      // Kick off IDB sync immediately on login so every page has fresh data.
-      // Fire-and-forget — navigation is not blocked by sync completion.
-      resetAndSync().catch(() => null);
-      const landingPath = await resolveLandingPath();
-      navigate(landingPath);
+      if (isOnline) {
+        await handleOnlineLogin();
+      } else {
+        await handleOfflineLogin();
+      }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Login gagal. Coba lagi."
-      );
+      if (err instanceof Error && err.message === "Network Error") {
+        const offlineUser = useOfflineAuthStore.getState().validateOfflineLogin(email, password);
+        if (offlineUser && (offlineUser.role === "cashier" || offlineUser.role === "admin")) {
+          const offlineExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          useAuthStore.getState().setUser(offlineUser);
+          useOfflineAuthStore.getState().setOfflineSession(offlineUser, offlineExpiresAt);
+          const landingPath = await resolveLandingPath();
+          navigate(landingPath);
+        } else {
+          setError("Koneksi gagal dan login offline tidak tersedia. Pastikan Anda sudah login online sebelumnya (credential aktif 7 hari).");
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");
+      }
     } finally {
       setLoading(false);
     }
@@ -57,10 +146,9 @@ export function LoginPage() {
     "w-full h-12 border border-border rounded-xl px-4 text-sm font-medium text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition placeholder:text-muted-fg";
 
   return (
-    // bg-white matches the pure-white background of hero.webp
     <div className="min-h-screen bg-white flex flex-col overflow-hidden">
 
-      {/* ── Top bar: back button left + logo centered ── */}
+      {/* ── Top bar: back button left + logo centered + network badge ── */}
       <div className="relative flex items-center justify-center min-h-14 px-4 pt-10 shrink-0">
         <button
           onClick={() => navigate("/")}
@@ -78,7 +166,7 @@ export function LoginPage() {
       <div className="flex-1 flex flex-col max-w-sm mx-auto w-full px-6 pt-6 pb-6">
 
         {/* Title + subtitle — centered */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-[28px] font-extrabold text-fg leading-tight mb-2">
             Masuk ke KolektaPOS
           </h1>
@@ -86,6 +174,12 @@ export function LoginPage() {
             Kasir TCG Sales offline-first
           </p>
         </div>
+
+        {!isOnline && (
+          <div className="bg-muted bg-opacity-40 rounded-xl px-4 py-3 text-xs text-muted-fg mb-4 text-center">
+            Mode offline — hanya cashier bisa login offline
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,7 +225,7 @@ export function LoginPage() {
             disabled={loading}
             className="w-full h-14 bg-primary text-primary-fg font-bold text-[15px] rounded-2xl transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50 mt-2"
           >
-            {loading ? "Masuk…" : "Masuk dengan Email"}
+            {loading ? "Masuk…" : (isOnline ? "Masuk dengan Email" : "Login Offline")}
           </button>
         </form>
 

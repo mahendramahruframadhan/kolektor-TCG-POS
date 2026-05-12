@@ -199,32 +199,33 @@ export async function settlementRoutes(
     }
   );
 
-  // GET /reports/monthly?year=YYYY&month=MM — aggregate by calendar month
+  // GET /reports/monthly?year=YYYY&month=MM&eventId=EVENT_ID — aggregate by calendar month for a specific event
   app.get(
     "/reports/monthly",
     { preHandler: requireAuth },
     async (request, reply) => {
-      const { year, month } = request.query as { year?: string; month?: string };
+      const { year, month, eventId } = request.query as { year?: string; month?: string; eventId?: string };
       const y = parseInt(year ?? String(new Date().getFullYear()), 10);
       const m = parseInt(month ?? String(new Date().getMonth() + 1), 10);
 
-      // Unix timestamps for start/end of month
       const startDate = new Date(y, m - 1, 1);
       const endDate = new Date(y, m, 1);
       const startTs = Math.floor(startDate.getTime() / 1000);
       const endTs = Math.floor(endDate.getTime() / 1000);
 
-      // Filter at SQL level — was: load-all + JS filter (O(n) memory).
+      const conditions = [
+        isNotNull(transactions.paidAt),
+        gte(transactions.paidAt, startTs),
+        lt(transactions.paidAt, endTs),
+      ];
+      if (eventId) {
+        conditions.push(eq(transactions.eventId, eventId));
+      }
+
       const monthTxs = db
         .select()
         .from(transactions)
-        .where(
-          and(
-            isNotNull(transactions.paidAt),
-            gte(transactions.paidAt, startTs),
-            lt(transactions.paidAt, endTs)
-          )
-        )
+        .where(and(...conditions))
         .all();
 
       const saleTxs = monthTxs.filter((t) => t.kind === "sale");

@@ -5,7 +5,7 @@ import {
   Settings, Users, Calendar, LogOut,
   BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
 } from "lucide-react";
-import { useAuthStore } from "../store/auth.js";
+import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
 import { queryClient } from "../lib/query-client.js";
 
@@ -20,12 +20,13 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
   { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
   { to: "/inventory", Icon: Package,      label: "Inventaris" },
-  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive" },
+  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", adminOnly: true },
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
   { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
   { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
+  { to: "/admin/pending-transactions", Icon: ClipboardList, label: "Transaksi Pending", adminOnly: true },
   { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
   { to: "/settings/overrides",Icon: ShieldAlert,  label: "Riwayat Override", adminOnly: true },
   { to: "/settings/audit-log",Icon: ClipboardList,label: "Audit Log",        adminOnly: true },
@@ -40,7 +41,7 @@ export function HamburgerMenu() {
     setOpen(false);
     await api.auth.logout().catch(() => null);
     useAuthStore.getState().setUser(null);
-    useAuthStore.persist.clearStorage();
+    useOfflineAuthStore.getState().logoutAndClearAll();
     queryClient.clear();
     navigate("/login");
   }

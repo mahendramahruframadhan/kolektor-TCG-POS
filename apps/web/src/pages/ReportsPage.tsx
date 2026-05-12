@@ -335,6 +335,8 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
     if (!selectedEventId || !selectedDate) return;
     setLoading(true);
     try {
+      const { opportunisticSync } = await import("../lib/background-sync.js");
+      await opportunisticSync();
       const event = events.find((e) => e.id === selectedEventId);
       const allTxs = await idb.transactions.where("eventId").equals(selectedEventId).toArray();
       const dayTxs = allTxs.filter((tx) => tx.paidAt != null && toIsoDate(tx.paidAt) === selectedDate);
@@ -462,28 +464,39 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
 
 // ── Detail: Monthly ────────────────────────────────────────────────────────
 
-function MonthlyDetail() {
+function MonthlyDetail({ events }: { events: IdbEvent[] }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (events.length > 0) {
+      const active = events.find((e) => e.status === "active");
+      setSelectedEventId(active?.id ?? events[0]!.id);
+    }
+  }, [events]);
+
   const load = useCallback(async () => {
+    if (!selectedEventId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await api.reports.monthly(year, month) as MonthlyReport;
+      const data = await api.reports.monthly(year, month, selectedEventId) as MonthlyReport;
       setReport(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat laporan.");
     } finally {
       setLoading(false);
     }
-  }, [year, month]);
+  }, [year, month, selectedEventId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (selectedEventId) load();
+  }, [selectedEventId, load]);
 
   function nav(delta: number) {
     const next = shiftMonth(year, month, delta);
@@ -496,7 +509,14 @@ function MonthlyDetail() {
   return (
     <div className="space-y-3">
       <SectionCard>
-        <div className="flex items-center gap-2">
+        <SectionLabel>Filter</SectionLabel>
+        <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className={selectCls()}>
+          <option value="">Semua Event</option>
+          {events.map((ev) => (
+            <option key={ev.id} value={ev.id}>{ev.name}{ev.status === "active" ? " (aktif)" : ""}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-2 mt-2">
           <NavButton onClick={() => nav(-1)}><ChevronLeft className="w-4 h-4" /></NavButton>
           <div className="flex-1 h-11 flex items-center justify-center bg-surface border border-border rounded-xl">
             <span className="text-sm font-bold text-fg">{fmtMonth(year, month)}</span>
@@ -777,7 +797,7 @@ export function ReportsPage() {
           <ReportListPage onSelect={handleSelect} />
         )}
         {activeReport === "daily" && <DailyDetail events={events} />}
-        {activeReport === "monthly" && <MonthlyDetail />}
+        {activeReport === "monthly" && <MonthlyDetail events={events} />}
         {activeReport === "settlement" && <SettlementDetail events={events} userRole={user?.role ?? ""} />}
         {activeReport === "inventory" && <InventoryDetail events={events} />}
       </div>
