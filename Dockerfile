@@ -31,8 +31,6 @@ RUN addgroup -S app && adduser -S -G app app \
 
 USER app
 
-VOLUME /data
-
 ENV NODE_ENV=production \
     PORT=8080 \
     HOST=0.0.0.0 \
