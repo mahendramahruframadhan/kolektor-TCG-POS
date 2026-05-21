@@ -1,10 +1,11 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema.js";
 
-export async function seed(db: ReturnType<typeof drizzle>) {
+export async function seed(db: BetterSQLite3Database<typeof schema>) {
   // ── payment channels ──────────────────────────────────────────────────
   const channels = [
     { name: "Cash IDR", type: "cash", sortOrder: 0 },

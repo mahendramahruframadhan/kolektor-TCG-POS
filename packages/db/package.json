@@ -5,11 +5,12 @@
   "license": "UNLICENSED",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema.ts",
-    "./seed": "./src/seed.ts"
+    ".": "./dist/index.js",
+    "./schema": "./dist/schema.js",
+    "./seed": "./dist/seed.js"
   },
   "scripts": {
+    "build": "tsc && cp src/triggers.sql dist/triggers.sql",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
