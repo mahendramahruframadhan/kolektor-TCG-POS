@@ -42,6 +42,8 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     request.session.userId = user.id;
     request.session.userRole = user.role;
 
+    await request.session.save();
+
     return reply.send({
       id: user.id,
       email: user.email,
