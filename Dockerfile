@@ -25,11 +25,7 @@ COPY . .
 RUN pnpm turbo run build
 
 # ── Runtime configuration ─────────────────────────────────────────────────────
-RUN addgroup -S app && adduser -S -G app app \
- && mkdir -p /data \
- && chown app:app /data
-
-USER app
+RUN mkdir -p /data
 
 ENV NODE_ENV=production \
     PORT=8080 \

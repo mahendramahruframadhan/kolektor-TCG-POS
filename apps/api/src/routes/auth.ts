@@ -42,12 +42,6 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     request.session.userId = user.id;
     request.session.userRole = user.role;
 
-    console.log("[DEBUG-auth] Session after login:", {
-      sessionId: request.session.sessionId,
-      userId: request.session.userId,
-      cookie: request.session.cookie,
-    });
-
     return reply.send({
       id: user.id,
       email: user.email,
