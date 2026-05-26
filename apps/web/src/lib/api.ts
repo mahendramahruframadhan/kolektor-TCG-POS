@@ -11,11 +11,21 @@ async function request<T>(
   if (options.body) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: "include",
-    headers: { ...headers, ...options.headers },
-    ...options,
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      credentials: "include",
+      headers: { ...headers, ...options.headers },
+      ...options,
+    });
+  } catch (fetchErr) {
+    // Network failure (offline, DNS error, CORS, etc.)
+    throw Object.assign(
+      new Error(fetchErr instanceof Error ? fetchErr.message : "Network Error"),
+      { status: undefined, name: "NetworkError", cause: fetchErr }
+    );
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -113,6 +123,13 @@ export const api = {
         displayName: string;
         role: string;
         offlineHash?: string;
+        allUsersHash?: Array<{
+          id: string;
+          email: string;
+          displayName: string;
+          role: string;
+          offlineHash: string;
+        }>;
       }>(
         "/auth/login",
         { method: "POST", body: JSON.stringify({ email, password }) }

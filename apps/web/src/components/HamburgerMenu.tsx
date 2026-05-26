@@ -41,7 +41,8 @@ export function HamburgerMenu() {
     setOpen(false);
     await api.auth.logout().catch(() => null);
     useAuthStore.getState().setUser(null);
-    useOfflineAuthStore.getState().logoutAndClearAll();
+    // Keep offlineCredentials so the user can re-login offline later
+    useOfflineAuthStore.getState().logoutSession();
     queryClient.clear();
     navigate("/login");
   }

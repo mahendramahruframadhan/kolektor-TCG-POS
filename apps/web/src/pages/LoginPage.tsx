@@ -1,4 +1,4 @@
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { api } from "../lib/api.js";
@@ -36,10 +36,34 @@ export function LoginPage() {
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
   const cacheCredential = useOfflineAuthStore((s) => s.cacheCredential);
-  const clearOfflineCredential = useOfflineAuthStore((s) => s.clearOfflineCredential);
   const isOnline = useSyncStateStore((s) => s.effectiveIsOnline);
   const emailId = useId();
   const passwordId = useId();
+
+  useEffect(() => {
+    console.log('[login] LoginPage mounted');
+    console.log('[login] isOnline (effective)', isOnline);
+    console.log('[login] navigator.onLine', navigator.onLine);
+    const stored = localStorage.getItem('kolekta-offline-auth');
+    console.log('[login] raw localStorage kolekta-offline-auth', stored);
+    const memCreds = useOfflineAuthStore.getState().offlineCredentials;
+    console.log('[login] memory offlineCredentials count', memCreds.length);
+    console.log('[login] memory offlineCredentials emails', memCreds.map(c => c.email));
+
+    // Manual rehydrate: ensure zustand state matches localStorage immediately
+    if (stored && memCreds.length === 0) {
+      try {
+        const parsed = JSON.parse(stored);
+        const state = parsed?.state ?? parsed;
+        if (Array.isArray(state?.offlineCredentials) && state.offlineCredentials.length > 0) {
+          console.log('[login] manual rehydrate triggered', state.offlineCredentials.length);
+          useOfflineAuthStore.setState({ offlineCredentials: state.offlineCredentials });
+        }
+      } catch (e) {
+        console.error('[login] manual rehydrate failed', e);
+      }
+    }
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +85,19 @@ export function LoginPage() {
 }
 
 async function handleOnlineLogin() {
+    console.log('[login] handleOnlineLogin start');
     const response = await api.auth.login(email, password);
+    console.log('[login] raw response', JSON.stringify(response));
     const user = response as LoginResponse;
     setUser(user);
 
-    if (user.role === "admin" && user.allUsersHash) {
+    console.log('[login] user.offlineHash?', Boolean(user.offlineHash));
+    console.log('[login] user.allUsersHash?', user.allUsersHash?.length ?? 0);
+
+    if (user.allUsersHash && user.allUsersHash.length > 0) {
+      console.log('[login] caching allUsersHash count', user.allUsersHash.length);
       for (const u of user.allUsersHash) {
+        console.log('[login] caching user', u.email);
         cacheCredential({
           email: u.email,
           offlineHash: u.offlineHash,
@@ -75,7 +106,8 @@ async function handleOnlineLogin() {
           role: u.role,
         });
       }
-    } else if ((user.role === "cashier" || user.role === "admin") && user.offlineHash) {
+    } else if (user.offlineHash) {
+      console.log('[login] caching single offlineHash for', user.email);
       cacheCredential({
         email: user.email,
         offlineHash: user.offlineHash,
@@ -83,19 +115,41 @@ async function handleOnlineLogin() {
         displayName: user.displayName,
         role: user.role,
       });
+    } else {
+      console.warn('[login] no offlineHash/allUsersHash in login response, trying fallback cache-credential');
+      try {
+        const cached = await api.auth.cacheCredential();
+        console.log('[login] fallback cache-credential response', cached);
+        cacheCredential({
+          email: cached.email,
+          offlineHash: cached.offlineHash,
+          id: cached.id,
+          displayName: cached.displayName,
+          role: cached.role,
+        });
+      } catch (cacheErr) {
+        console.error('[login] cache-credential fallback failed', cacheErr);
+      }
     }
 
+    const credsAfter = useOfflineAuthStore.getState().offlineCredentials;
+    console.log('[login] offlineCredentials count after cache', credsAfter.length);
+    console.log('[login] localStorage kolekta-offline-auth', localStorage.getItem('kolekta-offline-auth'));
+
+    useOfflineAuthStore.getState().setPendingAuth(email, password);
     resetAndSync().catch(() => null);
     const landingPath = await resolveLandingPath();
     navigate(landingPath);
   }
 
   async function handleOfflineLogin() {
+    console.log('[login] handleOfflineLogin start', { email, isOnline });
     const validateOfflineLogin = useOfflineAuthStore.getState().validateOfflineLogin;
     const setOfflineSession = useOfflineAuthStore.getState().setOfflineSession;
-    clearOfflineCredential();
-
+    const memoryCreds = useOfflineAuthStore.getState().offlineCredentials;
+    console.log('[login] handleOfflineLogin memory credentials count', memoryCreds.length);
     const offlineUser = validateOfflineLogin(email, password);
+    console.log('[login] handleOfflineLogin validate result', offlineUser);
     if (!offlineUser) {
       setError("Login offline gagal. Pastikan Anda sudah login online sebelumnya dan credential belum expired (7 hari).");
       return;
@@ -107,6 +161,7 @@ async function handleOnlineLogin() {
       : Date.now();
 
     setOfflineSession(offlineUser, offlineExpiresAt);
+    useOfflineAuthStore.getState().setPendingAuth(email, password);
     const landingPath = await resolveLandingPath();
     navigate(landingPath);
   }
@@ -116,24 +171,41 @@ async function handleOnlineLogin() {
     setError(null);
     setLoading(true);
 
+    // Use navigator.onLine directly — simple and matches user expectation:
+    // "if phone has internet → online mode, else → offline mode"
+    const browserOnline = navigator.onLine;
+    console.log('[login] handleSubmit start', { browserOnline, isOnline, email });
+
     try {
-      if (isOnline) {
+      if (browserOnline) {
+        console.log('[login] path: online login');
         await handleOnlineLogin();
       } else {
+        console.log('[login] path: offline login');
         await handleOfflineLogin();
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.message === "Network Error") {
+      console.error('[login] handleSubmit error', err);
+      const apiError = err as any;
+      const isNetworkError = !apiError.status || apiError.name === 'NetworkError' || apiError.name === 'TypeError' || apiError.message?.includes('Network');
+      console.log('[login] error analysis', { status: apiError.status, name: apiError.name, message: apiError.message, isNetworkError });
+
+      if (isNetworkError && browserOnline) {
+        // Browser claims online but fetch failed → try offline fallback
+        console.log('[login] network error despite browser online → fallback offline');
         const offlineUser = useOfflineAuthStore.getState().validateOfflineLogin(email, password);
         if (offlineUser && (offlineUser.role === "cashier" || offlineUser.role === "admin")) {
           const offlineExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
           useAuthStore.getState().setUser(offlineUser);
           useOfflineAuthStore.getState().setOfflineSession(offlineUser, offlineExpiresAt);
+          useOfflineAuthStore.getState().setPendingAuth(email, password);
           const landingPath = await resolveLandingPath();
           navigate(landingPath);
         } else {
           setError("Koneksi gagal dan login offline tidak tersedia. Pastikan Anda sudah login online sebelumnya (credential aktif 7 hari).");
         }
+      } else if (apiError.status === 401) {
+        setError("Email atau password salah.");
       } else {
         setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");
       }
@@ -175,7 +247,7 @@ async function handleOnlineLogin() {
           </p>
         </div>
 
-        {!isOnline && (
+        {!navigator.onLine && (
           <div className="bg-muted bg-opacity-40 rounded-xl px-4 py-3 text-xs text-muted-fg mb-4 text-center">
             Mode offline — hanya cashier bisa login offline
           </div>
@@ -225,7 +297,7 @@ async function handleOnlineLogin() {
             disabled={loading}
             className="w-full h-14 bg-primary text-primary-fg font-bold text-[15px] rounded-2xl transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50 mt-2"
           >
-            {loading ? "Masuk…" : (isOnline ? "Masuk dengan Email" : "Login Offline")}
+            {loading ? "Masuk…" : (navigator.onLine ? "Masuk dengan Email" : "Login Offline")}
           </button>
         </form>
 

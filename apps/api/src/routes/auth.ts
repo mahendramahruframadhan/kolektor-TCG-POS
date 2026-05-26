@@ -79,8 +79,8 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
   app.post("/auth/cache-credential", {
     preHandler: requireAuth,
   }, async (request, reply) => {
-    if (request.session.userRole !== "cashier") {
-      return reply.status(403).send({ error: "Only cashier can cache credentials for offline login" });
+    if (!(request.session.userRole === "cashier" || request.session.userRole === "admin")) {
+      return reply.status(403).send({ error: "Only cashier and admin can cache credentials for offline login" });
     }
 
     const user = db
