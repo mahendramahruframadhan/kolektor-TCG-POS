@@ -3,6 +3,14 @@ import { api } from "../lib/api.js";
 
 export type SyncState = "online" | "syncing" | "offline" | "error";
 export type NetworkMode = "auto" | "force-offline";
+export type ToastType = "success" | "error" | "info" | "warning";
+
+export interface ServerHealth {
+  online: boolean;
+  latency: number | null;
+  timestamp: number;
+  error?: string;
+}
 
 const NETWORK_MODE_KEY = "kolekta-network-mode";
 
@@ -19,7 +27,7 @@ function computeEffective(state: SyncState, mode: NetworkMode): boolean {
 interface ToastMessage {
   id: string;
   text: string;
-  type: "success" | "error" | "info";
+  type: ToastType;
 }
 
 interface SyncStateStore {
@@ -30,13 +38,17 @@ interface SyncStateStore {
   effectiveIsOnline: boolean;
   pendingTransactionCount: number;
   toasts: ToastMessage[];
+  serverHealth: ServerHealth | null;
+  lastHealthCheckAt: number | null;
   setState: (s: SyncState, error?: string | null) => void;
   markSuccess: () => void;
   setNetworkMode: (mode: NetworkMode) => void;
   setPendingTransactionCount: (count: number) => void;
-  addToast: (text: string, type?: "success" | "error" | "info") => void;
+  addToast: (text: string, type?: ToastType) => void;
   removeToast: (id: string) => void;
   triggerSilentReconnect: () => Promise<boolean>;
+  updateServerHealth: (health: ServerHealth) => void;
+  triggerHealthCheck: () => Promise<void>;
 }
 
 let reconnectAttempted = false;
@@ -53,6 +65,8 @@ export const useSyncStateStore = create<SyncStateStore>((set, get) => {
     effectiveIsOnline: computeEffective(initialState, initialMode),
     pendingTransactionCount: 0,
     toasts: [],
+    serverHealth: null,
+    lastHealthCheckAt: null,
 
     setState: (state, error = null) =>
       set((s) => {
@@ -133,13 +147,49 @@ export const useSyncStateStore = create<SyncStateStore>((set, get) => {
         return false;
       }
     },
+
+    updateServerHealth: (serverHealth) =>
+      set({ serverHealth, lastHealthCheckAt: Date.now() }),
+
+    triggerHealthCheck: async () => {
+      try {
+        const start = performance.now();
+        const response = await fetch("/api/health", {
+          method: "HEAD",
+          cache: "no-cache",
+        });
+        const latency = Math.round(performance.now() - start);
+        if (response.ok) {
+          get().updateServerHealth({
+            online: true,
+            latency,
+            timestamp: Date.now(),
+          });
+        } else {
+          get().updateServerHealth({
+            online: false,
+            latency: null,
+            timestamp: Date.now(),
+            error: `HTTP ${response.status}`,
+          });
+        }
+      } catch (err) {
+        get().updateServerHealth({
+          online: false,
+          latency: null,
+          timestamp: Date.now(),
+          error: err instanceof Error ? err.message : "Network error",
+        });
+      }
+    },
   };
 });
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     console.debug('[sync-state] browser online event fired');
-    useSyncStateStore.getState().setState("online");
+    // Trigger health check immediately when browser reports online
+    useSyncStateStore.getState().triggerHealthCheck();
   });
   window.addEventListener("offline", () => {
     console.debug('[sync-state] browser offline event fired');
@@ -147,18 +197,10 @@ if (typeof window !== "undefined") {
     useSyncStateStore.getState().setState("offline");
   });
 
-  // Periodic connectivity check to keep state in sync with actual network
+  // Periodic health check every 10 seconds (PRD §5.6)
   setInterval(() => {
     const store = useSyncStateStore.getState();
-    const browserOnline = navigator.onLine;
-    const storeOnline = store.effectiveIsOnline;
-
-    if (browserOnline && !storeOnline) {
-      console.debug('[sync-state] periodic check: browser online but store offline, syncing');
-      store.setState("online");
-    } else if (!browserOnline && storeOnline) {
-      console.debug('[sync-state] periodic check: browser offline but store online, syncing');
-      store.setState("offline");
-    }
-  }, 3000);
+    if (store.networkMode === "force-offline") return;
+    store.triggerHealthCheck();
+  }, 10000);
 }

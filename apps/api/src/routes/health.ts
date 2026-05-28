@@ -10,7 +10,7 @@ import { requireAdmin } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
-const startedAtSec = Math.floor(Date.now() / 1000);
+const startedAtMs = Date.now();
 
 // Derived once at startup from the same journal the migrator reads — never stale.
 const _journalPath = resolve(
@@ -23,6 +23,7 @@ const SCHEMA_VERSION = _journal.entries.at(-1)?.tag ?? "unknown";
 /**
  * GET /health — liveness + shallow DB probe + a few operational counters.
  * Public (no auth) so uptime checks and load balancers can probe it.
+ * Returns HealthCheckResponse per PRD §5.2.
  */
 export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
@@ -31,7 +32,8 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
     "/health",
     { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
     async (_request, reply) => {
-      const nowSec = Math.floor(Date.now() / 1000);
+      const nowMs = Date.now();
+      const nowSec = Math.floor(nowMs / 1000);
       try {
         const userCount =
           db.select({ c: count() }).from(users).get()?.c ?? 0;
@@ -42,19 +44,33 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
             .where(eq(carts.status, "draft"))
             .get()?.c ?? 0;
 
+        reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
+        reply.header("X-Server-Version", SCHEMA_VERSION);
+
         return reply.send({
+          status: "ok",
           ok: true,
+          timestamp: nowMs,
+          uptime: nowSec - Math.floor(startedAtMs / 1000),
+          version: SCHEMA_VERSION,
+          database: "connected",
           db: "connected",
-          uptimeSec: nowSec - startedAtSec,
+          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           users: userCount,
           activeDraftCarts: activeCarts,
         });
       } catch (err) {
         reply.log.error({ err, event: "health_probe_failed" });
+        reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
         return reply.status(503).send({
+          status: "error",
           ok: false,
+          timestamp: nowMs,
+          uptime: nowSec - Math.floor(startedAtMs / 1000),
+          version: SCHEMA_VERSION,
+          database: "disconnected",
           db: "error",
-          uptimeSec: nowSec - startedAtSec,
+          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
         });
       }
     }
@@ -71,7 +87,8 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
     },
     async (_request, reply) => {
-      const nowSec = Math.floor(Date.now() / 1000);
+      const nowMs = Date.now();
+      const nowSec = Math.floor(nowMs / 1000);
 
       const draftStats = db
         .select({ c: count(), oldest: min(carts.updatedAt) })
@@ -89,7 +106,7 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
       return reply.send({
         ok: true,
         schemaVersion: SCHEMA_VERSION,
-        uptimeSec: nowSec - startedAtSec,
+        uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
         activeDraftCarts,
         oldestOpenCartAgeSec,
         lastTransactionAt: lastPaidAt,
