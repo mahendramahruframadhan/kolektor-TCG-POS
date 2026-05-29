@@ -172,6 +172,18 @@ export const api = {
   },
   paymentChannels: {
     list: () => request<PaymentChannelListItem[]>("/payment-channels"),
+    create: (body: { name: string; type: string; sortOrder: number }) =>
+      request<PaymentChannelListItem>("/payment-channels", {
+        method: "POST",
+        body: JSON.stringify({ ...body, isActive: true }),
+      }),
+    update: (id: string, body: { name?: string; type?: string; sortOrder?: number; isActive?: boolean; version: number }) =>
+      request<PaymentChannelListItem>(`/payment-channels/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    delete: (id: string) =>
+      request<{ ok: boolean }>(`/payment-channels/${id}`, { method: "DELETE" }),
   },
   settings: {
     get: () => request<Record<string, unknown>>("/settings"),

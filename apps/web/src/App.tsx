@@ -24,6 +24,7 @@ import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
+import { PaymentChannelsAdminPage } from "./pages/PaymentChannelsAdminPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 import { ToastContainer } from "./components/ToastContainer.js";
 
@@ -166,6 +167,16 @@ export function App() {
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <OverrideHistoryPage />
+                </OfflineModeGuard>
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/settings/payment-channels"
+            element={
+              <RequireAdmin>
+                <OfflineModeGuard offlineMode="blocked">
+                  <PaymentChannelsAdminPage />
                 </OfflineModeGuard>
               </RequireAdmin>
             }
