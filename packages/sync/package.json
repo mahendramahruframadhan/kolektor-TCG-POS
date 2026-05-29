@@ -5,7 +5,12 @@
   "license": "UNLICENSED",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@kolektapos/types": "workspace:*",
@@ -13,9 +18,5 @@
   },
   "devDependencies": {
     "typescript": "^5.6.0"
-  },
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
   }
 }

@@ -12,11 +12,12 @@ export async function sessionPlugin(app: FastifyInstance, opts?: { secret?: stri
   await app.register(fastifyCookie);
   await app.register(fastifySession, {
     secret,
+    saveUninitialized: true,
     cookie: {
       secure: false,
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30-day rolling
     },
     rolling: true,
   });

@@ -27,6 +27,8 @@ const EnvSchema = z
     DOMAIN: z.string().optional(),
     ADMIN_EMAIL: z.string().email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
+    STATIC_PATH: z.string().optional(),
+    AUDIT_ARCHIVE_DIR: z.string().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.NODE_ENV === "production" && !v.DOMAIN) {
