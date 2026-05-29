@@ -9,6 +9,7 @@ import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbPaymentChannel } f
 
 interface TxDetail {
   transaction: IdbTransaction;
+  cashierName: string;
   items: (IdbTransactionItem & { card?: IdbCard; ownerName?: string })[];
   paymentChannel?: IdbPaymentChannel;
 }
@@ -58,10 +59,10 @@ export function TransactionDetailPage() {
       }
 
       const cardIds = [...new Set(items.map((i) => i.cardId))];
-      const ownerIds = [...new Set(items.map((i) => i.ownerUserIdSnapshot))];
+      const userIds = [...new Set([...items.map((i) => i.ownerUserIdSnapshot), tx.cashierUserId])];
       const [cards, users, paymentChannel] = await Promise.all([
         idb.cards.bulkGet(cardIds),
-        idb.users.bulkGet(ownerIds),
+        idb.users.bulkGet(userIds),
         tx.paymentChannelId ? idb.paymentChannels.get(tx.paymentChannelId) : Promise.resolve(undefined),
       ]);
 
@@ -77,7 +78,8 @@ export function TransactionDetailPage() {
         ownerName: userMap[item.ownerUserIdSnapshot],
       }));
 
-      setDetail({ transaction: tx, items: enriched, paymentChannel: paymentChannel ?? undefined });
+      const cashierName = userMap[tx.cashierUserId] ?? tx.cashierUserId.slice(0, 8);
+      setDetail({ transaction: tx, cashierName, items: enriched, paymentChannel: paymentChannel ?? undefined });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat transaksi.");
     } finally {
@@ -118,6 +120,8 @@ export function TransactionDetailPage() {
             </div>
 
             <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+              <Row label="Kasir" value={<span className="font-semibold text-fg">{detail.cashierName}</span>} />
+              <div className="border-t border-border" />
               <Row label="Subtotal" value={<span className="font-bold text-fg">Rp {detail.transaction.subtotalIdr.toLocaleString("id-ID")}</span>} />
               {detail.transaction.discountIdr > 0 && (
                 <Row label="Diskon" value={<span className="font-bold text-destructive">- Rp {detail.transaction.discountIdr.toLocaleString("id-ID")}</span>} />
