@@ -16,6 +16,7 @@ import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { AuditLogPage } from "./pages/AuditLogPage.js";
 import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
+import { TransactionListPage } from "./pages/TransactionListPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
 import { ProfilePage } from "./pages/ProfilePage.js";
 import { DocsPage } from "./pages/DocsPage.js";
@@ -174,6 +175,14 @@ export function App() {
             element={
               <RequireAuth>
                 <TransactionDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <RequireAuth>
+                <TransactionListPage />
               </RequireAuth>
             }
           />

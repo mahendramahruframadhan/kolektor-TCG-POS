@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, LogOut,
-  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
+  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, Receipt, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/inventory", Icon: Package,      label: "Inventaris" },
   { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", adminOnly: true },
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
+  { to: "/transactions", Icon: Receipt, label: "Riwayat Transaksi" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
   { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
