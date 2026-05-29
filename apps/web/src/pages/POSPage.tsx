@@ -5,7 +5,7 @@ import React, {
   useCallback,
 } from "react";
 import { liveQuery } from "dexie";
-import { X, Check, Printer } from "lucide-react";
+import { X, Check, Printer, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { idb } from "../lib/db.js";
@@ -20,6 +20,8 @@ import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel, IdbPendingTrans
 import { nowSec } from "../lib/time.js";
 import { useIsOnline } from "../hooks/use-is-online.js";
 import { useSyncStateStore } from "../store/sync-state.js";
+import { useSyncPendingTransactions } from "../hooks/useSyncPendingTransactions.js";
+import { useConnectionMonitor } from "../hooks/useConnectionMonitor.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -497,6 +499,13 @@ export function POSPage() {
   const [finalPriceInput, setFinalPriceInput] = useState("");
   const [belowBottomError, setBelowBottomError] = useState(false);
   const [activeEvent, setActiveEvent] = useState<IdbEvent | null | undefined>(undefined);
+  const [showRetryDialog, setShowRetryDialog] = useState(false);
+  const [retryClientId, setRetryClientId] = useState<string | null>(null);
+
+  const isAdmin = user?.role === "admin";
+  const isBlockedOffline = isAdmin && !isOnline;
+
+  const { syncing, message: syncMessage, pendingCount, syncPending } = useSyncPendingTransactions();
 
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -819,14 +828,121 @@ export function POSPage() {
     );
     const finalTotalIdr = Math.max(0, subtotalIdr - discountIdr);
 
-    if (isOnline && !activeCartIsOffline) {
+    const txClientId = uuidv4();
+    const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
+    if (!activeEvent) throw new Error("Tidak ada event aktif. Tidak bisa bayar.");
+
+    if (isAdmin) {
+      try {
+        const response = (await api.carts.pay(activeCartId, {
+          paymentChannelId: channelId,
+          transactionClientId: txClientId,
+          discountIdr: discountIdr || undefined,
+          discountReason: discountReason || undefined,
+          notes: notes || undefined,
+        })) as { transaction: { id: string }; receipt: unknown[] };
+
+        const txId = response.transaction.id;
+        await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
+        await Promise.all(
+          cartItems.map((item) =>
+            idb.cards.update(item.cardId, {
+              status: "sold",
+              lockedByCartId: undefined,
+              lockedByUserId: undefined,
+              lockedAt: undefined,
+            })
+          )
+        );
+        setShowPayModal(false);
+        setReceipt({
+          transactionId: txId,
+          totalIdr: finalTotalIdr,
+          itemCount: cartItems.length,
+          isPendingSync: false,
+        });
+      } catch (err) {
+        const error = err instanceof Error ? err.message : "Transaksi gagal";
+        if (error.includes("fetch") || error.includes("network") || error.includes("Network")) {
+          setRetryClientId(txClientId);
+          setShowRetryDialog(true);
+          setShowPayModal(false);
+        } else {
+          throw err;
+        }
+      }
+      return;
+    }
+
+    const pendingItems: IdbPendingTransactionItem[] = cartItems.map((item) => {
+      const card = cartCards[item.cardId];
+      const listedPriceIdrSnapshot =
+        card?.pricingMode === "fixed"
+          ? (card.priceIdr ?? 0)
+          : (card?.listedPriceIdr ?? 0);
+      return {
+        cardId: item.cardId,
+        ownerUserIdSnapshot: card?.ownerUserId ?? "",
+        listedPriceIdrSnapshot,
+        intendedPriceIdr: item.intendedPriceIdr,
+        lineDiscountIdr: item.lineDiscountIdr,
+        lineDiscountReason: item.lineDiscountReason,
+        overrideBelowBottom: item.requiresAdminOverride,
+        overrideReason: item.overrideReason,
+        soldPriceIdr: item.intendedPriceIdr - item.lineDiscountIdr,
+      };
+    });
+
+    await idb.pendingTransactions.put({
+      clientId: txClientId,
+      cartClientId: activeCartId,
+      eventId: activeEvent.id,
+      items: pendingItems,
+      subtotalIdr,
+      discountIdr: discountIdr || 0,
+      discountReason: discountReason || undefined,
+      totalIdr: finalTotalIdr,
+      paymentChannelId: channelId || undefined,
+      notes: notes || undefined,
+      paidAt: nowSec(),
+      createdAt: nowSec(),
+      createdByUserId: user!.id,
+      syncStatus: "pending",
+    });
+
+    await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txClientId });
+    await Promise.all(
+      cartItems.map((item) =>
+        idb.cards.update(item.cardId, {
+          status: "sold",
+          lockedByCartId: undefined,
+          lockedByUserId: undefined,
+          lockedAt: undefined,
+        })
+      )
+    );
+
+    setShowPayModal(false);
+    setReceipt({
+      transactionId: txClientId,
+      totalIdr: finalTotalIdr,
+      itemCount: cartItems.length,
+      isPendingSync: true,
+    });
+  }
+
+  async function handleRetryPayment() {
+    if (!retryClientId || !activeCartId) return;
+    setShowRetryDialog(false);
+
+    try {
+      const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
+      if (!activeEvent) return;
+
       const response = (await api.carts.pay(activeCartId, {
-        paymentChannelId: channelId,
-        transactionClientId: uuidv4(),
-        discountIdr: discountIdr || undefined,
-        discountReason: discountReason || undefined,
-        notes: notes || undefined,
-      })) as { transaction: { id: string }; receipt: unknown[] };
+        paymentChannelId: "",
+        transactionClientId: retryClientId,
+      })) as { transaction: { id: string } };
 
       const txId = response.transaction.id;
       await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txId });
@@ -840,79 +956,15 @@ export function POSPage() {
           })
         )
       );
-      setShowPayModal(false);
       setReceipt({
         transactionId: txId,
-        totalIdr: finalTotalIdr,
+        totalIdr: totalIdr,
         itemCount: cartItems.length,
         isPendingSync: false,
       });
-    } else {
-      const txClientId = uuidv4();
-      const activeEvent = await idb.events.filter((ev) => ev.status === "active").first();
-      if (!activeEvent) throw new Error("Tidak ada event aktif. Tidak bisa bayar dalam mode offline.");
-
-      const pendingItems: IdbPendingTransactionItem[] = cartItems.map((item) => {
-        const card = cartCards[item.cardId];
-        const listedPriceIdrSnapshot =
-          card?.pricingMode === "fixed"
-            ? (card.priceIdr ?? 0)
-            : (card?.listedPriceIdr ?? 0);
-        return {
-          cardId: item.cardId,
-          ownerUserIdSnapshot: card?.ownerUserId ?? "",
-          listedPriceIdrSnapshot,
-          intendedPriceIdr: item.intendedPriceIdr,
-          lineDiscountIdr: item.lineDiscountIdr,
-          lineDiscountReason: item.lineDiscountReason,
-          overrideBelowBottom: item.requiresAdminOverride,
-          overrideReason: item.overrideReason,
-          soldPriceIdr: item.intendedPriceIdr - item.lineDiscountIdr,
-        };
-      });
-
-      await idb.pendingTransactions.put({
-        clientId: txClientId,
-        cartClientId: activeCartId,
-        eventId: activeEvent.id,
-        items: pendingItems,
-        subtotalIdr,
-        discountIdr: discountIdr || 0,
-        discountReason: discountReason || undefined,
-        totalIdr: finalTotalIdr,
-        paymentChannelId: channelId || undefined,
-        notes: notes || undefined,
-        paidAt: nowSec(),
-        createdAt: nowSec(),
-        createdByUserId: user!.id,
-        syncStatus: "pending",
-      });
-
-      await idb.carts.update(activeCartId, { status: "paid", paidTransactionId: txClientId });
-      await Promise.all(
-        cartItems.map((item) =>
-          idb.cards.update(item.cardId, {
-            status: "sold",
-            lockedByCartId: undefined,
-            lockedByUserId: undefined,
-            lockedAt: undefined,
-          })
-        )
-      );
-
-      const pendingCount = await idb.pendingTransactions
-        .where("syncStatus")
-        .equals("pending")
-        .count();
-      useSyncStateStore.getState().setPendingTransactionCount(pendingCount);
-
-      setShowPayModal(false);
-      setReceipt({
-        transactionId: txClientId,
-        totalIdr: finalTotalIdr,
-        itemCount: cartItems.length,
-        isPendingSync: true,
-      });
+    } catch {
+      setRetryClientId(retryClientId);
+      setShowRetryDialog(true);
     }
   }
 
@@ -970,11 +1022,85 @@ export function POSPage() {
         title="Kasir POS"
         back
         onBack={() => navigate("/dashboard")}
+        syncButton={
+          user?.role === "cashier" ? (() => {
+            const isSyncing = syncing;
+            const hasPending = pendingCount > 0;
+            const hasError = syncMessage?.type === "error";
+            const isSynced = !hasPending && !isSyncing && !hasError;
+
+            const bgColor = isSynced
+              ? "rgba(76,175,80,0.12)"
+              : isSyncing
+              ? "rgba(33,150,243,0.12)"
+              : hasError
+              ? "rgba(244,67,54,0.12)"
+              : "rgba(255,152,0,0.12)";
+            const borderColor = isSynced
+              ? "rgba(76,175,80,0.4)"
+              : isSyncing
+              ? "rgba(33,150,243,0.4)"
+              : hasError
+              ? "rgba(244,67,54,0.4)"
+              : "rgba(255,152,0,0.4)";
+            const textColor = isSynced
+              ? "#4CAF50"
+              : isSyncing
+              ? "#2196F3"
+              : hasError
+              ? "#F44336"
+              : "#FF9800";
+
+            return (
+              <button
+                onClick={syncPending}
+                disabled={isSyncing || pendingCount === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full hover:opacity-80 transition active:scale-95 disabled:opacity-40"
+                style={{ background: bgColor, border: `1px solid ${borderColor}`, color: textColor }}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                <span>{isSyncing ? "Syncing..." : hasError ? "Error" : hasPending ? "Sync" : "Synced"}</span>
+                {pendingCount > 0 && (
+                  <span
+                    className="text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center"
+                    style={{ background: textColor, color: "#fff" }}
+                  >
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })() : undefined
+        }
       />
+
+      {syncMessage && (
+        <div
+          className={`mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+            syncMessage.type === "success"
+              ? "bg-success bg-opacity-15 text-success"
+              : "bg-destructive bg-opacity-15 text-destructive"
+          }`}
+        >
+          {syncMessage.type === "success" ? (
+            <CheckCircle className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{syncMessage.text}</span>
+        </div>
+      )}
+
+      {isBlockedOffline && (
+        <div className="mx-4 mt-2 bg-destructive bg-opacity-15 border border-destructive border-opacity-30 rounded-xl px-4 py-3 text-sm text-destructive font-medium">
+          <p className="font-bold mb-1">INTERNET REQUIRED</p>
+          <p>Admin transactions require an internet connection. Please check your network.</p>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-3 space-y-3">
         {/* ── Scanner section ── */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+        <div className={`bg-card rounded-2xl border border-border p-4 space-y-3 ${isBlockedOffline ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
               Scan / Ketik ID Kartu
@@ -1248,6 +1374,34 @@ export function POSPage() {
           onConfirm={handlePay}
           onCancel={() => { setShowPayModal(false); refocusScan(); }}
         />
+      )}
+
+      {showRetryDialog && (
+        <Dialog
+          open={true}
+          onClose={() => setShowRetryDialog(false)}
+          title="Koneksi Terputus"
+          description="Transaksi belum selesai."
+          panelClassName="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 space-y-4"
+        >
+          <p className="text-sm text-muted-fg">
+            Silakan periksa internet dan coba lagi.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={handleRetryPayment}
+              className="flex-1 h-12 bg-primary text-primary-fg font-bold rounded-2xl hover:opacity-90 transition"
+            >
+              Coba Lagi
+            </button>
+            <button
+              onClick={() => { setShowRetryDialog(false); setRetryClientId(null); }}
+              className="flex-1 h-12 border border-border text-fg font-bold rounded-2xl hover:bg-muted transition"
+            >
+              Batal
+            </button>
+          </div>
+        </Dialog>
       )}
 
       {receipt && (

@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { SyncDot } from "./SyncDot.js";
 import { HamburgerMenu } from "./HamburgerMenu.js";
 import { NetworkModeToggle } from "./NetworkModeToggle.js";
+import { useAuthStore } from "../store/auth.js";
 
 interface MobileAppBarProps {
   title: string;
@@ -10,7 +11,9 @@ interface MobileAppBarProps {
   back?: boolean;
   onBack?: () => void;
   right?: React.ReactNode;
+  syncButton?: React.ReactNode;
   showMenu?: boolean;
+  showNetworkToggle?: boolean;
 }
 
 export function MobileAppBar({
@@ -19,8 +22,13 @@ export function MobileAppBar({
   back,
   onBack,
   right,
+  syncButton,
   showMenu = true,
+  showNetworkToggle = false,
 }: MobileAppBarProps) {
+  const user = useAuthStore((s) => s.user);
+  const showToggle = showNetworkToggle || user?.role === "admin";
+
   return (
     <header className="sticky top-0 h-14 flex items-center gap-0 px-4 bg-card border-b border-border shrink-0 z-10">
       {back && (
@@ -41,9 +49,10 @@ export function MobileAppBar({
           </h1>
         )}
       </div>
-      <div className="flex items-center gap-2 ml-2 shrink-0">
+      <div className="flex items-center gap-1.5 ml-2 shrink-0">
         <SyncDot />
-        <NetworkModeToggle />
+        {syncButton}
+        {showToggle && <NetworkModeToggle />}
         {right}
         {showMenu && <HamburgerMenu />}
       </div>

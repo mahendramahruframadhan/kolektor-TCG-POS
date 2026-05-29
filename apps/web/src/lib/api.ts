@@ -11,11 +11,21 @@ async function request<T>(
   if (options.body) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: "include",
-    headers: { ...headers, ...options.headers },
-    ...options,
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      credentials: "include",
+      headers: { ...headers, ...options.headers },
+      ...options,
+    });
+  } catch (fetchErr) {
+    // Network failure (offline, DNS error, CORS, etc.)
+    throw Object.assign(
+      new Error(fetchErr instanceof Error ? fetchErr.message : "Network Error"),
+      { status: undefined, name: "NetworkError", cause: fetchErr }
+    );
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -107,7 +117,20 @@ type PaymentChannelListItem = {
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      request<{ id: string; email: string; displayName: string; role: string }>(
+      request<{
+        id: string;
+        email: string;
+        displayName: string;
+        role: string;
+        offlineHash?: string;
+        allUsersHash?: Array<{
+          id: string;
+          email: string;
+          displayName: string;
+          role: string;
+          offlineHash: string;
+        }>;
+      }>(
         "/auth/login",
         { method: "POST", body: JSON.stringify({ email, password }) }
       ),
@@ -121,6 +144,15 @@ export const api = {
       request<{ id: string; email: string; displayName: string; role: string }>(
         "/me"
       ),
+    cacheCredential: () =>
+      request<{
+        email: string;
+        offlineHash: string;
+        id: string;
+        displayName: string;
+        role: string;
+        cachedAt: number;
+      }>("/auth/cache-credential", { method: "POST" }),
   },
   events: {
     list: () => request<{ id: string; name: string; venue: string; startDate: string; endDate: string; status: string; version: number; createdAt: number }[]>("/events"),
@@ -210,8 +242,11 @@ export const api = {
       request<unknown>(`/reports/event/${eventId}/settlement`),
     inventoryValue: (eventId: string) =>
       request<unknown>(`/reports/event/${eventId}/inventory-value`),
-    monthly: (year: number, month: number) =>
-      request<unknown>(`/reports/monthly?year=${year}&month=${month}`),
+    monthly: (year: number, month: number, eventId?: string) => {
+      const params = new URLSearchParams({ year: String(year), month: String(month) });
+      if (eventId) params.set("eventId", eventId);
+      return request<unknown>(`/reports/monthly?${params}`);
+    },
     settleEvent: (eventId: string) =>
       request<unknown>(`/events/${eventId}/settle`, { method: "POST" }),
   },
@@ -234,6 +269,66 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+  admin: {
+    pendingTransactions: () =>
+      request<{
+        transactions: Array<{
+          id: string;
+          clientId: string;
+          cashierId: string;
+          cashierDisplayName: string;
+          cashierEmail: string;
+          eventId: string;
+          eventName: string;
+          subtotalIdr: number;
+          discountIdr: number;
+          totalIdr: number;
+          paymentChannel: string;
+          itemCount: number;
+          createdAt: number;
+          paidAt: number;
+          kind: string;
+        }>;
+        totalCount: number;
+        stats: {
+          totalPending: number;
+          totalAmount: number;
+          byCashier: Array<{ cashierId: string; cashierDisplayName: string; count: number; amount: number }>;
+        };
+      }>("/admin/pending-transactions"),
+    pendingTransactionDetail: (transactionId: string) =>
+      request<{
+        transaction: {
+          id: string;
+          clientId: string;
+          kind: string;
+          subtotalIdr: number;
+          discountIdr: number;
+          discountReason?: string;
+          totalIdr: number;
+          paymentChannel: string;
+          paymentNote?: string;
+          notes?: string;
+          createdAt: number;
+          paidAt: number;
+          cashier: { id: string; displayName: string; email: string };
+          event: { id: string; name: string };
+          items: Array<{
+            cardId: string;
+            cardTitle: string;
+            cardShortId: string;
+            ownerDisplayName: string;
+            ownerUserIdSnapshot: string;
+            listedPriceIdrSnapshot: number;
+            soldPriceIdr: number;
+            lineDiscountIdr: number;
+            lineDiscountReason?: string;
+            overrideBelowBottom: boolean;
+            overrideReason?: string;
+          }>;
+        };
+      }>(`/admin/pending-transactions/${transactionId}`),
   },
   sync: {
     pull: (cursor: number, deviceId: string) =>

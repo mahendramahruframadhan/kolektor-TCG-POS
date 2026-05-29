@@ -21,8 +21,10 @@ import { ProfilePage } from "./pages/ProfilePage.js";
 import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
+import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
+import { ToastContainer } from "./components/ToastContainer.js";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -41,6 +43,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ToastContainer />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-fg focus:px-4 focus:py-2 focus:rounded-xl focus:font-bold focus:shadow-lg focus:ring-2 focus:ring-accent"
@@ -49,11 +52,7 @@ export function App() {
         </a>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={
-            <OfflineModeGuard offlineMode="blocked">
-              <LoginPage />
-            </OfflineModeGuard>
-          } />
+          <Route path="/login" element={<LoginPage />} />
           <Route
             path="/dashboard"
             element={
@@ -83,11 +82,11 @@ export function App() {
           <Route
             path="/stock-receive"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <StockReceivePage />
                 </OfflineModeGuard>
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
@@ -181,11 +180,11 @@ export function App() {
           <Route
             path="/stock-receive/bulk"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
                   <BulkImportPage />
                 </OfflineModeGuard>
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
@@ -211,6 +210,14 @@ export function App() {
               <RequireAuth>
                 <MyPayoutPage />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/pending-transactions"
+            element={
+              <RequireAdmin>
+                <PendingTransactionsPage />
+              </RequireAdmin>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

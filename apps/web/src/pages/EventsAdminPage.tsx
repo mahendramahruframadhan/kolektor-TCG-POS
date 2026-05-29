@@ -64,8 +64,27 @@ export function EventsAdminPage() {
     try {
       const list = await api.events.list();
       setEvents(list);
+      // Also sync to IDB for offline access
+      for (const ev of list) {
+        await idb.events.put(ev as unknown as import("../lib/db.js").IdbEvent);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Gagal memuat event.");
+      const apiErr = err as any;
+      const isNetworkError = !apiErr.status || apiErr.name === 'NetworkError' || apiErr.name === 'TypeError' || apiErr.message?.includes('Network');
+      
+      if (isNetworkError) {
+        // Fallback: load from IndexedDB when offline
+        console.debug('[events-admin] network error, falling back to IDB');
+        try {
+          const idbList = await idb.events.toArray();
+          setEvents(idbList as unknown as Event[]);
+        } catch (idbErr) {
+          console.error('[events-admin] IDB fallback failed', idbErr);
+          setError("Anda sedang offline dan data tidak tersedia. Coba lagi saat koneksi pulih.");
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Gagal memuat event.");
+      }
     } finally {
       setLoading(false);
     }

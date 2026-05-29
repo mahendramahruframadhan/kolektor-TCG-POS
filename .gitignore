@@ -27,3 +27,6 @@ scratch/
 .claude/
 
 .worktrees/
+
+docs/
+#daily/
