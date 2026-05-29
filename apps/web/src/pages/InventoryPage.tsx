@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Search, Award, Pencil, RotateCcw, Copy, Check } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
+import { CardMeta } from "../components/CardMeta.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
@@ -533,11 +534,7 @@ export function InventoryPage() {
                       </div>
                     </div>
                     <p className="text-sm font-bold text-fg truncate">{card.title}</p>
-                    <p className="text-xs text-muted-fg truncate">
-                      {card.category ? `${card.category} · ` : ""}
-                      {card.condition}
-                      {card.setName ? ` · ${card.setName}` : ""}
-                    </p>
+                    <CardMeta card={card} showCategory />
                   </button>
                 </li>
               );

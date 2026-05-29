@@ -16,6 +16,7 @@ import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
+import { CardMeta } from "../components/CardMeta.js";
 import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel, IdbPendingTransactionItem } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
 import { useIsOnline } from "../hooks/use-is-online.js";
@@ -1108,16 +1109,16 @@ export function POSPage() {
           <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-fg leading-tight truncate">
-                  {scannedCard.title}
-                </p>
-                <p className="text-xs text-muted-fg mt-0.5">
-                  {scannedCard.setName}{" "}
-                  {scannedCard.setNumber ? `#${scannedCard.setNumber}` : ""}
-                  {" · "}
-                  {scannedCard.condition}
-                  {scannedCard.language ? ` · ${scannedCard.language}` : ""}
-                </p>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="font-mono text-[10px] font-extrabold bg-primary bg-opacity-10 text-primary px-1.5 py-0.5 rounded shrink-0">
+                    {scannedCard.shortId}
+                  </span>
+                  {scannedCard.category && (
+                    <span className="text-[10px] text-muted-fg font-semibold truncate">{scannedCard.category}</span>
+                  )}
+                </div>
+                <p className="font-bold text-fg leading-tight truncate">{scannedCard.title}</p>
+                <CardMeta card={scannedCard} />
               </div>
               <StatusBadge
                 card={scannedCard}
@@ -1275,14 +1276,7 @@ export function POSPage() {
                       <p className="text-sm font-bold text-fg truncate">
                         {card?.title ?? item.cardId}
                       </p>
-                      {card && (
-                        <p className="text-xs text-muted-fg truncate">
-                          {card.setName}
-                          {card.setNumber ? ` #${card.setNumber}` : ""}
-                          {" · "}
-                          {card.condition}
-                        </p>
-                      )}
+                      {card && <CardMeta card={card} />}
                     </div>
                     <span className="text-sm font-bold text-fg shrink-0">
                       Rp {lineTotal.toLocaleString("id-ID")}
@@ -1439,9 +1433,7 @@ function ProductSearch({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-fg truncate">{c.title}</span>
-                  <span className="block text-xs text-muted-fg truncate">
-                    {c.setName}{c.setNumber ? ` · #${c.setNumber}` : ""}
-                  </span>
+                  <CardMeta card={c} showCategory />
                 </span>
                 <span className="font-mono text-xs font-bold text-accent shrink-0">{c.shortId}</span>
               </button>
