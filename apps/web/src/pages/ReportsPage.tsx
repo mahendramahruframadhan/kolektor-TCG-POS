@@ -100,6 +100,8 @@ interface DailyReport {
   voidRefundAmount: number;
   net: number;
   transactionCount: number;
+  pendingCount: number;
+  pendingTotalIdr: number;
   channelBreakdown: ChannelBreakdown[];
   topItems: TopItem[];
 }
@@ -158,6 +160,10 @@ function buildDailyCsv(report: DailyReport): string {
   lines.push(`"Void/Refund","${report.voidRefundAmount}"`);
   lines.push(`"Penjualan Bersih","${report.net}"`);
   lines.push(`"Jumlah Transaksi","${report.transactionCount}"`);
+  if (report.pendingCount > 0) {
+    lines.push(`"Transaksi Pending","${report.pendingCount}"`);
+    lines.push(`"Total Pending (IDR)","${report.pendingTotalIdr}"`);
+  }
   lines.push(``);
   lines.push(`"Channel","Jumlah","Total (IDR)"`);
   for (const b of report.channelBreakdown) lines.push(`"${b.channelName}","${b.count}","${b.gross}"`);
@@ -343,7 +349,14 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
       const saleTxs = dayTxs.filter((t) => t.kind === "sale");
       const voidRefundTxs = dayTxs.filter((t) => t.kind === "void" || t.kind === "refund");
 
-      const gross = saleTxs.reduce((s, t) => s + t.totalIdr, 0);
+      // Include pending transactions (offline mode transactions)
+      const pendingTxs = await idb.pendingTransactions.where("eventId").equals(selectedEventId).toArray();
+      const dayPending = pendingTxs.filter((tx) => {
+        const txDate = toIsoDate(tx.paidAt);
+        return txDate === selectedDate;
+      });
+
+      const gross = saleTxs.reduce((s, t) => s + t.totalIdr, 0) + dayPending.reduce((s, t) => s + t.totalIdr, 0);
       const voidRefundAmount = voidRefundTxs.reduce((s, t) => s + Math.abs(t.totalIdr), 0);
 
       const channels = await idb.paymentChannels.toArray();
@@ -381,6 +394,8 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
         eventName: event?.name ?? selectedEventId,
         gross, voidRefundAmount, net: gross - voidRefundAmount,
         transactionCount: saleTxs.length,
+        pendingCount: dayPending.length,
+        pendingTotalIdr: dayPending.reduce((s, t) => s + t.totalIdr, 0),
         channelBreakdown, topItems,
       });
     } finally {
@@ -429,6 +444,12 @@ function DailyDetail({ events }: { events: IdbEvent[] }) {
             <ReportRow label="Void / Refund" value={<span className="font-bold text-destructive">{fmtRp(report.voidRefundAmount)}</span>} />
             <ReportRow label="Penjualan Bersih" value={<span className="font-extrabold text-success text-lg">{fmtRp(report.net)}</span>} />
             <ReportRow label="Jumlah Transaksi" value={<span className="font-bold text-fg">{report.transactionCount}</span>} />
+            {report.pendingCount > 0 && (
+              <>
+                <ReportRow label="Transaksi Pending" value={<span className="font-bold text-yellow-600">{report.pendingCount}</span>} />
+                <ReportRow label="Total Pending" value={<span className="font-bold text-yellow-600">{fmtRp(report.pendingTotalIdr)}</span>} />
+              </>
+            )}
           </SectionCard>
 
           {report.topItems.length > 0 && (

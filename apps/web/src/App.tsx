@@ -22,6 +22,7 @@ import { DocsPage } from "./pages/DocsPage.js";
 import { QRLabelPage } from "./pages/QRLabelPage.js";
 import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
+import { MonitorPage } from "./pages/MonitorPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 import { ToastContainer } from "./components/ToastContainer.js";
@@ -219,6 +220,14 @@ export function App() {
             element={
               <RequireAdmin>
                 <PendingTransactionsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/monitor"
+            element={
+              <RequireAdmin>
+                <MonitorPage />
               </RequireAdmin>
             }
           />

@@ -177,15 +177,9 @@ export function DebugPanel() {
   }, [refresh]);
 
   if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-50 bg-slate-800 text-white p-2 rounded-full shadow-lg hover:bg-slate-700 transition"
-        title="Debug Panel (Ctrl+Shift+D)"
-      >
-        <Monitor className="w-5 h-5" />
-      </button>
-    );
+    // Debug Panel hanya bisa diakses via hotkey Ctrl+Shift+D
+    // Tidak menampilkan floating button agar tidak mengganggu UI kasir
+    return null;
   }
 
   return (

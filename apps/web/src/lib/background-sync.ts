@@ -276,7 +276,8 @@ export function startBackgroundSync() {
       await flushPendingTransactions();
       await withRetry(() => deltaSyncPull(), { label: "deltaSyncPull" });
       useSyncStateStore.getState().markSuccess();
-      useSyncStateStore.getState().addToast("Sinkronisasi berhasil", "success");
+      // Toast success di-disable agar tidak mengganggu UI kasir
+      console.info("[sync] Sinkronisasi berhasil (background)");
     } catch (err) {
       console.warn("[sync] Background sync failed:", err);
       useSyncStateStore.getState().setState(
@@ -307,7 +308,8 @@ export function opportunisticSync() {
     .then(() => withRetry(() => deltaSyncPull(), { label: "opportunisticSync" }))
     .then(() => {
       useSyncStateStore.getState().markSuccess();
-      useSyncStateStore.getState().addToast("Sinkronisasi berhasil", "success");
+      // Toast success di-disable agar tidak mengganggu UI kasir
+      console.info("[sync] Sinkronisasi berhasil (opportunistic)");
     })
     .catch((err) => {
       useSyncStateStore.getState().setState(
@@ -329,7 +331,8 @@ export async function resetAndSync(): Promise<void> {
   try {
     await withRetry(() => deltaSyncPull(), { label: "resetAndSync" });
     useSyncStateStore.getState().markSuccess();
-    useSyncStateStore.getState().addToast("Data berhasil disinkronkan", "success");
+    // Toast success di-disable agar tidak mengganggu UI kasir
+    console.info("[sync] Data berhasil disinkronkan (resetAndSync)");
   } catch (err) {
     useSyncStateStore.getState().setState(
       "error",

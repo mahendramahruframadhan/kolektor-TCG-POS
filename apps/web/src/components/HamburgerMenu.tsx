@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
   Settings, Users, Calendar, LogOut,
-  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
+  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, Monitor, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -24,9 +24,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
   { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
   { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
+  { to: "/admin/monitor", Icon: Monitor, label: "Monitor", adminOnly: true },
   { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
   { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
-  { to: "/admin/pending-transactions", Icon: ClipboardList, label: "Transaksi Pending", adminOnly: true },
+  // { to: "/admin/pending-transactions", Icon: ClipboardList, label: "Transaksi Pending", adminOnly: true }, // HIDDEN: fitur belum aktif
   { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
   { to: "/settings/overrides",Icon: ShieldAlert,  label: "Riwayat Override", adminOnly: true },
   { to: "/settings/audit-log",Icon: ClipboardList,label: "Audit Log",        adminOnly: true },
