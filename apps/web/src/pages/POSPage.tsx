@@ -458,15 +458,16 @@ export function POSPage() {
   const { syncing, message: syncMessage, pendingCount, syncPending } = useSyncPendingTransactions();
 
   const scanRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const refocusScan = useCallback(() => {
-    setTimeout(() => scanRef.current?.focus(), 50);
+    setTimeout(() => searchRef.current?.focus(), 50);
   }, []);
 
   const [maxTxDiscountPct, setMaxTxDiscountPct] = useState(0);
 
   useEffect(() => {
-    scanRef.current?.focus();
+    searchRef.current?.focus();
     idb.settings.get("max_transaction_discount_pct").then((s) => {
       if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
     });
@@ -1079,7 +1080,6 @@ export function POSPage() {
                 onChange={(e) => setScanInput(e.target.value.toUpperCase())}
                 onKeyDown={handleScanKeyDown}
                 placeholder="O-XXXXX  atau  scan USB"
-                autoFocus
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
@@ -1098,7 +1098,7 @@ export function POSPage() {
                   {scanError}
                 </div>
               )}
-              <ProductSearch onPick={(shortId) => handleScan(shortId)} />
+              <ProductSearch inputRef={searchRef} onPick={(shortId) => handleScan(shortId)} />
             </>
           )}
         </div>
@@ -1374,7 +1374,13 @@ export function POSPage() {
 // Free-text search over local IDB for cashiers who want to find a card by
 // name when a scan isn't convenient. Min 3 characters; matches shortId OR
 // title (case-insensitive, contains). Sold/retired/held cards are excluded.
-function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
+function ProductSearch({
+  onPick,
+  inputRef,
+}: {
+  onPick: (shortId: string) => void;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<IdbCard[]>([]);
   const trimmed = query.trim();
@@ -1393,7 +1399,8 @@ function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
           (c) =>
             c.status === "available" &&
             (c.shortId?.toLowerCase().includes(q) ||
-              c.title?.toLowerCase().includes(q))
+              c.title?.toLowerCase().includes(q) ||
+              (c.certNumber?.toLowerCase().includes(q) ?? false))
         )
         .limit(10)
         .toArray();
@@ -1407,6 +1414,7 @@ function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
   return (
     <div className="space-y-2">
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
