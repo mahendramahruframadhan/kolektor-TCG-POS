@@ -217,6 +217,20 @@ export async function cleanupAbandonedCarts(maxAgeDays = 1): Promise<number> {
       .filter((c) => (c.lastActivityAt ?? 0) < cutoff)
       .toArray();
     for (const cart of oldCarts) {
+      // Release card locks held by this cart before deleting
+      const lockedCards = await idb.cards
+        .where("lockedByCartId")
+        .equals(cart.id)
+        .toArray();
+      for (const card of lockedCards) {
+        await idb.cards.update(card.id, {
+          lockedByCartId: undefined,
+          lockedByUserId: undefined,
+          lockedAt: undefined,
+        });
+      }
+      // Delete cart items atomically with the cart
+      await idb.cartItems.where("cartId").equals(cart.id).delete();
       await idb.carts.delete(cart.id);
       deleted++;
     }
