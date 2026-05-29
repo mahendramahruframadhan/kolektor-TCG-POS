@@ -26,6 +26,7 @@ import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
 import { PaymentChannelsAdminPage } from "./pages/PaymentChannelsAdminPage.js";
+import { ConfigHubPage } from "./pages/ConfigHubPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 import { ToastContainer } from "./components/ToastContainer.js";
 
@@ -119,7 +120,17 @@ export function App() {
             }
           />
           <Route
-            path="/settings"
+            path="/config"
+            element={
+              <RequireAdmin>
+                <OfflineModeGuard offlineMode="partial">
+                  <ConfigHubPage />
+                </OfflineModeGuard>
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/config/app"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="partial">
@@ -129,7 +140,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/users"
+            path="/config/users"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -139,7 +150,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/events"
+            path="/config/events"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -149,7 +160,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/oversold"
+            path="/config/oversold"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="partial">
@@ -159,7 +170,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/audit-log"
+            path="/config/audit-log"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -169,7 +180,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/overrides"
+            path="/config/overrides"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -179,7 +190,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/payment-channels"
+            path="/config/payment-channels"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
