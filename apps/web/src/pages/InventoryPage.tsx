@@ -5,52 +5,10 @@ import { idb } from "../lib/db.js";
 import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CardEditForm } from "../components/CardEditForm.js";
-import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
+import { MaskedAmount } from "../components/MaskedAmount.js";
 import { api } from "../lib/api.js";
 import { useIsOnline } from "../hooks/use-is-online.js";
 import type { IdbCard } from "../lib/db.js";
-
-// ── Bottom price tap-and-hold reveal (2 s) ────────────────────────────────
-
-function BottomPriceReveal({ amount }: { amount: number | undefined }) {
-  const { revealed, startReveal, endReveal } = useTapHoldReveal(2000);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if ((e.key === " " || e.key === "Enter") && !e.repeat) {
-      e.preventDefault();
-      startReveal();
-    }
-  };
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      endReveal();
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onMouseDown={startReveal}
-      onMouseUp={endReveal}
-      onMouseLeave={endReveal}
-      onTouchStart={startReveal}
-      onTouchEnd={endReveal}
-      onKeyDown={handleKeyDown}
-      onKeyUp={handleKeyUp}
-      onBlur={endReveal}
-      className="text-base font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
-      aria-label="Tekan dan tahan 2 detik untuk melihat harga minimum"
-      aria-pressed={revealed}
-    >
-      {revealed ? (
-        <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
-      ) : (
-        <span className="tracking-widest">••••••</span>
-      )}
-    </button>
-  );
-}
 
 // ── Status badge ───────────────────────────────────────────────────────────
 
@@ -227,7 +185,7 @@ function CardDetail({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-fg">Harga Minimum</span>
-                <BottomPriceReveal amount={card.bottomPriceIdr} />
+                <MaskedAmount amount={card.bottomPriceIdr} className="text-base font-bold text-warning" />
               </div>
             </>
           )}

@@ -15,7 +15,7 @@ import { usePosStore } from "../store/pos.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
-import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
+import { MaskedAmount } from "../components/MaskedAmount.js";
 import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel, IdbPendingTransactionItem } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
 import { useIsOnline } from "../hooks/use-is-online.js";
@@ -62,56 +62,6 @@ function StatusBadge({
     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
       Tersedia
     </span>
-  );
-}
-
-// ── Bottom price tap-and-hold reveal ───────────────────────────────────────
-
-function BottomPriceReveal({ amount }: { amount: number | undefined }) {
-  const { revealed, startReveal, endReveal } = useTapHoldReveal();
-
-  // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
-  // Space/Enter pressed → start the hold timer; released → cancel the
-  // pending reveal (matches useTapHoldReveal's pointer-up semantics).
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") {
-      if (!e.repeat) {
-        e.preventDefault();
-        startReveal();
-      }
-    }
-  };
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      endReveal();
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-fg">Harga Minimum</span>
-      <button
-        type="button"
-        onMouseDown={startReveal}
-        onMouseUp={endReveal}
-        onMouseLeave={endReveal}
-        onTouchStart={startReveal}
-        onTouchEnd={endReveal}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
-        onBlur={endReveal}
-        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
-        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 2 detik untuk melihat harga minimum"
-        aria-pressed={revealed}
-      >
-        {revealed ? (
-          <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
-        ) : (
-          <span className="tracking-widest">••••••</span>
-        )}
-      </button>
-    </div>
   );
 }
 
@@ -1184,7 +1134,10 @@ export function POSPage() {
                     Rp {scannedCard.listedPriceIdr?.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <BottomPriceReveal amount={scannedCard.bottomPriceIdr} />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-fg">Harga Minimum</span>
+                  <MaskedAmount amount={scannedCard.bottomPriceIdr} className="text-sm font-bold text-warning" />
+                </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
                     Harga Final (IDR)
