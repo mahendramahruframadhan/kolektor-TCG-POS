@@ -38,8 +38,8 @@ export function AuditLogPage() {
   async function loadEntries() {
     setLoading(true);
     try {
-      const rows = await api.auditLog.list() as AuditEntry[];
-      setEntries(rows);
+      const res = await api.auditLog.list();
+      setEntries(res.rows as AuditEntry[]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat audit log.");
     } finally {

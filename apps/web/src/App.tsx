@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client.js";
 import { useAuthStore } from "./store/auth.js";
+import { setSessionExpiredHandler } from "./lib/api.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { POSPage } from "./pages/POSPage.js";
@@ -42,6 +43,12 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
+  const setUser = useAuthStore((s) => s.setUser);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => setUser(null));
+  }, [setUser]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

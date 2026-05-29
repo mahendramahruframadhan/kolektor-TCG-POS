@@ -3,6 +3,12 @@ import type { CreateCard, UpdateCard } from "@kolektapos/types";
 
 const BASE = "/api";
 
+// Callback set by auth store so api.ts can trigger logout on 401
+let onSessionExpired: (() => void) | null = null;
+export function setSessionExpiredHandler(fn: () => void) {
+  onSessionExpired = fn;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -28,6 +34,9 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      onSessionExpired?.();
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }));
     const msg = typeof err.error === "string"
       ? err.error
@@ -244,7 +253,7 @@ export const api = {
       }),
   },
   auditLog: {
-    list: () => request<unknown[]>("/audit-log"),
+    list: () => request<{ rows: unknown[]; page: number; limit: number }>("/audit-log"),
   },
   overrides: {
     list: () => request<unknown[]>("/overrides"),
