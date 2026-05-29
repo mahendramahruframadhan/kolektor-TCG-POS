@@ -1,0 +1,13 @@
+-- FK constraints for soft-reference columns.
+-- SQLite cannot ALTER TABLE ADD CONSTRAINT, and Drizzle migrations run inside
+-- transactions where PRAGMA foreign_keys = OFF is a no-op. Table recreation
+-- to add these FKs to the DDL is therefore unsafe at migration time.
+--
+-- Enforcement strategy:
+--   carts.paid_transaction_id → transactions.id
+--     Set atomically in the pay-cart route only after transaction INSERT succeeds.
+--   transactions.parent_transaction_id → transactions.id
+--     Set at void/refund INSERT time; route validates parent exists before INSERT.
+--
+-- schema.ts carries .references() for Drizzle type safety and query-builder support.
+SELECT 1; -- no-op to satisfy Drizzle migration format

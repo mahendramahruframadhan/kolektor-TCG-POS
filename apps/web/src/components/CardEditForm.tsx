@@ -3,19 +3,7 @@ import { Check, X } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
 import type { IdbCard } from "../lib/db.js";
-
-const CONDITIONS = [
-  "Mint",
-  "Near Mint",
-  "Lightly Played",
-  "Moderately Played",
-  "Heavily Played",
-  "Damaged",
-] as const;
-
-const LANGUAGES = ["EN", "JP", "ID", "KR", "CN", "Other"] as const;
-
-const GRADING_COMPANIES = ["PSA", "BGS", "CGC", "SGC", "Other"] as const;
+import { CONDITIONS, LANGUAGES, GRADING_COMPANIES } from "../lib/constants.js";
 
 interface CardEditFormProps {
   card: IdbCard;

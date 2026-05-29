@@ -6,11 +6,12 @@ import { idb } from "../lib/db.js";
 import { fmt } from "../lib/format.js";
 import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbUser } from "../lib/db.js";
+import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbUser, IdbPaymentChannel } from "../lib/db.js";
 
 interface TxDetail {
   transaction: IdbTransaction;
   items: (IdbTransactionItem & { card?: IdbCard; ownerName?: string })[];
+  paymentChannel?: IdbPaymentChannel;
 }
 
 function kindLabel(kind: IdbTransaction["kind"]) {
@@ -59,9 +60,10 @@ export function TransactionDetailPage() {
 
       const cardIds = [...new Set(items.map((i) => i.cardId))];
       const ownerIds = [...new Set(items.map((i) => i.ownerUserIdSnapshot))];
-      const [cards, users] = await Promise.all([
+      const [cards, users, paymentChannel] = await Promise.all([
         idb.cards.bulkGet(cardIds),
         idb.users.bulkGet(ownerIds),
+        tx.paymentChannelId ? idb.paymentChannels.get(tx.paymentChannelId) : Promise.resolve(undefined),
       ]);
 
       const cardMap: Record<string, IdbCard> = {};
@@ -76,7 +78,7 @@ export function TransactionDetailPage() {
         ownerName: userMap[item.ownerUserIdSnapshot],
       }));
 
-      setDetail({ transaction: tx, items: enriched });
+      setDetail({ transaction: tx, items: enriched, paymentChannel: paymentChannel ?? undefined });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat transaksi.");
     } finally {
@@ -122,6 +124,12 @@ export function TransactionDetailPage() {
                 <Row label="Diskon" value={<span className="font-bold text-destructive">- Rp {detail.transaction.discountIdr.toLocaleString("id-ID")}</span>} />
               )}
               <Row label="Total" value={<MaskedAmount amount={detail.transaction.totalIdr} className="font-extrabold text-lg text-primary" />} />
+              {detail.paymentChannel && (
+                <Row label="Pembayaran" value={<span className="font-bold text-fg">{detail.paymentChannel.name}</span>} />
+              )}
+              {detail.transaction.paymentNote && (
+                <Row label="Catatan Bayar" value={<span className="text-sm text-fg">{detail.transaction.paymentNote}</span>} />
+              )}
               {detail.transaction.notes && (
                 <div className="pt-2 border-t border-border">
                   <span className="text-xs text-muted-fg">Catatan: {detail.transaction.notes}</span>
