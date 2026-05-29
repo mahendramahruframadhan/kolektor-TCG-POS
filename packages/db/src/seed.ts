@@ -67,32 +67,31 @@ export async function seed(db: BetterSQLite3Database<typeof schema>) {
     }
   }
 
-  // ── admin user (explicit env, bcrypt only) ───────────────────────────
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminEmail || !adminPassword) {
-    console.log("[seed] ADMIN_EMAIL/ADMIN_PASSWORD unset — skipping admin user creation.");
-    console.log("[seed] done");
-    return;
-  }
+  // ── users (admin + cashier) ──────────────────────────────────────────
+  const users = [
+    { email: "admin@storio.id", password: "storio@admin.id", displayName: "Admin", role: "admin" as const },
+    { email: "kasir@storio.id", password: "storio@kasir.id", displayName: "Kasir", role: "cashier" as const },
+  ];
 
-  const exists = db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.email, adminEmail))
-    .get();
-  if (!exists) {
-    const hash = await bcrypt.hash(adminPassword, 12);
-    db.insert(schema.users)
-      .values({
-        id: crypto.randomUUID(),
-        email: adminEmail,
-        passwordHash: hash,
-        displayName: "Revota",
-        role: "admin",
-      })
-      .run();
-    console.log(`[seed] admin user created: ${adminEmail}`);
+  for (const user of users) {
+    const exists = db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, user.email))
+      .get();
+    if (!exists) {
+      const hash = await bcrypt.hash(user.password, 12);
+      db.insert(schema.users)
+        .values({
+          id: crypto.randomUUID(),
+          email: user.email,
+          passwordHash: hash,
+          displayName: user.displayName,
+          role: user.role,
+        })
+        .run();
+      console.log(`[seed] user created: ${user.email} (${user.role})`);
+    }
   }
 
   console.log("[seed] done");
