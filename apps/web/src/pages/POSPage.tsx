@@ -23,6 +23,8 @@ import { useIsOnline } from "../hooks/use-is-online.js";
 import { useSyncStateStore } from "../store/sync-state.js";
 import { useSyncPendingTransactions } from "../hooks/useSyncPendingTransactions.js";
 import { useConnectionMonitor } from "../hooks/useConnectionMonitor.js";
+import { canCreateTransaction } from "../lib/storage-monitor.js";
+import { trackTransactionTime } from "../lib/perf-tracker.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -774,6 +776,17 @@ export function POSPage() {
   ) {
     if (!activeCartId) throw new Error("Tidak ada keranjang aktif.");
 
+    // Pre-flight storage check (PRD §5.6)
+    const preflight = await canCreateTransaction();
+    if (!preflight.canCreate) {
+      throw new Error(preflight.reason + " " + preflight.action);
+    }
+    if (preflight.warning) {
+      console.warn("[pos] storage warning:", preflight.warning);
+    }
+
+    const payStart = performance.now();
+
     const subtotalIdr = cartItems.reduce(
       (sum, item) => sum + (item.intendedPriceIdr - item.lineDiscountIdr),
       0
@@ -807,6 +820,7 @@ export function POSPage() {
           )
         );
         setShowPayModal(false);
+        trackTransactionTime(Math.round(performance.now() - payStart));
         setReceipt({
           transactionId: txId,
           totalIdr: finalTotalIdr,
@@ -875,6 +889,7 @@ export function POSPage() {
     );
 
     setShowPayModal(false);
+    trackTransactionTime(Math.round(performance.now() - payStart));
     setReceipt({
       transactionId: txClientId,
       totalIdr: finalTotalIdr,

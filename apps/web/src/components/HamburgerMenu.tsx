@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
-  Settings, LogOut,
-  BookOpen, Tag, Wallet, Receipt, type LucideIcon,
+  Settings, Users, Calendar, LogOut,
+  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, Monitor, type LucideIcon,
 } from "lucide-react";
 import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
@@ -17,14 +17,20 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard",  Icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/pos",        Icon: ShoppingCart,    label: "Kasir" },
-  { to: "/inventory",  Icon: Package,         label: "Inventaris" },
-  { to: "/stock-receive", Icon: Plus,         label: "Stock Receive", adminOnly: true },
-  { to: "/reports",    Icon: BarChart2,       label: "Laporan" },
-  { to: "/transactions", Icon: Receipt,       label: "Riwayat Transaksi" },
-  { to: "/labels",     Icon: Tag,             label: "Cetak Label QR" },
-  { to: "/my-payout",  Icon: Wallet,          label: "Payout Saya" },
+  { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
+  { to: "/inventory", Icon: Package,      label: "Inventaris" },
+  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", adminOnly: true },
+  { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
+  { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
+  { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
+  { to: "/admin/monitor", Icon: Monitor, label: "Monitor", adminOnly: true },
+  { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
+  { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
+  // { to: "/admin/pending-transactions", Icon: ClipboardList, label: "Transaksi Pending", adminOnly: true }, // HIDDEN: fitur belum aktif
+  { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
+  { to: "/settings/overrides",Icon: ShieldAlert,  label: "Riwayat Override", adminOnly: true },
+  { to: "/settings/audit-log",Icon: ClipboardList,label: "Audit Log",        adminOnly: true },
 ];
 
 export function HamburgerMenu() {

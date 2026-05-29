@@ -1,17 +1,19 @@
 import React from "react";
 import { useSyncStateStore } from "../store/sync-state.js";
-import { CheckCircle, XCircle, Info, X } from "lucide-react";
+import { CheckCircle, XCircle, Info, AlertTriangle, X } from "lucide-react";
 
 const TOAST_ICONS = {
   success: CheckCircle,
   error: XCircle,
   info: Info,
+  warning: AlertTriangle,
 };
 
 const TOAST_COLORS = {
   success: "bg-success",
   error: "bg-destructive",
   info: "bg-primary",
+  warning: "bg-yellow-500",
 };
 
 export function ToastContainer() {
