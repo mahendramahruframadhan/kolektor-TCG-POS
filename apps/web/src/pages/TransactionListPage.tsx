@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Filter } from "lucide-react";
 import { idb } from "../lib/db.js";
 import { fmt } from "../lib/format.js";
-import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import type {
   IdbTransaction, IdbTransactionItem,
@@ -101,7 +100,7 @@ function TxRow({ tx, cashierName, channelName, itemCount, ownerNames }: TxRowPro
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <MaskedAmount amount={tx.totalIdr} className="text-base font-bold text-fg" />
+        <span className="text-base font-bold text-fg">Rp {(tx.totalIdr ?? 0).toLocaleString("id-ID")}</span>
         <span className="text-xs text-muted-fg">{channelName}</span>
       </div>
       <div className="flex items-center justify-between gap-2 text-[11px] text-muted-fg">
