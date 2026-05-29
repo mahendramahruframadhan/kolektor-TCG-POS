@@ -26,7 +26,6 @@ The API auto-runs migrations + conditionally seeds an admin on startup. OpenAPI 
 
 ## Docs
 
-- [`CHANGELOG.md`](CHANGELOG.md) — release history (CalVer `YYYY.MM.PATCH`).
 - [`docs/INDEX.md`](docs/INDEX.md) — **start here.** Agent-facing map of every document.
 - [`docs/01-prd.md`](docs/01-prd.md) — consolidated PRD v1.0.
 - [`docs/02-implementation-plan.md`](docs/02-implementation-plan.md) — milestone-by-milestone build plan.

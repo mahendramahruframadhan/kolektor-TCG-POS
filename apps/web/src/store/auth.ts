@@ -75,12 +75,22 @@ interface AuthState {
   setUser: (user: AuthUser | null) => void;
 }
 
+export type OfflineLoginReason =
+  | "credential_not_found"
+  | "credential_expired"
+  | "role_not_allowed"
+  | "password_mismatch";
+
+export type OfflineLoginResult =
+  | { success: true; user: AuthUser; hoursRemaining?: number }
+  | { success: false; reason: OfflineLoginReason; details?: any };
+
 interface OfflineAuthState {
   offlineCredentials: OfflineCredential[];
   isOfflineSession: boolean;
   offlineExpiresAt: number | null;
   cacheCredential: (credential: Omit<OfflineCredential, "cachedAt">) => void;
-  validateOfflineLogin: (email: string, password: string) => AuthUser | null;
+  validateOfflineLogin: (email: string, password: string) => OfflineLoginResult;
   clearOfflineCredential: () => void;
   clearExpiredCredential: () => boolean;
   setOfflineSession: (user: AuthUser, expiresAt: number) => void;
@@ -136,7 +146,7 @@ export const useOfflineAuthStore = create<OfflineAuthState>()(
         console.debug('[offline-auth] cacheCredential after set', { count: get().offlineCredentials.length });
       },
 
-      validateOfflineLogin: (email: string, password: string): AuthUser | null => {
+      validateOfflineLogin: (email: string, password: string): OfflineLoginResult => {
         const { clearExpiredCredential } = get();
 
         clearExpiredCredential();
@@ -161,11 +171,46 @@ export const useOfflineAuthStore = create<OfflineAuthState>()(
         );
         if (!cred) {
           console.warn('[offline-auth] validateOfflineLogin no credential found for', email);
-          return null;
+          const availableEmails = creds.map(c => c.email);
+          return {
+            success: false,
+            reason: "credential_not_found",
+            details: {
+              message: availableEmails.length > 0
+                ? `Credential untuk ${email} tidak ditemukan. Credential yang tersedia: ${availableEmails.join(", ")}`
+                : "Anda belum pernah login online. Silakan login dengan koneksi internet pertama kali untuk mengaktifkan mode offline.",
+              availableEmails,
+            },
+          };
         }
+
+        // Check expiry
+        const now = Date.now();
+        const expiresAt = cred.cachedAt + OFFLINE_SESSION_TTL_MS;
+        const hoursRemaining = Math.ceil((expiresAt - now) / (60 * 60 * 1000));
+        if (now > expiresAt) {
+          console.warn('[offline-auth] validateOfflineLogin credential expired for', cred.email);
+          return {
+            success: false,
+            reason: "credential_expired",
+            details: {
+              message: "Password salah atau credential expired (lebih dari 7 hari). Silakan login online untuk refresh credential.",
+              hoursRemaining: 0,
+              cachedAt: cred.cachedAt,
+            },
+          };
+        }
+
         if (cred.role !== "cashier" && cred.role !== "admin") {
           console.warn('[offline-auth] validateOfflineLogin role not allowed', cred.role);
-          return null;
+          return {
+            success: false,
+            reason: "role_not_allowed",
+            details: {
+              message: `Role '${cred.role}' tidak diizinkan login offline. Hanya role 'cashier' dan 'admin' yang bisa login offline.`,
+              role: cred.role,
+            },
+          };
         }
 
         let compareResult = false;
@@ -181,15 +226,25 @@ export const useOfflineAuthStore = create<OfflineAuthState>()(
 
         if (!compareResult) {
           console.warn('[offline-auth] validateOfflineLogin bcrypt mismatch for', cred.email);
-          return null;
+          return {
+            success: false,
+            reason: "password_mismatch",
+            details: {
+              message: "Password salah. Periksa kembali password Anda.",
+            },
+          };
         }
 
         console.info('[offline-auth] validateOfflineLogin success for', cred.email);
         return {
-          id: cred.id,
-          email: cred.email,
-          displayName: cred.displayName,
-          role: cred.role,
+          success: true,
+          user: {
+            id: cred.id,
+            email: cred.email,
+            displayName: cred.displayName,
+            role: cred.role,
+          },
+          hoursRemaining,
         };
       },
 

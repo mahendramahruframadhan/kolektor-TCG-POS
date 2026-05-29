@@ -192,7 +192,10 @@ export async function flushPendingTransactions(): Promise<void> {
   );
 
   try {
-    const response = await api.sync.flushPendingTx(pending);
+    const response = await withRetry(
+      () => api.sync.flushPendingTx(pending),
+      { label: "flushPendingTransactions" }
+    );
 
     for (const result of response.results) {
       if (result.status === "accepted") {
@@ -224,11 +227,50 @@ export async function flushPendingTransactions(): Promise<void> {
   useSyncStateStore.getState().setPendingTransactionCount(stillPending);
 }
 
+// ── Retry helpers (PRD §7) ──────────────────────────────────────────────
+
+const MAX_RETRY_ATTEMPTS = 5;
+const RETRY_BASE_DELAY_MS = 1000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxAttempts?: number; baseDelayMs?: number; label?: string } = {}
+): Promise<T> {
+  const { maxAttempts = MAX_RETRY_ATTEMPTS, baseDelayMs = RETRY_BASE_DELAY_MS, label = "operation" } = options;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.warn(`[sync] ${label} failed (attempt ${attempt}/${maxAttempts}):`, err);
+      if (attempt < maxAttempts) {
+        const waitMs = baseDelayMs * Math.pow(2, attempt - 1);
+        await delay(waitMs);
+      }
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Background sync — runs every 60s + opportunistically after cashier actions.
  * PRD §11: Background every 60s when online + opportunistic on every cashier action.
  */
 let syncInterval: ReturnType<typeof setInterval> | null = null;
+let lastSyncErrorToastAt = 0;
+const SYNC_ERROR_TOAST_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function addSyncErrorToast(message: string) {
+  const now = Date.now();
+  if (now - lastSyncErrorToastAt < SYNC_ERROR_TOAST_COOLDOWN_MS) return;
+  lastSyncErrorToastAt = now;
+  useSyncStateStore.getState().addToast(message, "error");
+}
 
 export function startBackgroundSync() {
   if (syncInterval) return;
@@ -241,14 +283,17 @@ export function startBackgroundSync() {
     useSyncStateStore.getState().setState("syncing");
     try {
       await flushPendingTransactions();
-      await deltaSyncPull();
+      await withRetry(() => deltaSyncPull(), { label: "deltaSyncPull" });
       useSyncStateStore.getState().markSuccess();
+      // Toast success di-disable agar tidak mengganggu UI kasir
+      console.info("[sync] Sinkronisasi berhasil (background)");
     } catch (err) {
       console.warn("[sync] Background sync failed:", err);
       useSyncStateStore.getState().setState(
         "error",
         err instanceof Error ? err.message : "Sinkronisasi gagal"
       );
+      addSyncErrorToast("Sinkronisasi gagal — akan dicoba ulang");
     }
   }, 60 * 1000);
 }
@@ -269,13 +314,18 @@ export function opportunisticSync() {
   }
   useSyncStateStore.getState().setState("syncing");
   flushPendingTransactions()
-    .then(() => deltaSyncPull())
-    .then(() => useSyncStateStore.getState().markSuccess())
+    .then(() => withRetry(() => deltaSyncPull(), { label: "opportunisticSync" }))
+    .then(() => {
+      useSyncStateStore.getState().markSuccess();
+      // Toast success di-disable agar tidak mengganggu UI kasir
+      console.info("[sync] Sinkronisasi berhasil (opportunistic)");
+    })
     .catch((err) => {
       useSyncStateStore.getState().setState(
         "error",
         err instanceof Error ? err.message : "Sinkronisasi gagal"
       );
+      addSyncErrorToast("Sinkronisasi gagal — akan dicoba ulang");
     });
 }
 
@@ -288,13 +338,16 @@ export async function resetAndSync(): Promise<void> {
   localStorage.removeItem("kolekta-sync-cursor");
   useSyncStateStore.getState().setState("syncing");
   try {
-    await deltaSyncPull();
+    await withRetry(() => deltaSyncPull(), { label: "resetAndSync" });
     useSyncStateStore.getState().markSuccess();
+    // Toast success di-disable agar tidak mengganggu UI kasir
+    console.info("[sync] Data berhasil disinkronkan (resetAndSync)");
   } catch (err) {
     useSyncStateStore.getState().setState(
       "error",
       err instanceof Error ? err.message : "Sinkronisasi gagal"
     );
+    useSyncStateStore.getState().addToast("Sinkronisasi gagal — akan dicoba ulang", "error");
     throw err;
   }
 }
