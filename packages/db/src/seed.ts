@@ -7,17 +7,25 @@ import * as schema from "./schema.js";
 export async function seed(db: ReturnType<typeof drizzle>) {
   // ── payment channels ──────────────────────────────────────────────────
   const channels = [
-    { name: "Cash IDR", type: "cash", sortOrder: 0 },
-    { name: "BCA", type: "bank_transfer", sortOrder: 1 },
-    { name: "Mandiri", type: "bank_transfer", sortOrder: 2 },
-    { name: "BNI", type: "bank_transfer", sortOrder: 3 },
-    { name: "GoPay", type: "ewallet", sortOrder: 4 },
-    { name: "OVO", type: "ewallet", sortOrder: 5 },
-    { name: "Dana", type: "ewallet", sortOrder: 6 },
-    { name: "ShopeePay", type: "ewallet", sortOrder: 7 },
-    { name: "QRIS", type: "qris", sortOrder: 8 },
-    { name: "Other", type: "other", sortOrder: 9 },
+    { name: "Cash", type: "cash", sortOrder: 0 },
+    { name: "Other", type: "other", sortOrder: 999 },
   ];
+
+  // Deactivate legacy channels replaced by defaults
+  const legacyNames = ["Cash IDR", "BCA", "Mandiri", "BNI", "GoPay", "OVO", "Dana", "ShopeePay", "QRIS"];
+  for (const legacyName of legacyNames) {
+    const legacy = db
+      .select()
+      .from(schema.paymentChannels)
+      .where(eq(schema.paymentChannels.name, legacyName))
+      .get();
+    if (legacy) {
+      db.update(schema.paymentChannels)
+        .set({ isActive: false, version: legacy.version + 1 })
+        .where(eq(schema.paymentChannels.id, legacy.id))
+        .run();
+    }
+  }
 
   for (const ch of channels) {
     const exists = db
@@ -28,6 +36,11 @@ export async function seed(db: ReturnType<typeof drizzle>) {
     if (!exists) {
       db.insert(schema.paymentChannels)
         .values({ id: crypto.randomUUID(), ...ch })
+        .run();
+    } else {
+      db.update(schema.paymentChannels)
+        .set({ sortOrder: ch.sortOrder, isActive: true, version: exists.version + 1 })
+        .where(eq(schema.paymentChannels.id, exists.id))
         .run();
     }
   }

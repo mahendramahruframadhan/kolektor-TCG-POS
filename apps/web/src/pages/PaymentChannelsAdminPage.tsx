@@ -185,22 +185,26 @@ export function PaymentChannelsAdminPage() {
                     {!ch.isActive && <span className="ml-1 text-destructive font-semibold">(nonaktif)</span>}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openEdit(ch)}
-                  className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-fg hover:bg-muted transition"
-                  aria-label="Edit"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(ch)}
-                  className="w-9 h-9 rounded-xl border border-destructive border-opacity-40 flex items-center justify-center text-destructive hover:bg-destructive hover:bg-opacity-10 transition"
-                  aria-label="Hapus"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {ch.type !== "cash" && ch.type !== "other" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(ch)}
+                      className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-fg hover:bg-muted transition"
+                      aria-label="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(ch)}
+                      className="w-9 h-9 rounded-xl border border-destructive border-opacity-40 flex items-center justify-center text-destructive hover:bg-destructive hover:bg-opacity-10 transition"
+                      aria-label="Hapus"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

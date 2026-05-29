@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { paymentChannels, transactions } from "@kolektapos/db/schema";
@@ -15,6 +15,8 @@ export async function paymentChannelRoutes(app: FastifyInstance, opts: { db: Db 
     const rows = db
       .select()
       .from(paymentChannels)
+      .where(eq(paymentChannels.isActive, true))
+      .orderBy(asc(paymentChannels.sortOrder))
       .all();
     return reply.send(rows);
   });
@@ -42,6 +44,10 @@ export async function paymentChannelRoutes(app: FastifyInstance, opts: { db: Db 
     const row = db.select().from(paymentChannels).where(eq(paymentChannels.id, id)).get();
     if (!row) return reply.status(404).send({ error: "Not found" });
 
+    if (row.type === "cash" || row.type === "other") {
+      return reply.status(403).send({ error: "Metode pembayaran ini tidak bisa diubah." });
+    }
+
     if (row.version !== clientVersion) {
       return reply.status(409).send({ error: "Conflict: version mismatch", currentVersion: row.version });
     }
@@ -54,6 +60,10 @@ export async function paymentChannelRoutes(app: FastifyInstance, opts: { db: Db 
     const { id } = request.params as { id: string };
     const row = db.select().from(paymentChannels).where(eq(paymentChannels.id, id)).get();
     if (!row) return reply.status(404).send({ error: "Not found" });
+
+    if (row.type === "cash" || row.type === "other") {
+      return reply.status(403).send({ error: "Metode pembayaran ini tidak bisa dihapus." });
+    }
 
     const usedInTx = db.select({ id: transactions.id })
       .from(transactions)
