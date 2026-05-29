@@ -187,12 +187,11 @@ export const useSyncStateStore = create<SyncStateStore>((set, get) => {
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
-    console.debug('[sync-state] browser online event fired');
-    // Trigger health check immediately when browser reports online
-    useSyncStateStore.getState().triggerHealthCheck();
+    const store = useSyncStateStore.getState();
+    if (store.networkMode === "force-offline") return;
+    store.triggerHealthCheck();
   });
   window.addEventListener("offline", () => {
-    console.debug('[sync-state] browser offline event fired');
     reconnectAttempted = false;
     useSyncStateStore.getState().setState("offline");
   });

@@ -262,6 +262,15 @@ async function withRetry<T>(
  * PRD §11: Background every 60s when online + opportunistic on every cashier action.
  */
 let syncInterval: ReturnType<typeof setInterval> | null = null;
+let lastSyncErrorToastAt = 0;
+const SYNC_ERROR_TOAST_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function addSyncErrorToast(message: string) {
+  const now = Date.now();
+  if (now - lastSyncErrorToastAt < SYNC_ERROR_TOAST_COOLDOWN_MS) return;
+  lastSyncErrorToastAt = now;
+  useSyncStateStore.getState().addToast(message, "error");
+}
 
 export function startBackgroundSync() {
   if (syncInterval) return;
@@ -284,7 +293,7 @@ export function startBackgroundSync() {
         "error",
         err instanceof Error ? err.message : "Sinkronisasi gagal"
       );
-      useSyncStateStore.getState().addToast("Sinkronisasi gagal — akan dicoba ulang", "error");
+      addSyncErrorToast("Sinkronisasi gagal — akan dicoba ulang");
     }
   }, 60 * 1000);
 }
@@ -316,7 +325,7 @@ export function opportunisticSync() {
         "error",
         err instanceof Error ? err.message : "Sinkronisasi gagal"
       );
-      useSyncStateStore.getState().addToast("Sinkronisasi gagal — akan dicoba ulang", "error");
+      addSyncErrorToast("Sinkronisasi gagal — akan dicoba ulang");
     });
 }
 

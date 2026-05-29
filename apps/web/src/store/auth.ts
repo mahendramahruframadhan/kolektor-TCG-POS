@@ -75,9 +75,15 @@ interface AuthState {
   setUser: (user: AuthUser | null) => void;
 }
 
+export type OfflineLoginReason =
+  | "credential_not_found"
+  | "credential_expired"
+  | "role_not_allowed"
+  | "password_mismatch";
+
 export type OfflineLoginResult =
   | { success: true; user: AuthUser; hoursRemaining?: number }
-  | { success: false; reason: string; details?: any };
+  | { success: false; reason: OfflineLoginReason; details?: any };
 
 interface OfflineAuthState {
   offlineCredentials: OfflineCredential[];

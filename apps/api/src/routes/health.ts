@@ -54,7 +54,6 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
           uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           version: SCHEMA_VERSION,
           database: "connected",
-          db: "connected",
           users: userCount,
           activeDraftCarts: activeCarts,
         });
@@ -68,7 +67,6 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
           uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           version: SCHEMA_VERSION,
           database: "disconnected",
-          db: "error",
         });
       }
     }
