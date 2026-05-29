@@ -87,12 +87,13 @@ interface TxRowProps {
   channelName: string;
   itemCount: number;
   ownerNames: string;
+  onClick?: () => void;
 }
 
-function TxRow({ tx, cashierName, channelName, itemCount, ownerNames }: TxRowProps) {
+function TxRow({ tx, cashierName, channelName, itemCount, ownerNames, onClick }: TxRowProps) {
   const dateStr = fmt(tx.createdAt);
   return (
-    <li className="bg-card border border-border rounded-2xl p-3 flex flex-col gap-1">
+    <li onClick={onClick} className="bg-card border border-border rounded-2xl p-3 flex flex-col gap-1 cursor-pointer hover:bg-muted transition" role="button" tabIndex={0}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-fg font-mono">{tx.id.slice(0, 8)}…</span>
         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${kindBadgeClass(tx.kind)}`}>
@@ -335,6 +336,7 @@ export function TransactionListPage() {
               channelName={channelName}
               itemCount={itemCount}
               ownerNames={ownerNames}
+              onClick={() => navigate(`/transactions/${tx.id}`)}
             />
           ))}
         </ul>

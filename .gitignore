@@ -28,6 +28,7 @@ scratch/
 
 .worktrees/
 .agents/
+.playwright-mcp/
 
 docs/
 #daily/

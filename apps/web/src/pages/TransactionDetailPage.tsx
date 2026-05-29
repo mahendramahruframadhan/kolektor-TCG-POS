@@ -4,9 +4,8 @@ import { Receipt } from "lucide-react";
 import { api } from "../lib/api.js";
 import { idb } from "../lib/db.js";
 import { fmt } from "../lib/format.js";
-import { MaskedAmount } from "../components/MaskedAmount.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
-import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbUser, IdbPaymentChannel } from "../lib/db.js";
+import type { IdbTransaction, IdbTransactionItem, IdbCard, IdbPaymentChannel } from "../lib/db.js";
 
 interface TxDetail {
   transaction: IdbTransaction;
@@ -119,11 +118,11 @@ export function TransactionDetailPage() {
             </div>
 
             <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
-              <Row label="Subtotal" value={<MaskedAmount amount={detail.transaction.subtotalIdr} className="font-bold text-fg" />} />
+              <Row label="Subtotal" value={<span className="font-bold text-fg">Rp {detail.transaction.subtotalIdr.toLocaleString("id-ID")}</span>} />
               {detail.transaction.discountIdr > 0 && (
                 <Row label="Diskon" value={<span className="font-bold text-destructive">- Rp {detail.transaction.discountIdr.toLocaleString("id-ID")}</span>} />
               )}
-              <Row label="Total" value={<MaskedAmount amount={detail.transaction.totalIdr} className="font-extrabold text-lg text-primary" />} />
+              <Row label="Total" value={<span className="font-extrabold text-lg text-primary">Rp {detail.transaction.totalIdr.toLocaleString("id-ID")}</span>} />
               {detail.paymentChannel && (
                 <Row label="Pembayaran" value={<span className="font-bold text-fg">{detail.paymentChannel.name}</span>} />
               )}
@@ -132,7 +131,7 @@ export function TransactionDetailPage() {
               )}
               {detail.transaction.notes && (
                 <div className="pt-2 border-t border-border">
-                  <span className="text-xs text-muted-fg">Catatan: {detail.transaction.notes}</span>
+                  <Row label="Catatan" value={<span className="text-sm text-fg">{detail.transaction.notes}</span>} />
                 </div>
               )}
             </div>
@@ -143,22 +142,59 @@ export function TransactionDetailPage() {
 
             <ul className="space-y-2">
               {detail.items.map((item) => (
-                <li key={item.id} className="bg-card rounded-2xl border border-border px-4 py-3 space-y-1">
+                <li key={item.id} className="bg-card rounded-2xl border border-border px-4 py-3 space-y-2">
+                  {/* Header: title + sold price */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-fg truncate">{item.card?.title ?? "—"}</p>
+                      <p className="text-sm font-bold text-fg">{item.card?.title ?? "—"}</p>
                       <p className="text-xs text-muted-fg font-mono">{item.card?.shortId ?? "—"}</p>
                     </div>
-                    <MaskedAmount amount={item.soldPriceIdr} className="text-sm font-extrabold text-fg shrink-0" />
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-extrabold text-fg">Rp {item.soldPriceIdr.toLocaleString("id-ID")}</p>
+                      {item.listedPriceIdrSnapshot > 0 && item.listedPriceIdrSnapshot !== item.soldPriceIdr && (
+                        <p className="text-[10px] text-muted-fg line-through">Rp {item.listedPriceIdrSnapshot.toLocaleString("id-ID")}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-fg">
-                    <span>Pemilik: {item.ownerName ?? item.ownerUserIdSnapshot.slice(0, 8)}</span>
-                    {item.lineDiscountIdr > 0 && (
-                      <span>Diskon Rp {item.lineDiscountIdr.toLocaleString("id-ID")}</span>
-                    )}
-                  </div>
-                  {item.overrideBelowBottom && (
-                    <div className="text-[10px] text-warning font-bold">Admin override: di bawah harga minimum</div>
+
+                  {/* Card metadata */}
+                  {item.card && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-fg border-t border-border pt-2">
+                      {item.card.setName && <MiniRow label="Set" value={item.card.setName} />}
+                      {item.card.setNumber && <MiniRow label="Nomor" value={item.card.setNumber} />}
+                      {item.card.rarity && <MiniRow label="Rarity" value={item.card.rarity} />}
+                      {item.card.language && <MiniRow label="Bahasa" value={item.card.language} />}
+                      {item.card.edition && <MiniRow label="Edisi" value={item.card.edition} />}
+                      {item.card.condition && <MiniRow label="Kondisi" value={item.card.condition} />}
+                      {item.card.category && <MiniRow label="Kategori" value={item.card.category} />}
+                      {item.card.isGraded && item.card.gradingCompany && (
+                        <MiniRow label="Grading" value={`${item.card.gradingCompany}${item.card.grade ? ` ${item.card.grade}` : ""}`} />
+                      )}
+                      {item.card.isGraded && item.card.certNumber && (
+                        <MiniRow label="Cert #" value={item.card.certNumber} />
+                      )}
+                      <MiniRow label="Pemilik" value={item.ownerName ?? item.ownerUserIdSnapshot.slice(0, 8)} />
+                    </div>
+                  )}
+                  {!item.card && (
+                    <p className="text-xs text-muted-fg">Pemilik: {item.ownerName ?? item.ownerUserIdSnapshot.slice(0, 8)}</p>
+                  )}
+
+                  {/* Discount + override */}
+                  {(item.lineDiscountIdr > 0 || item.overrideBelowBottom) && (
+                    <div className="flex items-center justify-between text-xs border-t border-border pt-1">
+                      {item.lineDiscountIdr > 0 && (
+                        <span className="text-destructive font-semibold">
+                          Diskon Rp {item.lineDiscountIdr.toLocaleString("id-ID")}
+                          {item.lineDiscountReason ? ` · ${item.lineDiscountReason}` : ""}
+                        </span>
+                      )}
+                      {item.overrideBelowBottom && (
+                        <span className="text-warning font-bold text-[10px] uppercase tracking-wide">
+                          ⚠ Override harga minimum{item.overrideReason ? `: ${item.overrideReason}` : ""}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </li>
               ))}
@@ -175,6 +211,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex justify-between items-center">
       <span className="text-sm text-muted-fg">{label}</span>
       {value}
+    </div>
+  );
+}
+
+function MiniRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] uppercase tracking-widest font-extrabold text-muted-fg/60">{label}</span>
+      <span className="text-xs text-fg">{value}</span>
     </div>
   );
 }
