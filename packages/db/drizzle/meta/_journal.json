@@ -50,6 +50,13 @@
       "when": 1777013100000,
       "tag": "0006_add_check_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1748483400000,
+      "tag": "0007_add_missing_fks",
+      "breakpoints": true
     }
   ]
 }
