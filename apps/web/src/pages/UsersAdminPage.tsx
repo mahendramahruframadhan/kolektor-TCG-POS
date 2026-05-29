@@ -126,7 +126,7 @@ export function UsersAdminPage() {
       <MobileAppBar
         title="Kelola Pengguna"
         back
-        onBack={() => navigate("/settings")}
+        onBack={() => navigate("/config")}
         right={
           !isEditing ? (
             <button

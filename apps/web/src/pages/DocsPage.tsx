@@ -120,7 +120,8 @@ const SECTIONS: Section[] = [
         <li className="leading-relaxed"><strong className="text-fg">Kelola Pengguna:</strong> Tambah, edit, dan atur peran (Admin / Kasir) pengguna KolektaPOS.</li>
         <li className="leading-relaxed"><strong className="text-fg">Kelola Event:</strong> Buat event baru, atur tanggal, dan ubah status (Draft / Aktif / Selesai).</li>
         <li className="leading-relaxed"><strong className="text-fg">Oversold Queue:</strong> Kartu yang terjual dua kali (akibat transaksi offline bersamaan) masuk ke antrian ini untuk ditangani manual.</li>
-        <li className="leading-relaxed"><strong className="text-fg">Pengaturan:</strong> Atur batas diskon per item, batas diskon total, dan TTL keranjang idle.</li>
+        <li className="leading-relaxed"><strong className="text-fg">Konfigurasi:</strong> Akses semua pengaturan admin via menu Konfigurasi — Kelola Pengguna, Kelola Event, Metode Pembayaran, Antrian Oversold, Riwayat Override, Audit Log, dan Pengaturan Aplikasi.</li>
+        <li className="leading-relaxed"><strong className="text-fg">Pengaturan Aplikasi:</strong> Atur batas diskon per item, batas diskon total, dan TTL keranjang idle.</li>
       </ul>
     ),
   },
@@ -139,7 +140,7 @@ const SECTIONS: Section[] = [
           dan disinkronkan ke server saat koneksi tersedia (setiap 60 detik atau saat ada koneksi baru).
         </p>
         <div className="border border-border rounded-xl p-3 space-y-1 text-xs">
-          <p><span className="font-bold text-fg">Versi:</span> MVP</p>
+          <p><span className="font-bold text-fg">Versi:</span> 2026.05.239</p>
           <p><span className="font-bold text-fg">Stack:</span> React + Vite PWA · Fastify · SQLite · Dexie</p>
           <p><span className="font-bold text-fg">Pengguna:</span> 11 co-owners, 1 booth</p>
           <p><span className="font-bold text-fg">Penggunaan:</span> Internal — tidak untuk publik</p>

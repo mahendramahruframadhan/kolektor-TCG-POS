@@ -9,6 +9,7 @@ import { useAuthStore } from "../store/auth.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { Toast } from "../components/Toast.js";
 import type { IdbUser } from "../lib/db.js";
+import { CONDITIONS, LANGUAGES, GRADING_COMPANIES } from "../lib/constants.js";
 
 // ── Thumbnail helper ───────────────────────────────────────────────────────
 
@@ -81,16 +82,8 @@ const INITIAL_FORM: FormState = {
   certNumber: "",
 };
 
-const LANGUAGE_OPTIONS = ["EN", "JP", "ID", "KR", "CN", "Other"];
-const CONDITION_OPTIONS = [
-  "Mint",
-  "Near Mint",
-  "Lightly Played",
-  "Moderately Played",
-  "Heavily Played",
-  "Damaged",
-];
-const GRADING_COMPANIES = ["PSA", "BGS", "CGC", "ACE", "Other"];
+const LANGUAGE_OPTIONS = LANGUAGES;
+const CONDITION_OPTIONS = CONDITIONS;
 
 // ── Shared field label ──────────────────────────────────────────────────────
 

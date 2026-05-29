@@ -27,6 +27,7 @@ scratch/
 .claude/
 
 .worktrees/
+.agents/
 
 docs/
 #daily/

@@ -5,6 +5,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/sqlite-core";
+import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -178,7 +179,9 @@ export const carts = sqliteTable(
     abandonedReason: text("abandoned_reason", {
       enum: ["manual", "idle_ttl", "admin_force"],
     }),
-    paidTransactionId: text("paid_transaction_id"),
+    paidTransactionId: text("paid_transaction_id").references(
+      (): AnySQLiteColumn => transactions.id
+    ),
     lastActivityAt: integer("last_activity_at").notNull().default(now),
     createdAt: integer("created_at").notNull().default(now),
     updatedAt: integer("updated_at").notNull().default(now),
@@ -228,7 +231,9 @@ export const transactions = sqliteTable(
     kind: text("kind", { enum: ["sale", "void", "refund"] })
       .notNull()
       .default("sale"),
-    parentTransactionId: text("parent_transaction_id"),
+    parentTransactionId: text("parent_transaction_id").references(
+      (): AnySQLiteColumn => transactions.id
+    ),
     // All monetary: integer IDR
     subtotalIdr: integer("subtotal_idr").notNull(),
     discountIdr: integer("discount_idr").notNull().default(0),

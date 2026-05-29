@@ -15,7 +15,8 @@ import { usePosStore } from "../store/pos.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
 import { CameraScanner } from "../components/CameraScanner.js";
 import { Dialog } from "../components/Dialog.js";
-import { useTapHoldReveal } from "../hooks/useTapHoldReveal.js";
+import { MaskedAmount } from "../components/MaskedAmount.js";
+import { CardMeta } from "../components/CardMeta.js";
 import type { IdbCard, IdbCartItem, IdbEvent, IdbPaymentChannel, IdbPendingTransactionItem } from "../lib/db.js";
 import { nowSec } from "../lib/time.js";
 import { useIsOnline } from "../hooks/use-is-online.js";
@@ -64,56 +65,6 @@ function StatusBadge({
     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-success bg-opacity-15 text-success">
       Tersedia
     </span>
-  );
-}
-
-// ── Bottom price tap-and-hold reveal ───────────────────────────────────────
-
-function BottomPriceReveal({ amount }: { amount: number | undefined }) {
-  const { revealed, startReveal, endReveal } = useTapHoldReveal();
-
-  // Keyboard equivalent for the pointer tap-and-hold (SC 2.1.1 Keyboard).
-  // Space/Enter pressed → start the hold timer; released → cancel the
-  // pending reveal (matches useTapHoldReveal's pointer-up semantics).
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") {
-      if (!e.repeat) {
-        e.preventDefault();
-        startReveal();
-      }
-    }
-  };
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      endReveal();
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-fg">Harga Minimum</span>
-      <button
-        type="button"
-        onMouseDown={startReveal}
-        onMouseUp={endReveal}
-        onMouseLeave={endReveal}
-        onTouchStart={startReveal}
-        onTouchEnd={endReveal}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
-        onBlur={endReveal}
-        className="text-sm font-bold text-warning px-2 py-0.5 rounded-lg bg-warning bg-opacity-5 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2"
-        aria-label="Tekan dan tahan (Spasi/Enter atau tap) selama 2 detik untuk melihat harga minimum"
-        aria-pressed={revealed}
-      >
-        {revealed ? (
-          <span>Rp {(amount ?? 0).toLocaleString("id-ID")}</span>
-        ) : (
-          <span className="tracking-widest">••••••</span>
-        )}
-      </button>
-    </div>
   );
 }
 
@@ -510,15 +461,16 @@ export function POSPage() {
   const { syncing, message: syncMessage, pendingCount, syncPending } = useSyncPendingTransactions();
 
   const scanRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const refocusScan = useCallback(() => {
-    setTimeout(() => scanRef.current?.focus(), 50);
+    setTimeout(() => searchRef.current?.focus(), 50);
   }, []);
 
   const [maxTxDiscountPct, setMaxTxDiscountPct] = useState(0);
 
   useEffect(() => {
-    scanRef.current?.focus();
+    searchRef.current?.focus();
     idb.settings.get("max_transaction_discount_pct").then((s) => {
       if (s && typeof s.value === "number") setMaxTxDiscountPct(s.value);
     });
@@ -1144,7 +1096,6 @@ export function POSPage() {
                 onChange={(e) => setScanInput(e.target.value.toUpperCase())}
                 onKeyDown={handleScanKeyDown}
                 placeholder="O-XXXXX  atau  scan USB"
-                autoFocus
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
@@ -1163,7 +1114,7 @@ export function POSPage() {
                   {scanError}
                 </div>
               )}
-              <ProductSearch onPick={(shortId) => handleScan(shortId)} />
+              <ProductSearch inputRef={searchRef} onPick={(shortId) => handleScan(shortId)} />
             </>
           )}
         </div>
@@ -1173,16 +1124,16 @@ export function POSPage() {
           <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-fg leading-tight truncate">
-                  {scannedCard.title}
-                </p>
-                <p className="text-xs text-muted-fg mt-0.5">
-                  {scannedCard.setName}{" "}
-                  {scannedCard.setNumber ? `#${scannedCard.setNumber}` : ""}
-                  {" · "}
-                  {scannedCard.condition}
-                  {scannedCard.language ? ` · ${scannedCard.language}` : ""}
-                </p>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="font-mono text-[10px] font-extrabold bg-primary bg-opacity-10 text-primary px-1.5 py-0.5 rounded shrink-0">
+                    {scannedCard.shortId}
+                  </span>
+                  {scannedCard.category && (
+                    <span className="text-[10px] text-muted-fg font-semibold truncate">{scannedCard.category}</span>
+                  )}
+                </div>
+                <p className="font-bold text-fg leading-tight truncate">{scannedCard.title}</p>
+                <CardMeta card={scannedCard} />
               </div>
               <StatusBadge
                 card={scannedCard}
@@ -1199,7 +1150,10 @@ export function POSPage() {
                     Rp {scannedCard.listedPriceIdr?.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <BottomPriceReveal amount={scannedCard.bottomPriceIdr} />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-fg">Harga Minimum</span>
+                  <MaskedAmount amount={scannedCard.bottomPriceIdr} className="text-sm font-bold text-warning" />
+                </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold tracking-widest uppercase text-muted-fg">
                     Harga Final (IDR)
@@ -1337,14 +1291,7 @@ export function POSPage() {
                       <p className="text-sm font-bold text-fg truncate">
                         {card?.title ?? item.cardId}
                       </p>
-                      {card && (
-                        <p className="text-xs text-muted-fg truncate">
-                          {card.setName}
-                          {card.setNumber ? ` #${card.setNumber}` : ""}
-                          {" · "}
-                          {card.condition}
-                        </p>
-                      )}
+                      {card && <CardMeta card={card} />}
                     </div>
                     <span className="text-sm font-bold text-fg shrink-0">
                       Rp {lineTotal.toLocaleString("id-ID")}
@@ -1436,7 +1383,13 @@ export function POSPage() {
 // Free-text search over local IDB for cashiers who want to find a card by
 // name when a scan isn't convenient. Min 3 characters; matches shortId OR
 // title (case-insensitive, contains). Sold/retired/held cards are excluded.
-function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
+function ProductSearch({
+  onPick,
+  inputRef,
+}: {
+  onPick: (shortId: string) => void;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<IdbCard[]>([]);
   const trimmed = query.trim();
@@ -1455,7 +1408,8 @@ function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
           (c) =>
             c.status === "available" &&
             (c.shortId?.toLowerCase().includes(q) ||
-              c.title?.toLowerCase().includes(q))
+              c.title?.toLowerCase().includes(q) ||
+              (c.certNumber?.toLowerCase().includes(q) ?? false))
         )
         .limit(10)
         .toArray();
@@ -1469,6 +1423,7 @@ function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
   return (
     <div className="space-y-2">
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -1493,9 +1448,7 @@ function ProductSearch({ onPick }: { onPick: (shortId: string) => void }) {
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-fg truncate">{c.title}</span>
-                  <span className="block text-xs text-muted-fg truncate">
-                    {c.setName}{c.setNumber ? ` · #${c.setNumber}` : ""}
-                  </span>
+                  <CardMeta card={c} showCategory />
                 </span>
                 <span className="font-mono text-xs font-bold text-accent shrink-0">{c.shortId}</span>
               </button>

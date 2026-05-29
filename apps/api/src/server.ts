@@ -9,6 +9,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import staticPlugin from "@fastify/static";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenvConfig({ path: resolve(__dirname, "../../../.env") });
@@ -46,7 +47,7 @@ const cfg = loadConfig();
 // Ensure storage dirs exist so photo upload and audit archiving never crash on
 // a fresh VPS deploy where the operator hasn't run mkdir manually.
 mkdirSync(resolve(cfg.PHOTO_STORAGE_PATH), { recursive: true });
-mkdirSync(resolve("storage/audit-archive"), { recursive: true });
+mkdirSync(resolve(cfg.AUDIT_ARCHIVE_DIR ?? "storage/audit-archive"), { recursive: true });
 
 async function build() {
   const app = Fastify({ logger: true });
@@ -106,7 +107,7 @@ async function build() {
             in: "cookie",
             name: "sessionId",
             description:
-              "Fastify session cookie (sameSite=strict). Obtain via POST /auth/login.",
+              "Fastify session cookie (sameSite=strict). Obtain via POST /api/auth/login.",
           },
         },
       },
@@ -123,28 +124,53 @@ async function build() {
   await sessionPlugin(app, { secret: cfg.SESSION_SECRET, nodeEnv: cfg.NODE_ENV });
   await auditPlugin(app, { db });
 
-  // Routes
-  await authRoutes(app, { db });
-  await userRoutes(app, { db });
-  await eventRoutes(app, { db });
-  await paymentChannelRoutes(app, { db });
-  await settingsRoutes(app, { db });
-  await cardRoutes(app, { db });
-  await cartRoutes(app, { db });
-  await holdRoutes(app, { db });
-  await transactionRoutes(app, { db });
-  await backupRoute(app, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
-  await syncRoutes(app, { db, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
-  await flushPendingTxRoute(app, { db });
-  await pendingTransactionsAdminRoute(app, { db });
-  await settlementRoutes(app, { db });
-  await auditLogRoutes(app, { db });
-  await overrideRoutes(app, { db });
+  // All application routes are mounted under /api so the PWA's fetch BASE="/api"
+  // works without a proxy in production.
+  await app.register(async (api) => {
+    await authRoutes(api, { db });
+    await userRoutes(api, { db });
+    await eventRoutes(api, { db });
+    await paymentChannelRoutes(api, { db });
+    await settingsRoutes(api, { db });
+    await cardRoutes(api, { db });
+    await cartRoutes(api, { db });
+    await holdRoutes(api, { db });
+    await transactionRoutes(api, { db });
+    await backupRoute(api, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
+    await syncRoutes(api, { db, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
+    await flushPendingTxRoute(api, { db });
+    await pendingTransactionsAdminRoute(api, { db });
+    await settlementRoutes(api, { db });
+    await auditLogRoutes(api, { db });
+    await overrideRoutes(api, { db });
+  }, { prefix: "/api" });
+
+  // Operator / probe routes — intentionally outside /api prefix.
   await healthRoutes(app, { db });
+
+  // Static PWA serving — only active when STATIC_PATH is set (i.e. in production).
+  // In dev, Vite serves the frontend on its own port and proxies /api to this server.
+  if (cfg.STATIC_PATH) {
+    await app.register(staticPlugin, {
+      root: resolve(cfg.STATIC_PATH),
+      wildcard: true,
+      index: "index.html",
+    });
+
+    // SPA fallback: serve index.html for client-side routes; return JSON 404 for
+    // unknown /api paths so the frontend gets a structured error.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.url.startsWith("/api")) {
+        reply.code(404).send({ error: "Not found" });
+        return;
+      }
+      reply.sendFile("index.html");
+    });
+  }
 
   // Start background jobs
   const cartSweeperTask = startCartSweeper(db, { logger: app.log });
-  const auditPrunerTask = startAuditPruner(db, { logger: app.log });
+  const auditPrunerTask = startAuditPruner(db, { logger: app.log, archiveDir: cfg.AUDIT_ARCHIVE_DIR });
 
   return { app, cartSweeperTask, auditPrunerTask };
 }

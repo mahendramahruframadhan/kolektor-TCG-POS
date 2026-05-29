@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client.js";
 import { useAuthStore } from "./store/auth.js";
+import { setSessionExpiredHandler } from "./lib/api.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { POSPage } from "./pages/POSPage.js";
@@ -16,6 +17,7 @@ import { OversoldQueuePage } from "./pages/OversoldQueuePage.js";
 import { AuditLogPage } from "./pages/AuditLogPage.js";
 import { OverrideHistoryPage } from "./pages/OverrideHistoryPage.js";
 import { TransactionDetailPage } from "./pages/TransactionDetailPage.js";
+import { TransactionListPage } from "./pages/TransactionListPage.js";
 import { BulkImportPage } from "./pages/BulkImportPage.js";
 import { ProfilePage } from "./pages/ProfilePage.js";
 import { DocsPage } from "./pages/DocsPage.js";
@@ -24,6 +26,8 @@ import { MyPayoutPage } from "./pages/MyPayoutPage.js";
 import { PendingTransactionsPage } from "./pages/PendingTransactionsPage.js";
 import { MonitorPage } from "./pages/MonitorPage.js";
 import { LandingPage } from "./pages/LandingPage.js";
+import { PaymentChannelsAdminPage } from "./pages/PaymentChannelsAdminPage.js";
+import { ConfigHubPage } from "./pages/ConfigHubPage.js";
 import { OfflineModeGuard } from "./components/OfflineModeGuard.js";
 import { ToastContainer } from "./components/ToastContainer.js";
 import { DebugPanel } from "./components/DebugPanel.js";
@@ -42,6 +46,12 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 export function App() {
+  const setUser = useAuthStore((s) => s.setUser);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => setUser(null));
+  }, [setUser]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -113,7 +123,17 @@ export function App() {
             }
           />
           <Route
-            path="/settings"
+            path="/config"
+            element={
+              <RequireAdmin>
+                <OfflineModeGuard offlineMode="partial">
+                  <ConfigHubPage />
+                </OfflineModeGuard>
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/config/app"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="partial">
@@ -123,7 +143,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/users"
+            path="/config/users"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -133,7 +153,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/events"
+            path="/config/events"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -143,7 +163,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/oversold"
+            path="/config/oversold"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="partial">
@@ -153,7 +173,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/audit-log"
+            path="/config/audit-log"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -163,7 +183,7 @@ export function App() {
             }
           />
           <Route
-            path="/settings/overrides"
+            path="/config/overrides"
             element={
               <RequireAdmin>
                 <OfflineModeGuard offlineMode="blocked">
@@ -173,10 +193,28 @@ export function App() {
             }
           />
           <Route
+            path="/config/payment-channels"
+            element={
+              <RequireAdmin>
+                <OfflineModeGuard offlineMode="blocked">
+                  <PaymentChannelsAdminPage />
+                </OfflineModeGuard>
+              </RequireAdmin>
+            }
+          />
+          <Route
             path="/transactions/:id"
             element={
               <RequireAuth>
                 <TransactionDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <RequireAuth>
+                <TransactionListPage />
               </RequireAuth>
             }
           />

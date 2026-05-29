@@ -4,11 +4,12 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export function buildDb(dbPath: string) {
+export function buildDb(dbPath: string): { sqlite: Database.Database; db: BetterSQLite3Database<typeof schema> } {
   const sqlite = new Database(dbPath);
   // WAL mode for concurrent readers
   sqlite.pragma("journal_mode = WAL");
@@ -16,7 +17,7 @@ export function buildDb(dbPath: string) {
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }
 
-export async function runMigrations(dbPath: string) {
+export async function runMigrations(dbPath: string): Promise<{ sqlite: Database.Database; db: BetterSQLite3Database<typeof schema> }> {
   const { sqlite, db } = buildDb(dbPath);
 
   migrate(db, { migrationsFolder: join(__dirname, "../drizzle") });

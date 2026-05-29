@@ -3,6 +3,12 @@ import type { CreateCard, UpdateCard } from "@kolektapos/types";
 
 const BASE = "/api";
 
+// Callback set by auth store so api.ts can trigger logout on 401
+let onSessionExpired: (() => void) | null = null;
+export function setSessionExpiredHandler(fn: () => void) {
+  onSessionExpired = fn;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -28,8 +34,14 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      onSessionExpired?.();
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(err.error ?? "Request failed"), {
+    const msg = typeof err.error === "string"
+      ? err.error
+      : JSON.stringify(err.error ?? "Request failed");
+    throw Object.assign(new Error(msg), {
       status: res.status,
       body: err,
     });
@@ -169,6 +181,18 @@ export const api = {
   },
   paymentChannels: {
     list: () => request<PaymentChannelListItem[]>("/payment-channels"),
+    create: (body: { name: string; type: string; sortOrder: number }) =>
+      request<PaymentChannelListItem>("/payment-channels", {
+        method: "POST",
+        body: JSON.stringify({ ...body, isActive: true }),
+      }),
+    update: (id: string, body: { name?: string; type?: string; sortOrder?: number; isActive?: boolean; version: number }) =>
+      request<PaymentChannelListItem>(`/payment-channels/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    delete: (id: string) =>
+      request<{ ok: boolean }>(`/payment-channels/${id}`, { method: "DELETE" }),
   },
   settings: {
     get: () => request<Record<string, unknown>>("/settings"),
@@ -229,7 +253,8 @@ export const api = {
       }),
   },
   auditLog: {
-    list: () => request<unknown[]>("/audit-log"),
+    list: (page = 1, limit = 50) =>
+      request<{ rows: unknown[]; page: number; limit: number }>(`/audit-log?page=${page}&limit=${limit}`),
   },
   overrides: {
     list: () => request<unknown[]>("/overrides"),

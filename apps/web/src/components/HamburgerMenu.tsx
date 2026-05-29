@@ -100,7 +100,7 @@ export function HamburgerMenu() {
 
           {user?.role === "admin" && (
             <Link
-              to="/settings"
+              to="/config"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
             >

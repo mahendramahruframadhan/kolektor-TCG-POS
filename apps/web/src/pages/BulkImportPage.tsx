@@ -15,6 +15,7 @@ import { generateShortId } from "@kolektapos/qr";
 import { idb } from "../lib/db.js";
 import { api } from "../lib/api.js";
 import { useAuthStore } from "../store/auth.js";
+import { CONDITIONS, LANGUAGES, GRADING_COMPANIES, PRICING_MODES } from "../lib/constants.js";
 
 // ── Column mapping ─────────────────────────────────────────────────────────
 // Expected Excel headers (case-insensitive):
@@ -22,11 +23,10 @@ import { useAuthStore } from "../store/auth.js";
 // pricingMode, priceIdr, listedPriceIdr, bottomPriceIdr, isGraded,
 // gradingCompany, grade, certNumber
 
-const VALID_CONDITIONS = new Set([
-  "Mint", "Near Mint", "Lightly Played", "Moderately Played", "Heavily Played", "Damaged",
-]);
-const VALID_LANGUAGES = new Set(["EN", "JP", "ID", "KR", "CN", "Other"]);
-const VALID_PRICING_MODES = new Set(["fixed", "negotiable"]);
+const VALID_CONDITIONS = new Set<string>(CONDITIONS);
+const VALID_LANGUAGES = new Set<string>(LANGUAGES);
+const VALID_PRICING_MODES = new Set<string>(PRICING_MODES);
+const VALID_GRADING_COMPANIES = new Set<string>(GRADING_COMPANIES);
 
 /** Placeholder owner used in the downloadable template. Rows with this
  *  owner are silently skipped at import so operators can leave the
@@ -51,6 +51,26 @@ interface ImportUser {
   displayName: string;
 }
 
+function buildCaseMap(values: readonly string[]): Record<string, string> {
+  return Object.fromEntries(values.map((v) => [v.toLowerCase(), v]));
+}
+
+const GRADING_COMPANY_MAP = buildCaseMap(GRADING_COMPANIES);
+const LANGUAGE_MAP = buildCaseMap(LANGUAGES);
+const CONDITION_MAP = buildCaseMap(CONDITIONS);
+
+function normalizeGradingCompany(raw: string): string {
+  return GRADING_COMPANY_MAP[raw.toLowerCase()] ?? raw;
+}
+
+function normalizeLanguage(raw: string): string {
+  return LANGUAGE_MAP[raw.toLowerCase()] ?? raw;
+}
+
+function normalizeCondition(raw: string): string {
+  return CONDITION_MAP[raw.toLowerCase()] ?? raw;
+}
+
 function normalizeHeader(h: string): string {
   return h.trim().toLowerCase().replace(/\s+/g, "");
 }
@@ -67,9 +87,9 @@ function validateRow(
   const ownerName = rawRow["owner"] ?? "";
   const title = (rawRow["title"] ?? "").trim();
   const category = (rawRow["category"] ?? "").trim();
-  const condition = rawRow["condition"] ?? "Near Mint";
-  const language = rawRow["language"] ?? "EN";
-  const pricingMode = rawRow["pricingmode"] ?? "fixed";
+  const condition = normalizeCondition((rawRow["condition"] ?? "Near Mint").trim());
+  const language = normalizeLanguage((rawRow["language"] ?? "EN").trim());
+  const pricingMode = (rawRow["pricingmode"] ?? "fixed").trim().toLowerCase();
   const priceStr = rawRow["priceidr"] ?? "";
   const listedStr = rawRow["listedpriceidr"] ?? "";
   const bottomStr = rawRow["bottompriceidr"] ?? "";
@@ -110,9 +130,10 @@ function validateRow(
   }
 
   if (isGraded) {
-    const gc = (rawRow["gradingcompany"] ?? "").trim();
+    const gc = normalizeGradingCompany((rawRow["gradingcompany"] ?? "").trim());
     const grade = (rawRow["grade"] ?? "").trim();
     if (!gc) errors.push("gradingCompany required when isGraded=true");
+    else if (!VALID_GRADING_COMPANIES.has(gc)) errors.push(`invalid gradingCompany: "${gc}" — must be PSA, BGS, CGC, SGC, or Other`);
     if (!grade) errors.push("grade required when isGraded=true");
   }
 
@@ -137,9 +158,9 @@ function validateRow(
     pricingMode,
     isGraded,
     ...(isGraded ? {
-      gradingCompany: (rawRow["gradingcompany"] ?? "").trim(),
+      gradingCompany: normalizeGradingCompany((rawRow["gradingcompany"] ?? "").trim()),
       grade: (rawRow["grade"] ?? "").trim(),
-      certNumber: (rawRow["certnumber"] ?? "").trim() || undefined,
+      certNumber: (rawRow["certnumber"] ?? "").trim().replace(/^'+/, "") || undefined,
     } : {}),
     ...(pricingMode === "fixed" ? { priceIdr } : { listedPriceIdr, bottomPriceIdr }),
   };

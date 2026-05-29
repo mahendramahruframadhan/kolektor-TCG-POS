@@ -73,6 +73,7 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
       ];
     }
 
+    await request.session.save();
     return reply.send(sessionUser);
   });
 
