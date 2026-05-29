@@ -140,7 +140,7 @@ const SECTIONS: Section[] = [
           dan disinkronkan ke server saat koneksi tersedia (setiap 60 detik atau saat ada koneksi baru).
         </p>
         <div className="border border-border rounded-xl p-3 space-y-1 text-xs">
-          <p><span className="font-bold text-fg">Versi:</span> 2026.05.0</p>
+          <p><span className="font-bold text-fg">Versi:</span> 2026.05.239</p>
           <p><span className="font-bold text-fg">Stack:</span> React + Vite PWA · Fastify · SQLite · Dexie</p>
           <p><span className="font-bold text-fg">Pengguna:</span> 11 co-owners, 1 booth</p>
           <p><span className="font-bold text-fg">Penggunaan:</span> Internal — tidak untuk publik</p>

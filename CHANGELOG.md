@@ -4,7 +4,7 @@ Format: [CalVer](https://calver.org/) `YYYY.MM.PATCH`. All notable changes docum
 
 ---
 
-## 2026.05.0 — 2026-05-29
+## 2026.05.239 — 2026-05-29
 
 ### Added
 - **Halaman Konfigurasi hub** (`/config`) — satu titik masuk admin dengan link ke semua halaman pengaturan; mengurangi kepadatan sidebar
