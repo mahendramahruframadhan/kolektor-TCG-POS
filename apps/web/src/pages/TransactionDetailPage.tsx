@@ -129,6 +129,12 @@ export function TransactionDetailPage() {
               {detail.transaction.paymentNote && (
                 <Row label="Catatan Bayar" value={<span className="text-sm text-fg">{detail.transaction.paymentNote}</span>} />
               )}
+              {detail.transaction.discountReason && (
+                <Row label="Alasan Diskon" value={<span className="text-sm text-fg">{detail.transaction.discountReason}</span>} />
+              )}
+              {detail.transaction.voidOrRefundReason && (
+                <Row label="Alasan Void/Refund" value={<span className="text-sm text-destructive font-semibold">{detail.transaction.voidOrRefundReason}</span>} />
+              )}
               {detail.transaction.notes && (
                 <div className="pt-2 border-t border-border">
                   <Row label="Catatan" value={<span className="text-sm text-fg">{detail.transaction.notes}</span>} />
