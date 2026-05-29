@@ -253,7 +253,8 @@ export const api = {
       }),
   },
   auditLog: {
-    list: () => request<{ rows: unknown[]; page: number; limit: number }>("/audit-log"),
+    list: (page = 1, limit = 50) =>
+      request<{ rows: unknown[]; page: number; limit: number }>(`/audit-log?page=${page}&limit=${limit}`),
   },
   overrides: {
     list: () => request<unknown[]>("/overrides"),
