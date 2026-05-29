@@ -52,4 +52,3 @@ packages/
 ## License
 
 UNLICENSED / proprietary. See [`LICENSE`](LICENSE).
-#

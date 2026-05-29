@@ -17,8 +17,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useDebugInfo } from "../hooks/useDebugInfo.js";
-import { useSyncStateStore } from "../store/sync-state.js";
-import { useOfflineAuthStore } from "../store/auth.js";
 import {
   formatBytes,
   timeAgo,
@@ -96,8 +94,7 @@ function SectionHeader({
   );
 }
 
-export function DebugPanel() {
-  const [open, setOpen] = useState(false);
+function DebugPanelContent({ onClose }: { onClose: () => void }) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     auth: true,
     network: true,
@@ -110,22 +107,9 @@ export function DebugPanel() {
   });
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const { debugInfo, isLoading, refresh } = useDebugInfo();
-  const { state: syncState, networkMode } = useSyncStateStore();
 
   const toggleSection = useCallback((key: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
-  // Hotkey: Ctrl+Shift+D
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey && e.shiftKey && e.key === "D") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleExport = useCallback(() => {
@@ -176,12 +160,6 @@ export function DebugPanel() {
     setTimeout(() => setCleanupResult(null), 5000);
   }, [refresh]);
 
-  if (!open) {
-    // Debug Panel hanya bisa diakses via hotkey Ctrl+Shift+D
-    // Tidak menampilkan floating button agar tidak mengganggu UI kasir
-    return null;
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end sm:items-center sm:justify-center bg-black/30">
       <div className="bg-white w-full max-w-lg max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
@@ -212,7 +190,7 @@ export function DebugPanel() {
               <Copy className="w-4 h-4 text-slate-500" />
             </button>
             <button
-              onClick={() => setOpen(false)}
+              onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-slate-100 transition"
             >
               <X className="w-4 h-4 text-slate-500" />
@@ -475,4 +453,23 @@ export function DebugPanel() {
       </div>
     </div>
   );
+}
+
+export function DebugPanel() {
+  const [open, setOpen] = useState(false);
+
+  // Hotkey: Ctrl+Shift+D
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  if (!open) return null;
+  return <DebugPanelContent onClose={() => setOpen(false)} />;
 }

@@ -7,7 +7,7 @@ import {
   getLocalStorageSummary,
   getIndexedDBTableSizes,
 } from "../lib/storage-monitor.js";
-import { getLocalStorageSize } from "../lib/debug-utils.js";
+import { getLocalStorageSize, maskEmail } from "../lib/debug-utils.js";
 
 export interface DebugInfo {
   authentication: {
@@ -74,15 +74,6 @@ export interface DebugInfo {
     platform: string;
     memory: { used: number; total: number } | null;
   };
-}
-
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!local || !domain) return email;
-  const maskedLocal = local.length > 2
-    ? `${local.slice(0, 2)}***${local.slice(-1)}`
-    : "***";
-  return `${maskedLocal}@${domain}`;
 }
 
 export function useDebugInfo() {

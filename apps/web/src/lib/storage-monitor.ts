@@ -1,4 +1,5 @@
 import { idb } from "./db.js";
+export { getLocalStorageSummary } from "./debug-utils.js";
 
 export interface StorageQuota {
   used: number;
@@ -53,27 +54,6 @@ export async function getIndexedDBQuota(): Promise<StorageQuota> {
     // Ignore
   }
   return { used: 0, total: 0, remaining: 0, percentage: 0 };
-}
-
-/**
- * Get localStorage summary.
- */
-export function getLocalStorageSummary(): LocalStorageSummary {
-  const items: Array<{ key: string; size: number; lastUpdated?: number }> = [];
-  let totalSize = 0;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      const value = localStorage.getItem(key) ?? "";
-      const size = value.length * 2; // UTF-16 approximation
-      totalSize += size;
-      items.push({ key, size });
-    }
-  } catch {
-    // localStorage may be inaccessible
-  }
-  return { totalSize, itemCount: items.length, items };
 }
 
 /**

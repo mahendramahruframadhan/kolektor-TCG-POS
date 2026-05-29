@@ -26,6 +26,7 @@ export function useConnectionMonitor() {
   >("unknown");
 
   const isCheckingRef = useRef(false);
+  const consecutiveFailuresRef = useRef(0);
 
   const checkConnection = useCallback(async () => {
     if (isCheckingRef.current) return;
@@ -44,6 +45,7 @@ export function useConnectionMonitor() {
       const measuredLatency = Math.round(performance.now() - start);
 
       if (response.ok) {
+        consecutiveFailuresRef.current = 0;
         setIsOnline(true);
         setLatency(measuredLatency);
         setConsecutiveFailures(0);
@@ -59,15 +61,14 @@ export function useConnectionMonitor() {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (err) {
-      setConsecutiveFailures((prev) => {
-        const next = prev + 1;
-        if (next >= OFFLINE_THRESHOLD) {
-          setIsOnline(false);
-          setLatency(null);
-          setNetworkQuality("unknown");
-        }
-        return next;
-      });
+      const newCount = consecutiveFailuresRef.current + 1;
+      consecutiveFailuresRef.current = newCount;
+      setConsecutiveFailures(newCount);
+      if (newCount >= OFFLINE_THRESHOLD) {
+        setIsOnline(false);
+        setLatency(null);
+        setNetworkQuality("unknown");
+      }
 
       const { updateServerHealth } = useSyncStateStore.getState();
       updateServerHealth({

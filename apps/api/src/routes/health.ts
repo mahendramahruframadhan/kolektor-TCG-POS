@@ -51,11 +51,10 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
           status: "ok",
           ok: true,
           timestamp: nowMs,
-          uptime: nowSec - Math.floor(startedAtMs / 1000),
+          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           version: SCHEMA_VERSION,
           database: "connected",
           db: "connected",
-          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           users: userCount,
           activeDraftCarts: activeCarts,
         });
@@ -66,11 +65,10 @@ export async function healthRoutes(app: FastifyInstance, opts: { db: Db }) {
           status: "error",
           ok: false,
           timestamp: nowMs,
-          uptime: nowSec - Math.floor(startedAtMs / 1000),
+          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
           version: SCHEMA_VERSION,
           database: "disconnected",
           db: "error",
-          uptimeSec: nowSec - Math.floor(startedAtMs / 1000),
         });
       }
     }
