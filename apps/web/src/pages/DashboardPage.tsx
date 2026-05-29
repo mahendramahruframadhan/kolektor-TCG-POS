@@ -60,10 +60,12 @@ export function DashboardPage() {
   const activeEvent = events?.find((e) => e.status === "active");
   const { data: stats } = useDashboardStats(activeEvent?.id);
 
+  const isAdmin = user?.role === "admin";
+
   const quickActions: { to: string; Icon: LucideIcon; label: string; primary: boolean }[] = [
     { to: "/pos",       Icon: ShoppingCart, label: "Mulai Kasir", primary: true },
     { to: "/inventory", Icon: Package,      label: "Inventaris",  primary: false },
-    { to: "/stock-receive", Icon: Plus,     label: "Stock Receive", primary: false },
+    ...(isAdmin ? [{ to: "/stock-receive", Icon: Plus, label: "Stock Receive", primary: false }] : []),
     { to: "/reports",   Icon: BarChart2,    label: "Laporan",     primary: false },
   ];
 
@@ -78,6 +80,7 @@ export function DashboardPage() {
             className="h-7 w-auto rounded-lg object-cover"
           />
         }
+        right={null}
       />
 
       <main id="main-content" className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">

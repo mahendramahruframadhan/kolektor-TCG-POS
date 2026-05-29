@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Menu, X, LayoutDashboard, ShoppingCart, Package, Plus, BarChart2,
-  Settings, Users, Calendar, LogOut,
-  BookOpen, Tag, Wallet, AlertTriangle, ClipboardList, ShieldAlert, type LucideIcon,
+  Settings, LogOut,
+  BookOpen, Tag, Wallet, Receipt, type LucideIcon,
 } from "lucide-react";
-import { useAuthStore } from "../store/auth.js";
+import { useAuthStore, useOfflineAuthStore } from "../store/auth.js";
 import { api } from "../lib/api.js";
 import { queryClient } from "../lib/query-client.js";
 
@@ -17,18 +17,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", Icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/pos",       Icon: ShoppingCart, label: "Kasir" },
-  { to: "/inventory", Icon: Package,      label: "Inventaris" },
-  { to: "/stock-receive", Icon: Plus,     label: "Stock Receive" },
-  { to: "/reports",   Icon: BarChart2,    label: "Laporan" },
-  { to: "/labels",     Icon: Tag,          label: "Cetak Label QR" },
-  { to: "/my-payout", Icon: Wallet,       label: "Payout Saya" },
-  { to: "/settings/users",    Icon: Users,        label: "Kelola Pengguna",  adminOnly: true },
-  { to: "/settings/events",   Icon: Calendar,     label: "Kelola Event",     adminOnly: true },
-  { to: "/settings/oversold", Icon: AlertTriangle,label: "Antrian Oversold", adminOnly: true },
-  { to: "/settings/overrides",Icon: ShieldAlert,  label: "Riwayat Override", adminOnly: true },
-  { to: "/settings/audit-log",Icon: ClipboardList,label: "Audit Log",        adminOnly: true },
+  { to: "/dashboard",  Icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/pos",        Icon: ShoppingCart,    label: "Kasir" },
+  { to: "/inventory",  Icon: Package,         label: "Inventaris" },
+  { to: "/stock-receive", Icon: Plus,         label: "Stock Receive", adminOnly: true },
+  { to: "/reports",    Icon: BarChart2,       label: "Laporan" },
+  { to: "/transactions", Icon: Receipt,       label: "Riwayat Transaksi" },
+  { to: "/labels",     Icon: Tag,             label: "Cetak Label QR" },
+  { to: "/my-payout",  Icon: Wallet,          label: "Payout Saya" },
 ];
 
 export function HamburgerMenu() {
@@ -40,7 +36,8 @@ export function HamburgerMenu() {
     setOpen(false);
     await api.auth.logout().catch(() => null);
     useAuthStore.getState().setUser(null);
-    useAuthStore.persist.clearStorage();
+    // Keep offlineCredentials so the user can re-login offline later
+    useOfflineAuthStore.getState().logoutSession();
     queryClient.clear();
     navigate("/login");
   }
@@ -97,7 +94,7 @@ export function HamburgerMenu() {
 
           {user?.role === "admin" && (
             <Link
-              to="/settings"
+              to="/config"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-fg hover:bg-muted transition"
             >

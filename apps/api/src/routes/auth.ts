@@ -10,6 +10,21 @@ import { requireAuth } from "../plugins/auth-guard.js";
 
 type Db = BetterSQLite3Database<typeof dbSchema>;
 
+interface AuthUserPayload {
+  id: string;
+  email: string;
+  displayName: string;
+  role: string;
+  offlineHash?: string;
+  allUsersHash?: Array<{
+    id: string;
+    email: string;
+    displayName: string;
+    role: string;
+    offlineHash: string;
+  }>;
+}
+
 export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
   const { db } = opts;
 
@@ -42,13 +57,50 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     request.session.userId = user.id;
     request.session.userRole = user.role;
 
-    await request.session.save();
-
-    return reply.send({
+    const sessionUser: AuthUserPayload = {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
       role: user.role,
+      offlineHash: user.passwordHash,
+    };
+
+    if (user.role === "admin") {
+      const allCashiers = db.select().from(users).where(eq(users.role, "cashier")).all();
+      sessionUser.allUsersHash = [
+        { id: user.id, email: user.email, displayName: user.displayName, role: user.role, offlineHash: user.passwordHash },
+        ...allCashiers.map(c => ({ id: c.id, email: c.email, displayName: c.displayName, role: c.role, offlineHash: c.passwordHash })),
+      ];
+    }
+
+    await request.session.save();
+    return reply.send(sessionUser);
+  });
+
+  app.post("/auth/cache-credential", {
+    preHandler: requireAuth,
+  }, async (request, reply) => {
+    if (!(request.session.userRole === "cashier" || request.session.userRole === "admin")) {
+      return reply.status(403).send({ error: "Only cashier and admin can cache credentials for offline login" });
+    }
+
+    const user = db
+      .select()
+      .from(users)
+      .where(eq(users.id, request.session.userId!))
+      .get();
+
+    if (!user) {
+      return reply.status(404).send({ error: "User not found" });
+    }
+
+    return reply.send({
+      email: user.email,
+      offlineHash: user.passwordHash,
+      id: user.id,
+      displayName: user.displayName,
+      role: user.role,
+      cachedAt: Math.floor(Date.now() / 1000),
     });
   });
 

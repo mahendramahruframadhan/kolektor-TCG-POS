@@ -31,6 +31,7 @@ import { transactionRoutes } from "./routes/transactions.js";
 import { backupRoute } from "./routes/backup.js";
 import { syncRoutes } from "./routes/sync.js";
 import { flushPendingTxRoute } from "./routes/flush-pending-tx.js";
+import { pendingTransactionsAdminRoute } from "./routes/pending-transactions-admin.js";
 import { settlementRoutes } from "./routes/settlement.js";
 import { auditLogRoutes } from "./routes/audit-log.js";
 import { overrideRoutes } from "./routes/overrides.js";
@@ -138,6 +139,7 @@ async function build() {
     await backupRoute(api, { dbPath: cfg.DATABASE_PATH, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
     await syncRoutes(api, { db, photoStoragePath: cfg.PHOTO_STORAGE_PATH });
     await flushPendingTxRoute(api, { db });
+    await pendingTransactionsAdminRoute(api, { db });
     await settlementRoutes(api, { db });
     await auditLogRoutes(api, { db });
     await overrideRoutes(api, { db });

@@ -240,7 +240,7 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
-      <MobileAppBar title="Konfigurasi" back onBack={() => navigate("/dashboard")} />
+      <MobileAppBar title="Pengaturan Aplikasi" back onBack={() => navigate("/config")} />
 
       <div className="flex-1 overflow-y-auto max-w-xl mx-auto w-full p-4 space-y-4">
         {/* Editable settings */}

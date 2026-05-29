@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "../lib/api.js";
 import { fmt } from "../lib/format.js";
 import { MobileAppBar } from "../components/MobileAppBar.js";
@@ -25,27 +25,31 @@ function actionLabel(action: string) {
   }
 }
 
+const LIMIT = 50;
+
 export function AuditLogPage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadEntries();
-  }, []);
-
-  async function loadEntries() {
+  const loadEntries = useCallback(async (p: number) => {
     setLoading(true);
+    setError(null);
     try {
-      const rows = await api.auditLog.list() as AuditEntry[];
-      setEntries(rows);
+      const res = await api.auditLog.list(p, LIMIT);
+      setEntries(res.rows as AuditEntry[]);
+      setHasMore(res.rows.length === LIMIT);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat audit log.");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => { loadEntries(page); }, [page, loadEntries]);
 
   return (
     <div className="min-h-screen bg-surface bg-dotted-overlay flex flex-col">
@@ -93,6 +97,31 @@ export function AuditLogPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Pagination */}
+        {!loading && (entries.length > 0 || page > 1) && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-fg disabled:opacity-40 hover:bg-muted transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Sebelumnya
+            </button>
+            <span className="text-xs text-muted-fg">Hal. {page}</span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasMore}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-fg disabled:opacity-40 hover:bg-muted transition"
+            >
+              Berikutnya
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
