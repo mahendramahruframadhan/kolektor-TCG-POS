@@ -1,8 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import path from "path";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@kolektapos/qr": path.resolve(__dirname, "../../packages/qr/src/index.ts"),
+      "@kolektapos/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
+      "@kolektapos/sync": path.resolve(__dirname, "../../packages/sync/src/index.ts"),
+    },
+  },
   plugins: [
     react(),
     VitePWA({

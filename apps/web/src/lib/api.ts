@@ -29,7 +29,10 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw Object.assign(new Error(err.error ?? "Request failed"), {
+    const msg = typeof err.error === "string"
+      ? err.error
+      : JSON.stringify(err.error ?? "Request failed");
+    throw Object.assign(new Error(msg), {
       status: res.status,
       body: err,
     });

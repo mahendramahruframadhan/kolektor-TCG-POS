@@ -27,6 +27,7 @@ const VALID_CONDITIONS = new Set([
 ]);
 const VALID_LANGUAGES = new Set(["EN", "JP", "ID", "KR", "CN", "Other"]);
 const VALID_PRICING_MODES = new Set(["fixed", "negotiable"]);
+const VALID_GRADING_COMPANIES = new Set(["PSA", "BGS", "CGC", "SGC", "Other"]);
 
 /** Placeholder owner used in the downloadable template. Rows with this
  *  owner are silently skipped at import so operators can leave the
@@ -49,6 +50,14 @@ interface ImportRow {
 interface ImportUser {
   id: string;
   displayName: string;
+}
+
+const GRADING_COMPANY_MAP: Record<string, string> = {
+  psa: "PSA", bgs: "BGS", cgc: "CGC", sgc: "SGC", other: "Other",
+};
+
+function normalizeGradingCompany(raw: string): string {
+  return GRADING_COMPANY_MAP[raw.toLowerCase()] ?? raw;
 }
 
 function normalizeHeader(h: string): string {
@@ -110,9 +119,10 @@ function validateRow(
   }
 
   if (isGraded) {
-    const gc = (rawRow["gradingcompany"] ?? "").trim();
+    const gc = normalizeGradingCompany((rawRow["gradingcompany"] ?? "").trim());
     const grade = (rawRow["grade"] ?? "").trim();
     if (!gc) errors.push("gradingCompany required when isGraded=true");
+    else if (!VALID_GRADING_COMPANIES.has(gc)) errors.push(`invalid gradingCompany: "${gc}" — must be PSA, BGS, CGC, SGC, or Other`);
     if (!grade) errors.push("grade required when isGraded=true");
   }
 
@@ -137,7 +147,7 @@ function validateRow(
     pricingMode,
     isGraded,
     ...(isGraded ? {
-      gradingCompany: (rawRow["gradingcompany"] ?? "").trim(),
+      gradingCompany: normalizeGradingCompany((rawRow["gradingcompany"] ?? "").trim()),
       grade: (rawRow["grade"] ?? "").trim(),
       certNumber: (rawRow["certnumber"] ?? "").trim() || undefined,
     } : {}),
