@@ -51,9 +51,11 @@ export function useSyncPendingTransactions() {
       let synced = 0;
       let failed = 0;
 
+      const resolvedClientIds = new Set<string>();
       for (const result of response.results) {
         const tx = pending.find((p) => p.clientId === result.clientId);
         if (!tx) continue;
+        resolvedClientIds.add(result.clientId);
 
         if (result.status === "accepted") {
           tx.syncStatus = "synced";
@@ -62,6 +64,16 @@ export function useSyncPendingTransactions() {
         } else {
           tx.syncStatus = "error";
           tx.syncError = result.reason;
+          failed++;
+        }
+      }
+
+      // Any transaction not in server response was left as "syncing" — reset to "error"
+      // so it re-enters the queue next sync rather than stuck permanently.
+      for (const tx of pending) {
+        if (!resolvedClientIds.has(tx.clientId) && tx.syncStatus === "syncing") {
+          tx.syncStatus = "error";
+          tx.syncError = "No response from server";
           failed++;
         }
       }

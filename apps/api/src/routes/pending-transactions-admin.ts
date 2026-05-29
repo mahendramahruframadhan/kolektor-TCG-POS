@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as dbSchema from "@kolektapos/db/schema";
 import { transactions, transactionItems, users, events, paymentChannels, cards } from "@kolektapos/db/schema";
@@ -116,14 +116,29 @@ export async function pendingTransactionsAdminRoute(
         : null;
       const items = db.select().from(transactionItems).where(eq(transactionItems.transactionId, tx.id)).all();
 
+      const cardIds = items.map((i) => i.cardId);
+      const ownerIds = [...new Set(items.map((i) => i.ownerUserIdSnapshot))];
+
+      const cardRows = cardIds.length
+        ? db.select({ id: cards.id, title: cards.title, shortId: cards.shortId })
+            .from(cards).where(inArray(cards.id, cardIds)).all()
+        : [];
+      const ownerRows = ownerIds.length
+        ? db.select({ id: users.id, displayName: users.displayName })
+            .from(users).where(inArray(users.id, ownerIds)).all()
+        : [];
+
+      const cardMap = new Map(cardRows.map((c) => [c.id, c]));
+      const ownerMap = new Map(ownerRows.map((u) => [u.id, u]));
+
       const itemsWithCards = items.map((item) => {
-        const card = db.select().from(cards).where(eq(cards.id, item.cardId)).get();
-        const itemOwner = db.select().from(users).where(eq(users.id, item.ownerUserIdSnapshot)).get();
+        const card = cardMap.get(item.cardId);
+        const owner = ownerMap.get(item.ownerUserIdSnapshot);
         return {
           ...item,
           cardTitle: card?.title ?? "Unknown",
           cardShortId: card?.shortId ?? "",
-          ownerDisplayName: itemOwner?.displayName ?? "Unknown",
+          ownerDisplayName: owner?.displayName ?? "Unknown",
         };
       });
 

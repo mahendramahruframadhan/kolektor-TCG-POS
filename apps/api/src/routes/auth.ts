@@ -66,11 +66,14 @@ export async function authRoutes(app: FastifyInstance, opts: { db: Db }) {
     };
 
     if (user.role === "admin") {
-      const allCashiers = db.select().from(users).where(eq(users.role, "cashier")).all();
-      sessionUser.allUsersHash = [
-        { id: user.id, email: user.email, displayName: user.displayName, role: user.role, offlineHash: user.passwordHash },
-        ...allCashiers.map(c => ({ id: c.id, email: c.email, displayName: c.displayName, role: c.role, offlineHash: c.passwordHash })),
-      ];
+      const otherUsers = db.select().from(users).all();
+      sessionUser.allUsersHash = otherUsers.map((u) => ({
+        id: u.id,
+        email: u.email,
+        displayName: u.displayName,
+        role: u.role,
+        offlineHash: u.passwordHash,
+      }));
     }
 
     await request.session.save();
